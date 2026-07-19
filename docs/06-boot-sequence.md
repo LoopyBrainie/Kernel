@@ -387,19 +387,23 @@ R37 D128 trap_entry 用 `slli t4, tp, 6` 索引 HLCB, 但 Step 0 期间 HLCB 仍
 ### D136 立法
 
 ```c
-// trap_entry (D136 升级, 勘误后)
+// trap_entry (D136 升级, R48 勘误增补: 命名常量同源派生)
+//   R47 bug: 原 trap_entry 用裸偏移数读 sscratch_initialized, 实际命中 hart_id:u16
+//   (offset 24), Hart 0 的 hart_id=0 → beqz 恒真 → 首 trap 必 panic (.L_step0_trap).
+//   R48 修复: 偏移统一由 build/link.zig asm-side 常量派生,
+//   与 05 extern struct comptime @offsetOf 同源 (D107 size gate + P1-1 layout).
 trap_entry:
     // D136: Step 0 盲区防御, 先检查 HLCB 是否初始化
     la      t3, __hlcb_table
-    slli    t4, tp, 6                    # HLCB 64B (D107 size gate)
+    slli    t4, tp, HLCB_STRIDE_SHIFT       # HLCB 64B stride (P1-1, 2^SHIFT)
     add     t3, t3, t4
-    lb      t5, 24(t3)                   # HLCB.sscratch_initialized offset (D82)
-    beqz    t5, .L_step0_trap            # D136: 未初始化 → SBI SRST halt
+    lb      t5, HLCB_SSCRATCH_INIT(t3)      # sscratch_initialized @56 (P1-1; R31 题面 @32)
+    beqz    t5, .L_step0_trap               # D136: 未初始化 → SBI SRST halt
 
     // D128 (R37): 判据回归 sp
     mv      t0, sp
-    ld      t1, 32(t3)
-    ld      t2, 40(t3)
+    ld      t1, HLCB_KERNEL_STACK_BASE(t3)  # @offsetOf=32 (D107)
+    ld      t2, HLCB_KERNEL_STACK_TOP(t3)   # @offsetOf=40 (D107/D64)
     bltu    t0, t1, .L_user_mode_trap
     bgeu    t0, t2, .L_user_mode_trap
     j       .L_trap_push_context
