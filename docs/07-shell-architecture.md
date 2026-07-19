@@ -88,24 +88,37 @@ The user-facing API is **unchanged across phases** (D55). The implementation und
 #![no_std]
 #![no_main]
 
-// D97: 0 unsafe
+// D97: 0 unsafe (除必要的 FFI 桥接)
 use cosmo_kernel::{
     abi::{sys_result_t, sys_call},
     scheme::{open, read, write, close},
 };
 
+// R48 勘误增补: shell_io_pool 由 build/link.zig 在 boot 期从 BlockPool
+//   划分 (1 BlockPool 块 = 1536B, D57 三层不变式锁定), 符号由链接脚本导出.
+//   P2-4 已显式标注 caller 栈缓冲跨 FFI 是错例 (典型形态即 512B 栈数组),
+//   见 14 § "FFI ownership (D103 + P2-4 放宽 source 例外)" WRONG 历史错例.
+extern "C" {
+    static mut __shell_io_pool: [u8; 1536];  // build/link.zig 派生, 1 BlockPool 块
+}
+
 #[no_mangle]
 pub extern "C" fn shell_main() -> ! {
-    // D4: scheme://[node]/path position-transparent request
+    // D4: scheme://[node]/path position-transparent request (path 来自 .rodata 字面量)
     let fd = open(b"scheme://0/initrd/motd\0", 0);
-    let mut buf = [0u8; 512];
-    let n = read(fd, &mut buf);
+    // D103 + P2-4: buf 必须来自静态池, 禁止 caller 栈缓冲
+    let buf: &mut [u8] = unsafe { &mut __shell_io_pool };
+    let n = read(fd, buf);
     write(1, &buf[..n as usize]);  // stdout
     close(fd);
 
     loop { syscall_yield(); }
 }
 ```
+
+### Shell I/O pool 划分说明 (R48 勘误增补)
+
+`__shell_io_pool` 由 build/link.zig 在 boot 期从 BlockPool (D29 + D45 sparse) 划分出 **1 块 (1536 B)** 作为 Shell 全局 I/O 缓冲。该符号在链接脚本中导出 `.bss.shell_io_pool` 段, Shell 在编译期看到的是零大小 extern 声明, 由链接器在最终 ELF 中补全物理地址与容量。Shell 单线程使用, 无并发安全顾虑; 若 Phase 1+ Shell 改多线程, 需进一步按 fd 划分 pool (D103 红线, 详见 14 § FFI ownership 表)。
 
 ## Forbidden third-party loading (D97)
 
