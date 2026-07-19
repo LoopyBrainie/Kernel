@@ -204,6 +204,7 @@ FORBIDDEN=(
   "uint32_t code"                        # R48 F3 (sys_result_t 旧 C 形态, P1-2 后改 header)
   "code: u32"                            # R48 F3 (sys_result_t 旧 Rust 形态)
   "status: u32"                          # R48 F3 (sys_result_t 旧 Zig 形态, P1-2 后改 reserved)
+  "struct sys_result_payload_t"         # R48 F3 终验抓出 (amend bae69b1 范畴): Rust payload 必须 union 不是 struct (两个 8B 字段在 struct = 16B, size_of==8 断言永远熔断)
 )
 # Self-validation: derived count, single source of truth.
 # Lower bound = R12-R36 baseline (70). Floor avoids regression to old total.
@@ -215,7 +216,7 @@ fi
 # R48 勘误增补: 自验证 census Total == N (硬性提交门槛)
 #   census Total 在 20-documentation-gate.md "Forbidden word census" 表末行
 #   每次新增禁词必须同步更新 census 与本 EXPECTED_TOTAL, 否则 fail-closed
-EXPECTED_TOTAL=132
+EXPECTED_TOTAL=133
 if [ "${FORBIDDEN_COUNT}" -ne "${EXPECTED_TOTAL}" ]; then
   echo "[FATAL] check-docs.sh array length ${FORBIDDEN_COUNT} != census Total ${EXPECTED_TOTAL}"
   echo "  (R48+: 同步更新 census 表 (20-documentation-gate.md) 与脚本 EXPECTED_TOTAL)"

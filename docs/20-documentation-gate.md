@@ -60,8 +60,8 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | R45 跨 Hart SBI RFENCE / FILE_TABLE / FP CSR 0x73 | 4 | 114 | D150/D151/D152 |
 | R46 (无独立禁词) | 0 | 114 | R46 修正条目计入 R42 (R42/R46 双标) |
 | R47 P1-5 撤销 + P3-* 勘误增补 | 15 | 129 | P1-5 撤销 D151 84B 裁定 (3 条) + P3-1~P3-11 勘误增补 (12 条) |
-| R48 F3 sys_result_t 形态统一 | 3 | **132** | uint32_t code / code: u32 / status: u32 |
-| **Total** | — | **132** | `${#FORBIDDEN[@]}` 派生 (R48 自校: N 必须 == 132) |
+| R48 F3 sys_result_t 形态统一 | 4 | **133** | uint32_t code / code: u32 / status: u32 / struct sys_result_payload_t (终验补 1) |
+| **Total** | — | **133** | `${#FORBIDDEN[@]}` 派生 (R48 自校: N 必须 == 133) |
 
 (*Cumulative counts in this table are best-effort documentation; the canonical count is `${#FORBIDDEN[@]}` in the script.*)
 
@@ -191,6 +191,7 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | `ecall → M-Mode → S-Mode` | R47 | P3-10 medeleg 直委派 S-Mode (不经 M-Mode) |
 | `22KB 缺口` | R47 | P3-11 R48: 改 D49 双行制, 已命名子段 581.5 KB + 余量 62.5 KB = ceiling 644 KB, 此禁词保留防 R47 伪闭合回归 |
 | `hartid<<SHIFT` | R47 | P3-1 off-by-one, 改 `(hartid+1)<<SHIFT` |
+| `struct sys_result_payload_t` | R48 | F3 Rust payload 必须 union 不是 struct (终验抓出: 两个 8B 字段在 struct = 16B, size_of==8 断言永远熔断) |
 
 ## How to add a new forbidden word
 

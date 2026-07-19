@@ -89,7 +89,7 @@ pub struct sys_error_pack_t {
 const _: () = { assert!(size_of::<sys_error_pack_t>() == 8); };
 
 #[repr(C, align(8))]
-pub struct sys_result_payload_t {
+pub union sys_result_payload_t {
     pub value:      u64,
     pub error_pack: sys_error_pack_t,
 }

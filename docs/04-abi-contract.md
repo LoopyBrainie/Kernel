@@ -150,7 +150,7 @@ _Static_assert(alignof(sys_result_t) == 8,  "FATAL: 8B align");
 ```rust
 // arch/riscv64/abi.rs (D74 auto-generated)
 #[repr(C, align(8))]
-pub struct sys_result_payload_t {
+pub union sys_result_payload_t {
     pub value: u64,
     pub error_pack: sys_error_pack_t, // P1-2 + P2-1 D90 carve-out: 唯一豁免
 }
