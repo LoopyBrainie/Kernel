@@ -212,6 +212,15 @@ if [ "${FORBIDDEN_COUNT}" -lt 70 ]; then
   echo "[FATAL] check-docs.sh array length ${FORBIDDEN_COUNT} dropped below R12-R36 floor (70)"
   exit 2
 fi
+# R48 勘误增补: 自验证 census Total == N (硬性提交门槛)
+#   census Total 在 20-documentation-gate.md "Forbidden word census" 表末行
+#   每次新增禁词必须同步更新 census 与本 EXPECTED_TOTAL, 否则 fail-closed
+EXPECTED_TOTAL=132
+if [ "${FORBIDDEN_COUNT}" -ne "${EXPECTED_TOTAL}" ]; then
+  echo "[FATAL] check-docs.sh array length ${FORBIDDEN_COUNT} != census Total ${EXPECTED_TOTAL}"
+  echo "  (R48+: 同步更新 census 表 (20-documentation-gate.md) 与脚本 EXPECTED_TOTAL)"
+  exit 2
+fi
 
 EXIT=0
 # Exclude this script + the gate catalog doc + the audit history file from path-level exclude.

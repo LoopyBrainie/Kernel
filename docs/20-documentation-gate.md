@@ -44,18 +44,24 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | R29 S-Mode mhartid + UKI ELF + link-time | 3 | 54 | |
 | R30 Page-Aggregation + FFI + FS/VS + initrd + Trap | 5 | 59 | |
 | R31 多核 + 多协议族 + PTE alignment | 6 | 65 | D107/D108/D109 + rename/PTE 替换 |
-| R32 错误码 + ex_table + ELF gate | 10 | 75 | D110-D116 + R33/R34 衍生 |
+| R32 错误码 + ex_table + ELF gate | 7 | 72 | D112/D113/D114 (BlockPool 256 + Shim L3 + Sv39 fence.vma + lwu ex_table/fixup + awk→llvm-readobj) |
+| R33 D115 SUM 弃用 + D116 ex_table 必经 | 2 | 74 | D115 动态修补页表层弃用 + D116 异常修复必经 ex_table |
+| R34 D119 csrs/csrc vs csrrs/csrrc | 1 | 75 | D119 (csrs/csrc 立即数, csrrs/csrrc 寄存器) |
+| R35 (无新增禁词) | 0 | 75 | — |
+| R36 (无新增禁词) | 0 | 75 | — |
 | R37 stride gate / RMW / sp 判据 | 2 | 77 | D126/D127 (D128 无新禁词) |
 | R38 a7 防 clobber / FP+VV 解码 | 4 | 81 | D129/D130 |
 | R39 .balign 8B / ledger 双轨 / UKI ELF PHDR | 5 | 86 | D132/D133/D134 |
 | R40 PTE per-region / Step0 trap / PLIC 缺席 | 5 | 91 | D135/D136/D137 |
 | R41 arch 显式 / Panic 多通道 / 5 步退化 | 6 | 97 | D138/D139/D140 |
-| R42 Hart ID a0 权威 / FP+V 独立 / NodePool commit | 7 | 104 | D141/D142/D143 (含 R46 反杜撰) |
+| R42 Hart ID a0 权威 / FP+V 独立 / NodePool commit | 7 | 104 | D141/D142/D143 (含 R46 反杜撰: SBI HSM hart_get_id 反例) |
 | R43 Tier3 IPI / Pin-Binding / Cache line profile | 3 | 107 | D144/D145/D146 |
 | R44 fence.i / SUM=0 / CPIO S_ISREG | 3 | 110 | D147/D148/D149 |
 | R45 跨 Hart SBI RFENCE / FILE_TABLE / FP CSR 0x73 | 4 | 114 | D150/D151/D152 |
-| R47 P1-5 撤销 D151 84B 裁定 | 3 | **117** | sizeof/file_entry 84B → 80B |
-| **Total** | — | **117** | `${#FORBIDDEN[@]}` 派生 |
+| R46 (无独立禁词) | 0 | 114 | R46 修正条目计入 R42 (R42/R46 双标) |
+| R47 P1-5 撤销 + P3-* 勘误增补 | 15 | 129 | P1-5 撤销 D151 84B 裁定 (3 条) + P3-1~P3-11 勘误增补 (12 条) |
+| R48 F3 sys_result_t 形态统一 | 3 | **132** | uint32_t code / code: u32 / status: u32 |
+| **Total** | — | **132** | `${#FORBIDDEN[@]}` 派生 (R48 自校: N 必须 == 132) |
 
 (*Cumulative counts in this table are best-effort documentation; the canonical count is `${#FORBIDDEN[@]}` in the script.*)
 
