@@ -170,11 +170,29 @@ const _: () = {
 ```
 
 ```zig
-// kernel/include/sys/abi.zig (SSOT)
-pub const sys_result_t = extern struct { code: u32, status: u32, value: u64 };
+// kernel/include/sys/abi.zig (SSOT, R48 勘误增补: 与同文件 C/Rust frozen 形态一致)
+//   旧三字段 (code/status/value) 形态已被 P1-2 废弃, 详见 04 § "Three-end assert templates"
+pub const sys_result_t = extern struct {
+    header: u32,    // P1-2: bit 31 = is_error (D89), bits 0-30 = flags/subsystem_hint
+    reserved: u32,  // P1-2: reserved for future flag expansion
+    payload: sys_result_payload_t,  // 8B union{value: u64 | error_pack}
+};
+
+pub const sys_result_payload_t = extern union {
+    value: u64,                 // D56 success: fd, block id, length
+    error_pack: extern struct { // Q22 closure (D89)
+        remote_node_id: u16,    // 0xFFFF = local
+        subsystem_id: u16,      // SUB_KERNEL / SUB_FILE_SERVICE / ...
+        error_code: i32,        // POSIX-compatible negative
+    },
+};
+
 comptime {
     std.debug.assert(@sizeOf(sys_result_t) == 16);
     std.debug.assert(@alignOf(sys_result_t) == 8);
+    std.debug.assert(@offsetOf(sys_result_t, "payload") == 8);
+    std.debug.assert(@sizeOf(sys_result_payload_t) == 8);
+    std.debug.assert(@alignOf(sys_result_payload_t) == 8);
 }
 ```
 

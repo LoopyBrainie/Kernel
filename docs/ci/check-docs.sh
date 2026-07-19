@@ -199,6 +199,11 @@ FORBIDDEN=(
   "ecall → M-Mode → S-Mode"              # R47 P3-10 (medeleg 直委派 S-Mode)
   "22KB 缺口"                            # R47 P3-11 (子段划分后闭合)
   "hartid<<SHIFT"                        # R47 P3-1 (off-by-one, 改 (hartid+1)<<SHIFT)
+
+  # R48 (F3 sys_result_t 形态统一, P1-2 反向禁词, R48 勘误增补)
+  "uint32_t code"                        # R48 F3 (sys_result_t 旧 C 形态, P1-2 后改 header)
+  "code: u32"                            # R48 F3 (sys_result_t 旧 Rust 形态)
+  "status: u32"                          # R48 F3 (sys_result_t 旧 Zig 形态, P1-2 后改 reserved)
 )
 # Self-validation: derived count, single source of truth.
 # Lower bound = R12-R36 baseline (70). Floor avoids regression to old total.

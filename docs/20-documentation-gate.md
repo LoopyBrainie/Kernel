@@ -126,6 +126,9 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | `ip_family 字段偏移可调整` | R31 | D108 Phase 0 冻结 network_frame_t.ip_family offset==8 |
 | `lwu ex_table` / `lwu fixup` | R32 | D112 统一 ld (8B) 读 exception_table_entry |
 | `awk.*readobj` 配合 `print \$5` | R32 | D113 check_elf_sizes.sh 改用 llvm-readobj --syms --json + jq |
+| `uint32_t code` | R48 | F3 sys_result_t 旧 C 形态 (P1-2 后改 header/reserved/payload union) |
+| `code: u32` | R48 | F3 sys_result_t 旧 Rust 形态 (P1-2 后改 header/reserved/payload union) |
+| `status: u32` | R48 | F3 sys_result_t 旧 Zig 形态 (P1-2 后改 reserved) |
 
 ## How to add a new forbidden word
 

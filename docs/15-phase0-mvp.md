@@ -48,26 +48,59 @@ const translate_abi = b.addSystemCommand(&.{
 
 **Verify**: `zig build` succeeds; `arch/riscv64/abi.rs` regenerated, no manual edits.
 
-### T1.2: C `sys_result_t` 16B + payload 8B (D86/D89)
+### T1.2: C `sys_result_t` 16B + payload 8B (D86/D89, R48 勘误增补: 恢复 payload union)
 
 ```c
+// R48: 原形态 {header, reserved, value: u64} 丢失 payload union,
+//      错误路径的 remote_node_id/subsystem_id/error_code 无处安放。
+//      改回 04 § Three-end assert templates frozen 形态。
+typedef union {
+    uint64_t value;
+    struct __attribute__((packed)) {
+        uint16_t remote_node_id;   /* D4 position transparency (0xFFFF = local) */
+        uint16_t subsystem_id;
+        int32_t  error_code;       /* D89 + P2-2: errno always negative */
+    } error_pack;
+} sys_result_payload_t;
+_Static_assert(sizeof(sys_result_payload_t) == 8, "D86 8B payload");
+
 typedef struct {
-    uint32_t header;     /* P1-2: bit 31 = is_error (D89), bits 0-30 = flags/subsystem_hint */
-    uint32_t reserved;   /* P1-2: reserved for future flag expansion */
-    uint64_t value;      /* payload.value when success (P1-2 + D89 + P2-1 carve-out) */
+    uint32_t header;     /* P1-2: bit 31 = is_error, bits 0-30 = flags/subsystem_hint */
+    uint32_t reserved;
+    sys_result_payload_t payload;
 } alignas(8) sys_result_t;
-_Static_assert(sizeof(sys_result_t) == 16, "FATAL: 16B red line");
-_Static_assert(alignof(sys_result_t) == 8, "FATAL: 8B align");
+_Static_assert(sizeof(sys_result_t) == 16, "FATAL: 16B red line (D86)");
+_Static_assert(alignof(sys_result_t) == 8,  "FATAL: 8B align");
 ```
 
 **Verify**: `zig build` succeeds; C-side `static_assert` passes; ABI smoke test.
 
-### T1.3: Rust `#[repr(C, align(8))] sys_result_t` (D74 auto-gen)
+### T1.3: Rust `#[repr(C, align(8))] sys_result_t` (D74 auto-gen, R48 勘误增补: 全改 canonical 形态)
 
 ```rust
+// R48: 原 Rust 三字段形态 (P1-2 前的旧 C 风格 code/status/value) 已被废弃,
+//      改回与 04 C/Rust frozen 一致, 引入 sys_result_payload_t 与 error_pack。
 #[repr(C, align(8))]
-pub struct sys_result_t { pub code: u32, pub status: u32, pub value: u64 }
-const _: () = { assert!(size_of::<sys_result_t>() == 16); };
+pub struct sys_error_pack_t {
+    pub remote_node_id: u16,
+    pub subsystem_id:   u16,
+    pub error_code:     i32,
+}
+const _: () = { assert!(size_of::<sys_error_pack_t>() == 8); };
+
+#[repr(C, align(8))]
+pub struct sys_result_payload_t {
+    pub value:      u64,
+    pub error_pack: sys_error_pack_t,
+}
+const _: () = { assert!(size_of::<sys_result_payload_t>() == 8); };
+
+#[repr(C, align(8))]
+pub struct sys_result_t { pub header: u32, pub reserved: u32, pub payload: sys_result_payload_t }
+const _: () = {
+    assert!(size_of::<sys_result_t>() == 16);
+    assert!(align_of::<sys_result_t>() == 8);
+};
 ```
 
 **Verify**: `cargo build` succeeds; `cargo test` ABI tests pass.
