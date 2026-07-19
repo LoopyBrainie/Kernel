@@ -129,6 +129,62 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | `uint32_t code` | R48 | F3 sys_result_t 旧 C 形态 (P1-2 后改 header/reserved/payload union) |
 | `code: u32` | R48 | F3 sys_result_t 旧 Rust 形态 (P1-2 后改 header/reserved/payload union) |
 | `status: u32` | R48 | F3 sys_result_t 旧 Zig 形态 (P1-2 后改 reserved) |
+| `动态修补页表层 U-Mode 数据流转` | R33 | D115 弃用, 统一 sstatus.SUM 搭便车 |
+| `绕过 .fixup 异常表` | R33 | D116 异常修复必经 ex_table |
+| `csrs sstatus 寄存器` | R34 | D119 csrs/csrc 立即数, csrrs/csrrc 寄存器 |
+| `对 HLCB 字段使用 RMW 原子操作` | R37 | D127 load/store-only 红线 (Tier 3 RV64IMC 无 A 扩展) |
+| `stride 期望值未感知 profile` | R37 | D126 期望必须按 profile×layout 派生 (D49 双行制) |
+| `syscall number 隐式 a7 约定` | R38 | D129 a7 必须 stub asm! 块内写入 |
+| `7 参数 C 签名落 a7` | R38 | D129 a7 防 clobber (RISC-V ABI 第 7 参数落 a6, 不是 a7) |
+| `FP/RVV 解码器运行时假设合法` | R38 | D130 解码器必须全主码覆盖 (RISC-V Unprivileged Spec §25) |
+| `FMADD 族漏检` | R38 | D130 0x43-0x4F 主码必须显式 |
+| `.balign 4 + ld 8B 混用` | R39 | D132 8B ld 需 8B 自然对齐 (.balign 3) |
+| `ledger 阶段尚未精确划子段` | R39 | D133 双轨制 ledger 必须公开 (R48 已落 ceiling/named/headroom 三量纲) |
+| `把 (估) 喂断言` | R39 | D133 实测与立法上限分立 |
+| `Locates ... segment 策略未定义` | R39 | D134 UKI Loader 必须明确查找策略 |
+| `UKI Loader 段查找含糊` | R39 | D134 取最后一个 PT_LOAD 包含 `__boot_meta_start` 的段 |
+| `Auto 模式 mixed padding` | R40 | D135 Auto 单点默认, per-region 解耦 |
+| `BlockPool 内部混合 layout` | R40 | D135 pool 内部 layout 必须单值 |
+| `Step 0 期间 trap 不可恢复` | R40 | D136 Step 0 trap → SBI SRST halt (D139 panic 路径) |
+| `PLIC silently ignored` | R40 | D137 PLIC 缺席必须 panic, 禁 silently |
+| `无外部中断 trap handler 路径` | R40 | D137 trap_handler 显式 panic 路径 |
+| `kernel FP 隐式 allowed` | R41 | D138 arch 字符串 + feat disable 显式 |
+| `FS=Off 默认 by default` | R41 | D138 FS 状态由 sstatus 显式管理 |
+| `panic 假定成功` | R41 | D139 多通道冗余 + fail-stop |
+| `panic fall-through 单一路径` | R41 | D139 多通道 + 物理停机 |
+| `5-step degradation 未定义` | R41 | D140 BlockPool 5 步退化定义定型 |
+| `Pool 退化假定成功` | R41 | D140 退化路径必须走 panic, 不允许 silent fallback |
+| `Hart ID 假定 a0` | R42 | D141 a0 权威, DTB num_harts 兜底 (R46 反杜撰) |
+| `禁止 -bios none` | R42 | D141 park 路由 (Hart 1+ 等 Hart 0) |
+| `SBI HSM hart_get_id` | R42/R46 | D141 HSM 无此函数 (HSM fid 0 = hart_start), R46 反杜撰纪律 |
+| `Hart ID 探测 SBI 兜底` | R42/R46 | D141 a0 权威 + DTB num_harts 兜底, 禁探测 SBI |
+| `D118 三条件覆盖所有 RVV 场景` | R42 | D142 RVV 需独立检查 (FP 与 RVV 各自触发条件) |
+| `NodePool 物理页按需 lazy commit` | R42 | D143 禁止 lazy commit, 一次性预留 |
+| `NodePool commit 假定成功` | R42 | D143 commit 走 panic 守门, 不允许假定成功 |
+| `Tier 3 假定单 Hart` | R43 | D144 num_harts>1 走 IPI 自旋锁, 禁假定单 Hart |
+| `Pin-Binding alternative 假定实现` | R43 | D145 task_affinity 显式绑定, 禁假定默认实现 |
+| `RpcUnit align 统一 64B` | R43 | D146 profile 派生 align 64/128 (Server profile 128B) |
+| `fence.i 全局自动` | R44 | D147 Step 0 顶部单条 + 链接期 W^X 校验 (R46 勘误: fence.i 非特权) |
+| `SUM 状态机假定单一` | R44 | D148 S-Mode fault + SUM=0 ⇒ 致命 (二次 fixup panic) |
+| `initrd 计 entry 数` | R44 | D149 S_ISREG only, 目录/symlink 不计 entry |
+| `in_kernel_space 跨 Hart 假定可见` | R45 | D150 IPI + CMO/Zicbom 一致性 |
+| `SBI RFENCE 用作数据一致性原语` | R45/R46 | D150 SBI RFENCE 无数据一致性 (只指令缓存) |
+| `FILE_TABLE 单一不可变` | R45 | D151 R46 双结构 .rodata + .bss mutable_table |
+| `FP CSR 访问假定合法` | R45 | D152 0x73 必须二次解码: funct3≠0 且 CSR∈{fflags,frm,fcsr} |
+| `FILE_TABLE 4.2KB` | R47 | D151 撤销 (ctypes 实测: sizeof 自然布局 80B, 50×80B=4 KB) |
+| `sizeof.*file_entry.*84` | R47 | D151 撤销 (实测 80B, 非 84B) |
+| `file_entry_t 自然 84B` | R47 | D151 撤销 (实测 80B) |
+| `static __thread work_queue_t` | R47 | P3-3 TLS tp 冲突, 改全局数组 |
+| `csrr menvcfg` | R47 | P1-4 S-Mode illegal, 改 DTB/trap-probe (menvcfg 仅 M-Mode 合法) |
+| `jr t0                  # jump` | R47 | P3-4 syscall 必须 jalr ra, t0 (jr 丢 ra) |
+| `task_table\[next\].active` | R47 | P3-5 rr_pick_next 终止条件修复 |
+| `& 0x3  // FS == 0b11` | R47 | P3-6 cosmo_hal_fs_is_dirty 名实一致 (改 ==0x3) |
+| `.\[\]\?\.[]\?` | R47 | P3-7 jq 3-level 路径修补 |
+| `SSTATUS_MXR & (1 << 19)` | R47 | P3-8 恒假断言 (改 ALLOWED_MASK) |
+| `csrs/csrc 接受立即数, csrrs/csrrc 接受寄存器` | R47 | P3-9 D119 立法颠倒 (csrs/csrc 立即数 vs csrrs/csrrc 寄存器) |
+| `ecall → M-Mode → S-Mode` | R47 | P3-10 medeleg 直委派 S-Mode (不经 M-Mode) |
+| `22KB 缺口` | R47 | P3-11 R48: 改 D49 双行制, 已命名子段 581.5 KB + 余量 62.5 KB = ceiling 644 KB, 此禁词保留防 R47 伪闭合回归 |
+| `hartid<<SHIFT` | R47 | P3-1 off-by-one, 改 `(hartid+1)<<SHIFT` |
 
 ## How to add a new forbidden word
 
