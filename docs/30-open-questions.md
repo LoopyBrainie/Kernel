@@ -3028,3 +3028,75 @@ R37-R45 累计 9 轮审计, 覆盖:
 
 否则 R47 即最终冻结版本。
 
+---
+
+## R48 (收官修复轮 — R47 漏项 + Meta 三账, 已闭庭 → ACTIVE)
+
+> **审计动机**: R47 循环自查报全过, 外部抽检+磁盘核验判定 F1–F5 未过、M1–M3 挂账. R48 收官修复所有漏项, 全部 D# 挂靠既有 RATIFIED 决议, 不新增 D 编号.
+> **执行顺序**: R48-0 (git init) → R48-1 (F2 致命) → R48-2 (F3 ABI) → R48-3 (F4) → R48-4 (F1) → R48-5 (F5 账目) → R48-6 (M2) → R48-7 (M3) → C10 (本节).
+> **OPEN**: 0 条 (R48 全部条目均已闭环, 无新增 OPEN).
+
+### R48 收官节 (C10 验证输出表)
+
+| 项 | D# 挂靠 | 文件 | 验证输出 | 状态 |
+|----|---------|------|----------|------|
+| **R48-0 (M1)** | (元变更, 无新 D) | `.git/` + 三分支 | `git rev-parse --is-inside-work-tree → true`; 分支 dev/main/release 全在; 初始 commit `c6736d8` 含 23 文件 (docs/ + ci/ + README + SPEC + docs/README); dev HEAD 线性无 merge commit | ✅ |
+| **R48-1 (F2)** | D107 + D136 (P1-1 extern struct 修复) | `05-call-gate.md` + `06-boot-sequence.md` | C1: `grep -nE "\\b(24\|32\|40)\\(t3\\)" 06-boot-sequence.md` → 0 hits; HLCB_* 命名常量 (SSCRATCH_INIT=56 / KERNEL_STACK_BASE=32 / KERNEL_STACK_TOP=40 / STRIDE_SHIFT=6) 与 05 comptime offsetOf 逐值同源; C2: `<!-- R31 题面: superseded... -->` 注释贴邻 05 § HLCB (D82) 旧题面代码块 (line 65, 紧邻 line 67 代码) | ✅ |
+| **R48-2 (F3)** | D86 + D89 + P1-2 (sys_result_t 形态统一) | `04-abi-contract.md` + `15-phase0-mvp.md` + `20-documentation-gate.md` + `ci/check-docs.sh` | C3: `grep -rnE "uint32_t code\|code: u32\|status: u32" docs/0*.md docs/1*.md` → 0 hits; 04 Zig SSOT / 15 T1.2 C / 15 T1.3 Rust 均含 error_pack 与 payload union; C9: 3 条新禁词 (`uint32_t code` / `code: u32` / `status: u32`) 已入 ci 数组与 20 防御对象表 | ✅ |
+| **R48-3 (F4)** | D103 + P2-4 (静态池来源) | `07-shell-architecture.md` | C4: `grep -nE "0u8; 512" 07-shell-architecture.md` → 0 hits; shell_main 内 buf 改 `extern "C" { static mut __shell_io_pool: [u8; 1536] }` (BlockPool 1 块); 补 "Shell I/O pool 划分说明" 段 (build/link.zig boot 期划分, Phase 1+ 多线程按 fd 进一步划分) | ✅ |
+| **R48-4 (F1)** | (docs/README 改实态, 不涉 D#) | `docs/README.md` | C5: `grep -nE "to split\|30 audit rounds\|✅ empty\|58 forbidden" docs/README.md` → 0 hits; 索引表 16 行全部 R48 ACTIVE + R48 勘误增补来源标注; 禁词数一律 `${#FORBIDDEN[@]}` 派生 (无硬编码 N); 根 README 与 docs/README 数字口径互洽 | ✅ |
+| **R48-5 (F5)** | D49 双行制 (R48 立法, 不算新 D) | `02-memory-topology.md` | C6: `grep -nE "= 644 KB ✓\|=644KB ✓\|= 644 ✓"` → 0 hits (R47 伪闭合已删); D49 双行制表在文: ceiling 644 KB = named 581.5 KB + headroom 62.5 KB; 算术恒等 581.5 + 62.5 = 644 ✓ (Python 复算 PASS); Σ ledger (net) 497.5 KB + Σ ledger (physical) 626 KB (R48 勘误: 原 '622 KB' 系笔误) | ✅ |
+| **R48-6 (M2)** | (禁词审计链补全, 不算新 D) | `20-documentation-gate.md` | 防御对象表末行轮次 = R47 (`hartid<<SHIFT`); R33-R47 共 57 行新条目落入, 来源 ci/check-docs.sh 实际数组; 每条含字面量/轮次/D#/一句防御对象 | ✅ |
+| **R48-7 (M3)** | (census + Total==N, 不算新 D) | `20-documentation-gate.md` + `ci/check-docs.sh` | census 表拆分 R32 (10 → 7) + 新增 R33 (2) / R34 (1) / R35 (0) / R36 (0) / R46 (0) / R48 (3) 独立行; Total 117 → 132; `bash docs/ci/check-docs.sh` 输出 `✓ Wriggly-Octopus documentation gate passed (0/132 forbidden words)`; `EXPECTED_TOTAL=132` 自校断言启用 fail-closed | ✅ |
+
+### R48 自检总览
+
+```
+C1  06 trap_entry 硬编码偏移消除         PASS  (0 hits)
+C2  05 R31 superseded 注释贴邻旧 HLCB    PASS  (line 65, 紧邻 line 67)
+C3  0*.md 1*.md 旧 sys_result_t 形态     PASS  (0 hits, 04/15 全归 canonical)
+C4  07 shell 栈缓冲消除                 PASS  (0 hits, __shell_io_pool 替代)
+C5  docs/README 改实态                   PASS  (0 stale phrases)
+C6  02 ledger 诚实化 + D49 双行制        PASS  (0 fake closures, 581.5+62.5=644 ✓)
+C7  20 防御表 ≥R47 + census Total==N    PASS  (末行 R47, 0/132 自校 PASS)
+C8  git 仓库 + dev/main/release          PASS  (8 commits on dev linear)
+C9  禁词门新条目                         PASS  (3 条 R48 F3)
+C10 R48 收官节 (本节)                     PASS  (本节即收官节)
+```
+
+**连续一轮 C1–C10 全量自检零失败 ✓**
+
+### R48 传染面清单 (R48 元规则四)
+
+- `04-abi-contract.md` § Zig SSOT + D86 强化模板 → **R48-2** (F3 sys_result_t 形态归一)
+- `05-call-gate.md` § HLCB (D82) 旧题面 + asm 端常量 + 传染面 → **R48-1** (F2 HLCB 命名常量)
+- `06-boot-sequence.md` § D136 trap_entry asm → **R48-1** (F2)
+- `07-shell-architecture.md` § Shell example + 划分说明 → **R48-3** (F4 静态池)
+- `02-memory-topology.md` § D49 双行制 + ledger 台账 → **R48-5** (F5 账目)
+- `15-phase0-mvp.md` § T1.2/T1.3 sys_result_t 模板 → **R48-2** (F3)
+- `20-documentation-gate.md` § census + 防御对象表 + 落地约束 → **R48-6, R48-7** (M2, M3)
+- `docs/README.md` § 索引表 + 禁词数派生口径 → **R48-4** (F1)
+- `docs/ci/check-docs.sh` § FORBIDDEN 数组 + EXPECTED_TOTAL 自校 → **R48-2, R48-7** (F3, M3)
+- `README.md` (根) 数字口径互洽 → **R48-4** (F1)
+- `.git/` 三分支骨架 → **R48-0** (M1 元变更)
+- `30-open-questions.md` (本节) → **C10**
+
+### R48 数字口径锚定 (供 R49+ 引用)
+
+- **禁词总数 N = 132** (派生自 `${#FORBIDDEN[@]}`)
+- **D49 双行制**: ceiling 644 KB = named 581.5 KB + headroom 62.5 KB
+- **HLCB 字段偏移**: kernel_stack_base@32, kernel_stack_top@40, user_stack_top@48, sscratch_initialized@56, hart_id@24 (P1-1 extern struct)
+- **sys_result_t frozen 形态**: `{header: u32, reserved: u32, payload: union{value: u64 | error_pack}}` (C/Rust/Zig 三端一致)
+- **git 分支**: dev (HEAD) / main / release (initial commit c6736d8)
+
+### R48 闭庭注
+
+R48 在 R47 漏项 + Meta 三账上完成全部 8 项收官 (R48-0 ~ R48-7) + C10 收官节. 连续一轮 C1–C10 全量自检零失败. 文档集进入 R48 收官冻结状态, 可签发 R48 标签.
+
+下一轮 (R49) 仅在以下任一情况启动:
+- R48 build-verify 闸门 (ci/check-docs.sh 0/132 + EXPECTED_TOTAL 一致) 失败
+- 外部审计发现 R48 漏判
+- Phase 1+ 推进触及 Phase 0 R48 边界
+
+否则 R48 即最终冻结版本.
+
