@@ -121,6 +121,30 @@ _start:
     .err
     .endif
 
+# ==== R49-F3 勘误: HLCB_SIZE=1 单 Hart 边界条款 ====
+# 公式 `((tp+1) & (HLCB_SIZE-1)) << SHIFT` 在 HLCB_SIZE=1 时退化为:
+#   (tp+1) & 0 = 0 → 0 << SHIFT = 0
+# Hart 0 用此公式得 sp = __hart_stack_base + 0, 错用栈底 (而非栈顶)
+# 后果: sp 落在栈区域底, 首次 push 即触发 overflow
+# 实测复现: 沙箱二 2026-07-19 HLCB_SIZE=1 单 Hart 精简构建, 表现为 hart_stack_base/top 同址
+# 病理同 F1/F2: "frozen 草图在边界条件烂掉" 的同一病型, 位运算 fallback 在 HLCB_SIZE=1
+# 的边界非法, spec 立法须显式拒绝该 fallback 而非依赖运行时 luck.
+
+# build.zig 编译期立法 (R49-F3 必须落地, 否则单 Hart 永远 panic):
+```zig
+// R49-F3 勘误: HLCB_SIZE=1 单 Hart 边界条款 — 禁位运算 fallback, 链接符号兜底
+pub const HART_STACK_TOP: u32 = blk: {
+    if (HLCB_SIZE == 1) {
+        @compileError("R49-F3: HLCB_SIZE=1 禁位运算 fallback, 链接符号 __hart0_stack_top");
+    }
+    break :blk @as(u32, HLCB_SIZE);  // 正常路径返回 HLCB_SIZE, 实际 sp 推导走 asm 路径
+};
+```
+
+# Step 0 单 Hart 实现须走链接符号分支:
+#   la      sp, __hart0_stack_top    # R49-F3: HLCB_SIZE=1 专用路径
+#   jr      t0
+
 # ==== D95: Fatal handlers ====
 .L_fatal_dtb_magic:
     li      a7, SBI_EXT_SRST
