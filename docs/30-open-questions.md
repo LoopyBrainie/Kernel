@@ -3100,3 +3100,81 @@ R48 在 R47 漏项 + Meta 三账上完成全部 8 项收官 (R48-0 ~ R48-7) + C1
 
 否则 R48 即最终冻结版本.
 
+---
+
+## Governance (R49 立骨)
+
+> **审计动机**: R48 收官后沙箱二 O2 暴露 GOAL 任务级静默 override spec frozen (lp64d vs spec D138 lp64). 这是治理问题不是技术问题 — 没有人拦住. R49 立治理流程, 防未声明的偏离, 不惩罚已声明且已验证的选择.
+
+### R49-GOV.1 GOAL × spec 冲突治理
+
+**核心规则**: 任何 GOAL / 任务级文档若触及 spec frozen 决策 (D#), 必须:
+1. 文件头部带 `## 涉及决策` 清单, 列触及的 D 编号
+2. 与 spec 语义冲突的每条必须挂 R 号勘误链接 (如 `[R49-EMBEDDED-LP64]`)
+3. 清单缺失 或 D# 无 R 号 → 治理门禁熔断
+
+**门禁形状** (R49 落地, R50 必须接上 tools/spec_lab/assertions/check_goal_manifest.sh):
+```bash
+# 工具: tools/spec_lab/assertions/check_goal_manifest.sh
+# 用法: 每次 build 前跑, 扫 GOAL.md / TODO.md 等任务级文件
+# 通过: 每个触及的 D# 都挂 R 号; 失败: 报哪个 D# 缺 R 号
+bash tools/spec_lab/assertions/check_goal_manifest.sh
+```
+
+**值的 vs 流程的**: 值级冲突 (lp64d vs lp64, 1536B vs 256B) 靠人查 + 文档留痕; 流程冲突 (缺清单, 缺 R 号) 靠机器查 + 闸门熔断.
+
+### R49-GOV.2 O2 首例归档 (lp64d override D138)
+
+**事件**: 沙箱二 GOAL P1 强制 `-mabi=lp64d` 覆盖 spec `08-risc-v-hal.md:468-485` D138 embedded profile 强制 `lp64 -mno-f -mno-d -mno-v`. 实现走 GOAL, spec 未挂 R 号勘误, 沙箱自查未拦截.
+
+**处置**: O2 不视为违规产物 (沙箱二已用 lp64d 在 qemu_virt profile 下完整通过 C1–C9 + sha256 复现), 但须追认到 spec:
+- 矩阵立法后必须包含: `qemu_virt ⇒ lp64d` (追认, 非惩罚)
+- GOAL 文件回填 `## 涉及决策 D138 (已 R49-EMBEDDED-LP64 追认)`
+
+**R49-EMBEDDED-LP64** (R49 挂的 R 号): "qemu_virt profile 验证形态, lp64d 暂列该 profile 合法 mabi; Phase 1 profile 矩阵立法时正式落 D-号". 本条不算新 D, 是 O2 的追认记录.
+
+### R49-GOV.3 ISA/ABI profile 矩阵 — Phase 1 第一项立法
+
+**未立**: 当前 spec 散落 D138 (mabi per profile) / D126 (stride per profile) / D146 (cache line per profile), 没有合并 profile 矩阵, "跨端兼容性"承诺没有统一判据.
+
+**R49 排除**: profile 矩阵不在 R49 立, 因答案取决于 Phase 1 还没做的决策 (FPU 上下文策略 / server-embedded ISA 子集 / 1536B 粒度分档).
+
+**Phase 1 第一项**: R49-GOV.3 显式点名 profile 矩阵立法为 Phase 1 第一项. Phase 1 启动即立, 不许无限延后. Phase 1 立法完成前, 任何新 profile (lp64d, embedded_sparse 等) 走 R49-GOV.2 流程追认.
+
+### R49-GOV.4 spec_lab 制度化 (frozen = 编译过的)
+
+**核心**: tools/spec_lab/ 已立骨, 首批 3 条断言 (F1/F2/F3) + 3 条反向 + audit-rust-unsafe. 任何后续 frozen 内容必须经 spec_lab 验证. 禁止 spec 草图写完不验证就贴 frozen 标签.
+
+**provisional until R50**: 上述 4 节全部 R49 立骨, 但 **check_goal_manifest.sh (R49-GOV.1 闸门机检) 是 R50 第一项必交付**, 不许滑过. 若 R50 不交脚本, R49-GOV 全节判为 "规则先行、工具后补" 失效, 必须回滚或重启. **本标注是硬性挂账, R50 收官时必查**.
+
+**禁止漂移词** (R50 进 check-docs.sh):
+- "spec_lab 副本" — 断言目录下出现代码副本, 不是抽取得到
+- "frozen 等同于已写" — frozen 必须经 runner
+- "R49 草图烂掉靠 reviewer 眼" — 必须机器 enforced
+
+---
+
+## Open Questions (R49+ 启新)
+
+### Q68 — RV32 缺席 (D 编号未立, R49 挂开放)
+
+**当前 Spec 状态**:
+- 00-ffi-pillars.md:70 明文 "RV32IMAC: N/A — Phase 0 仅 RV64"
+- 03-design-decisions.md D138 embedded 基线 `rv64imac -mno-f -mno-d -mno-v`
+- frozen ABI 是 rv64 中心: a0/a1 寄存器对 / lp64 / 64 位地址
+- "覆盖低端嵌入式"承诺在 ISA 层面是空话: rv32 ilp32 ABI 变体从未设计
+
+**冲突点**:
+- 用户总结复盘明文标 "rv32 缺席是跨端兼容性承诺里最大的一个窟窿"
+- 若 Phase 1+ 不开 ilp32, 跨端兼容性承诺实际兑现 0%
+- 若 Phase 1+ 开 ilp32, 需重做 sys_result_t (32 位机 2×XLEN = 8B 不足以装 16B) / a0/a1 寄存器对 (32 位寄存器只能装 8B) / BlockPool stride / cache line 对齐
+
+**Phase 2+ 排期**: 不在 R49 排进立法, 不在 Phase 1 排进立法. Phase 1 完成 U-Mode + 物理通路 + 多 Hart 后, Phase 2 启动时第一个动作是 rv32 ilp32 ABI 变体立法 (Q68 → D-号).
+
+**R49 排除理由** (与 R49-GOV.3 同源): "frozen = 编译过的" 要求立法的结果必须经过 spec_lab 验证; rv32 ilp32 涉及全部 ABI 结构体 + 全部 syscall stub, 立法前必须有 Phase 1 的实测基线 (rv64 U-Mode + 多 Hart), 否则立出来的是空中楼阁.
+
+**禁止漂移词自查**:
+- 不写 "rv32 Phase 1 立" (当前不在 Phase 1 立法清单)
+- 不写 "rv32 N/A 永久" (永久排除违反跨端兼容性承诺)
+- 必须写 "rv32 ilp32 ABI 变体 Phase 2 第一项立法 (Q68)"
+
