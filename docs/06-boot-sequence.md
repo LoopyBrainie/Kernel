@@ -58,7 +58,12 @@ Firmware Jump (a0=hartid, a1=dtb_phys)
 .global _start
 _start:
     # ==== D95: Anti-Trampling (D27 magic + total size + overlap) ====
-    lw      t0, 0(a1)             # DTB magic (big-endian 0xd00dfeed)
+    # R49-F2 勘误: lw → lwu (RV64I 标准指令, 不需 A 扩展)
+    #   原因: RV64 lw 对 0xedfe0dd0 做符号扩展 → 0xFFFFFFFF_edfe0dd0,
+    #          与 li 零扩展常量 0xedfe0dd0 比较永远不等 → 静默 SRST
+    #   lwu 零扩展读 32B → t0 = 0x00000000_edfe0dd0, 比较通过
+    #   实测复现: 沙箱二 2026-07-19 排障记录, 调试 4h 才定位到此陷阱
+    lwu     t0, 0(a1)             # DTB magic (big-endian 0xd00dfeed)
     li      t1, 0xedfe0dd0        # little-endian encoding
     bne     t0, t1, .L_fatal_dtb_magic
 
