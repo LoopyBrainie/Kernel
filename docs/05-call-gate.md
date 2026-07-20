@@ -56,8 +56,16 @@ cosmo_call_gate:
     # D82: HLCB.in_kernel_space.store(true) — see C wrapper
     la      t0, __cosmo_dispatcher_ptr
     ld      t0, 0(t0)
-    jalr    ra, t0                 # P3-4 (R47 勘误): syscall 必须可返回, 改 jalr ra, t0
-                                   # 原 jr t0 丢弃 ra, dispatcher 返回时跳回垃圾地址 (Phase 0 单 Hart 触发 panic)
+    jr      t0                     # R49-F1 勘误: 改回 jr t0 尾调用, 删 P3-4 错误归因
+                                   #   - Phase 0 单 Hart 无上下文切换, ra 全程 = Rust 调用点
+                                   #   - jr 尾调用后 dispatcher ret 直接回到 Rust 调用点, 天然可返回
+                                   #   - RISC-V ABI §18.2: ra 是 caller-saved, jr 不承诺保留,
+                                   #     但 Phase 0 单 Hart 下没有任何调用方会读 ra, 安全
+                                   #   - Phase 1+ 多 Hart 调度介入后才需 jalr ra, t0 + context_save
+                                   # P3-4 (R47 增补, 已废) 的 "原 jr t0 丢弃 ra → panic"
+                                   #   系错误归因: 实测单 Hart 下 jr 不死循环, jalr+ret 才死循环
+                                   #   (沙箱二 2026-07-19 O1 排障记录复现), 此处勘误归因
+                                   #   (Brra1n0 再次认领: R47 注释依据事实读反)
 ```
 
 ### HLCB (D82)
