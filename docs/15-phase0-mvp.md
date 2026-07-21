@@ -175,10 +175,12 @@ void early_console_init(void) {
 
 ### T1.9: Call Gate 5-file stub (D56/D62/D73/D82)
 
+**R51 D153 命名锚**: Rust dispatcher 重命名 `cosmo_core_syscall_dispatcher.rs` → `syscall_stubs.rs`(D129 stub 角色明示). Zig 侧 `syscall_dispatch.zig` 不改名.
+
 ```
 kernel/arch/riscv64/call_gate/
 ├── syscall_dispatch.zig
-├── cosmo_core_syscall_dispatcher.rs
+├── syscall_stubs.rs
 ├── call_gate.h
 ├── entry_call_gate.S
 └── HLCB.zig

@@ -285,6 +285,12 @@ The full D1-D125 decision ledger with status column. Each row has class (1=evide
 | D151 | 2 | ACTIVE | file_entry_t **自然布局 80B** (inode@0 / block_index@8 / flags@16 / name@17, char name[60] 对齐 1, 隐式尾对齐 80), `_Static_assert(sizeof == 80)`; D46 FILE_TABLE .rodata 台账 **4 KB** (50 × 80B = 4000B ≤ 4096B). **R47 勘误增补 (P1-5)**: R46 临时裁定 84B / D46 4.2KB 经 ctypes 实测反驳 (char name[60] 对齐为 1, `pad@17–23` 不存在; 显式 padding 后实际为 88B), 本轮回滚 D151 至 80B / D46 4 KB; R46 `.rodata + .bss mutable_table` 双结构维持 (Q66 R46 A 选 — **R45 裁定 RATIFIED**, R47 勘误纠正 R46) |
 | D152 | 1 | ACTIVE | D130 decoder 收窄 0x73 主码 (FP CSR 访问): `funct3 ≠ 0` **且** CSR 编号 ∈ `{0x001 fflags, 0x002 frm, 0x003 fcsr}` 才返回 true, 其余 0x73 走真异常路径; FS=Off 阶段读 FP CSR 自动置 FS=Initial (Q67 — **R45 裁定 RATIFIED**) |
 
+## R51: F3 命名裁决 (1 锚) — RATIFIED
+
+| # | Class | Status | Decision |
+|---|-------|--------|----------|
+| D153 | 2 | ACTIVE | **Dispatcher 命名锚定**: Rust 侧 `cosmo_core_syscall_dispatcher.rs` 重命名为 `syscall_stubs.rs` (D129 stub 角色明示); Zig 侧 `syscall_dispatch.zig` 为 call gate 落点唯一合法名, **不改名** (D56 Call Gate 入口不变). forbidden-word: 文档中出现裸名 `dispatcher` (无角色前缀) 即视为未锚命名. Back-link: 05-call-gate.md:40-41 + 15-phase0-mvp.md:180-181 + 07-shell-architecture.md dispatcher 段. 沙箱三 D-04 收口 (Q69-Q75 议程同源 fd 语义不立)|
+
 ## R47: P1-5 勘误增补挂靠
 
 | 挂靠 D# | 修正内容 |

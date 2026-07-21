@@ -213,8 +213,11 @@ FORBIDDEN=(
   # R51 (F2 D-02: 工具链审计与构建 profile 分立)
   "rustup.*lp64d.*构建"               # R51 F2 (rustup gc/lp64d 是审计 profile, 不是构建产出; 严禁混用)
   "lp64d 强制.*imac"                   # R51 F2 (反向锁: 不可在构建路径绑死 lp64d)
+
+  # R51 (F3 D-04: dispatcher 命名锚 — D153)
+  "cosmo_core_syscall_dispatcher"     # R51 F3 (D153: 旧名被 syscall_stubs.rs 替代, 文档不得裸引)
+  "Rust Shell dispatcher"             # R51 F3 (反向锁: 不存在 "Rust Shell dispatcher" 这种对象, R0 路线无)
 )
-# Self-validation: derived count, single source of truth.
 # Self-validation: derived count, single source of truth.
 # Lower bound = R12-R36 baseline (70). Floor avoids regression to old total.
 FORBIDDEN_COUNT=${#FORBIDDEN[@]}
@@ -225,7 +228,7 @@ fi
 # R48 勘误增补: 自验证 census Total == N (硬性提交门槛)
 #   census Total 在 20-documentation-gate.md "Forbidden word census" 表末行
 #   每次新增禁词必须同步更新 census 与本 EXPECTED_TOTAL, 否则 fail-closed
-EXPECTED_TOTAL=137
+EXPECTED_TOTAL=139
 if [ "${FORBIDDEN_COUNT}" -ne "${EXPECTED_TOTAL}" ]; then
   echo "[FATAL] check-docs.sh array length ${FORBIDDEN_COUNT} != census Total ${EXPECTED_TOTAL}"
   echo "  (R48+: 同步更新 census 表 (20-documentation-gate.md) 与脚本 EXPECTED_TOTAL)"
@@ -235,7 +238,7 @@ fi
 EXIT=0
 # Exclude this script + the gate catalog doc + the audit history file from path-level exclude.
 # Line-pattern exclude: skip lines that are clearly audit/catalog/propagation records.
-AUDIT_LINE_FILTER='grep -vE "新增禁词|传染面清单|\(R4[0-6] 修正|R4[0-6] 勘误增补|R5[1-9]-[A-Z][0-9]+ \(D-|R5[1-9] [A-Z][0-9]+ \(D-|R51-[A-Z][0-9]+ \(D-0[1-9]|R51-F1 \(D-01|R51 note|R51 注|R51 修订|R51 自校|rename from|审计档案|审计动机|应为|应改|诚实性|命名诚实性|was: PTE|migration|原文|勘误后|P[1-3]-[0-9]+ \(R47|P[1-3]-[0-9]+ 修复|P[1-3]-[0-9]+ 勘误|P[1-3]-[0-9]+ 同款|R47 勘误|R47 增补|R47 撤销|R47 反杜撰|R47 立法|R47 立法注|R47 ctypes|R47 后回到|R47 默认|R46 勘误|R46 自然布局|R46 ledger|R46 双结构|R46 同步|R46 落地|R46 临时|R46 版|R46 关键|R46 形式|R46 错判|R46 臆想|R46 4\.2KB|R36 错算|R36 D80 原案|R37 D128|Step 0 trap 防御|不分配 Vec|原 char buf|原 cosmo_do_user_fault_fixup|OBSOLETED|勘误后|勘误前|R45 默认|R45 裁定|R45 原案|D151 R46|R46 勘误后"'
+AUDIT_LINE_FILTER='grep -vE "新增禁词|传染面清单|\(R4[0-6] 修正|R4[0-6] 勘误增补|R5[1-9]-[A-Z][0-9]+ \(D-|R5[1-9] [A-Z][0-9]+ \(D-|R51-[A-Z][0-9]+ \(D-0[1-9]|R51-F[1-5] \(D-0[1-9]|R51 D153|R51 note|R51 注|R51 修订|R51 自校|R51 命名锚|D153 命名锚|D153 决策|Dispatcher 命名锚定|重命名裁决|R51 重命名|rename from|审计档案|审计动机|应为|应改|诚实性|命名诚实性|was: PTE|migration|原文|勘误后|P[1-3]-[0-9]+ \(R47|P[1-3]-[0-9]+ 修复|P[1-3]-[0-9]+ 勘误|P[1-3]-[0-9]+ 同款|R47 勘误|R47 增补|R47 撤销|R47 反杜撰|R47 立法|R47 立法注|R47 ctypes|R47 后回到|R47 默认|R46 勘误|R46 自然布局|R46 ledger|R46 双结构|R46 同步|R46 落地|R46 临时|R46 版|R46 关键|R46 形式|R46 错判|R46 臆想|R46 4\.2KB|R36 错算|R36 D80 原案|R37 D128|Step 0 trap 防御|不分配 Vec|原 char buf|原 cosmo_do_user_fault_fixup|OBSOLETED|勘误后|勘误前|R45 默认|R45 裁定|R45 原案|D151 R46|R46 勘误后"'
 for word in "${FORBIDDEN[@]}"; do
   if grep -rnF --exclude=check-docs.sh --exclude=20-documentation-gate.md --exclude=30-open-questions.md -- "$word" docs/ 2>/dev/null | eval "$AUDIT_LINE_FILTER"; then
     echo "[ERROR] Forbidden word found: $word"

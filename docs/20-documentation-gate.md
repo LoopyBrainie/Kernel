@@ -63,7 +63,8 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | R48 F3 sys_result_t 形态统一 | 4 | **133** | uint32_t code / code: u32 / status: u32 / struct sys_result_payload_t (终验补 1) |
 | R51 F1 Zig 版本字面量 | 2 | **135** | host Zig 0.16 / Zig 0.16 (D-01 R51 修订: Zig ≥0.15 toolchain.lock 锁定) |
 | R51 F2 toolchain audit vs build profile 分立 | 2 | **137** | rustup.*lp64d.*构建 / lp64d 强制.*imac (D-02 R51 修订: 审计=lpd64d, 构建=D138 imac lp64) |
-| **Total** | — | **137** | `${#FORBIDDEN[@]}` 派生 (R51 自校: N 必须 == 137) |
+| R51 F3 dispatcher 命名锚 (D153) | 2 | **139** | cosmo_core_syscall_dispatcher (旧名禁用) / Rust Shell dispatcher (无此对象) |
+| **Total** | — | **139** | `${#FORBIDDEN[@]}` 派生 (R51 自校: N 必须 == 139) |
 
 (*Cumulative counts in this table are best-effort documentation; the canonical count is `${#FORBIDDEN[@]}` in the script.*)
 
