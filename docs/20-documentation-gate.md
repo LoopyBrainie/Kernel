@@ -62,7 +62,8 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | R47 P1-5 撤销 + P3-* 勘误增补 | 15 | 129 | P1-5 撤销 D151 84B 裁定 (3 条) + P3-1~P3-11 勘误增补 (12 条) |
 | R48 F3 sys_result_t 形态统一 | 4 | **133** | uint32_t code / code: u32 / status: u32 / struct sys_result_payload_t (终验补 1) |
 | R51 F1 Zig 版本字面量 | 2 | **135** | host Zig 0.16 / Zig 0.16 (D-01 R51 修订: Zig ≥0.15 toolchain.lock 锁定) |
-| **Total** | — | **135** | `${#FORBIDDEN[@]}` 派生 (R51 自校: N 必须 == 135) |
+| R51 F2 toolchain audit vs build profile 分立 | 2 | **137** | rustup.*lp64d.*构建 / lp64d 强制.*imac (D-02 R51 修订: 审计=lpd64d, 构建=D138 imac lp64) |
+| **Total** | — | **137** | `${#FORBIDDEN[@]}` 派生 (R51 自校: N 必须 == 137) |
 
 (*Cumulative counts in this table are best-effort documentation; the canonical count is `${#FORBIDDEN[@]}` in the script.*)
 

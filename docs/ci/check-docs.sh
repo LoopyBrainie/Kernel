@@ -209,7 +209,12 @@ FORBIDDEN=(
   # R51 (F1 D-01: Zig 版本字面量)
   "host Zig 0.16"                       # R51 F1 (Zig 0.16 不存在; 改 Zig ≥0.15 toolchain.lock 锁定)
   "Zig 0.16"                            # R51 F1 (host / standalone 字面量, 同源)
+
+  # R51 (F2 D-02: 工具链审计与构建 profile 分立)
+  "rustup.*lp64d.*构建"               # R51 F2 (rustup gc/lp64d 是审计 profile, 不是构建产出; 严禁混用)
+  "lp64d 强制.*imac"                   # R51 F2 (反向锁: 不可在构建路径绑死 lp64d)
 )
+# Self-validation: derived count, single source of truth.
 # Self-validation: derived count, single source of truth.
 # Lower bound = R12-R36 baseline (70). Floor avoids regression to old total.
 FORBIDDEN_COUNT=${#FORBIDDEN[@]}
@@ -220,7 +225,7 @@ fi
 # R48 勘误增补: 自验证 census Total == N (硬性提交门槛)
 #   census Total 在 20-documentation-gate.md "Forbidden word census" 表末行
 #   每次新增禁词必须同步更新 census 与本 EXPECTED_TOTAL, 否则 fail-closed
-EXPECTED_TOTAL=135
+EXPECTED_TOTAL=137
 if [ "${FORBIDDEN_COUNT}" -ne "${EXPECTED_TOTAL}" ]; then
   echo "[FATAL] check-docs.sh array length ${FORBIDDEN_COUNT} != census Total ${EXPECTED_TOTAL}"
   echo "  (R48+: 同步更新 census 表 (20-documentation-gate.md) 与脚本 EXPECTED_TOTAL)"

@@ -12,6 +12,11 @@ The build pipeline is a 3-stage `build.zig` chain that (1) compiles each languag
 
 **R51-F1 (D-01)**: Host Zig version is `Zig ≥0.15`, locked by `toolchain.lock` (not by `host Zig 0.16` — that version does not exist). The forbidden-word list enforces this: literal `Zig 0.16` / `host Zig 0.16` are banned. Back-link: `05-call-gate.md:193`.
 
+**R51-F2 (D-02)**: Toolchain audit vs build profile — **two distinct profiles must not be conflated**:
+- `rustup target add riscv64gc-unknown-linux-gnu` (lp64d, hard-float) is the **toolchain audit** profile used by Rust cargo for crate-resolution audits. It is **not** a build output.
+- Build target is D138 embedded profile: `riscv64imac-unknown-none-elf` (lp64, soft-float, no-f/d/v). This is what `zig build` produces and what `qemu_virt` boots.
+- Lesson: mismatch between audit profile (lp64d) and build profile (lp64 imac) caused sandbox-two O2 silent override of D138. Frozen in R51 via the `audit profile is build profile` distinction. Back-link: R49-GOV.2 (O2 first-case archived as `R49-EMBEDDED-LP64`).
+
 ## 3-stage build chain
 
 ```
