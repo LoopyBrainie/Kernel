@@ -36,6 +36,8 @@ T1.1 + T1.2 ──────────┬── T1.12 initrd ≤ 50 build.zi
 
 **R51-F1 (D-01)**: Host Zig version is `Zig ≥0.15`, locked by `toolchain.lock`. Any `Zig 0.16` literal is forbidden. Back-link: `05-call-gate.md:193`.
 
+**R51-F5 (D-13)**: `rev8` (RISC-V Zbb byte-reverse) is **forbidden** in spec_lab frozen code. rv64imac target (D138) has no B extension; `rev8` illegal at link time. Byte-reverse must be explicit `slli+srli+or` sequence. See `06-boot-sequence.md` § rev8 sequence anchor for explicit form. spec_lab assertion `R51-F5-rev8.sh` enforces: forward = explicit `slli.*srli` form; reverse = `rev8` must NOT appear in non-audit lines.
+
 ### T1.1: build.zig SSOT translate-abi (D74)
 
 ```zig
@@ -339,7 +341,7 @@ Wave 4: Defer Phase 1 (D26/D31/D43/D83/D91/D102/D104)
 
 ## Exit criteria
 
-- [ ] `zig build` produces `kernel.elf` ≤ 700KB
+- [ ] `zig build` produces `kernel.elf` ≤ 700KB **(R51-F4 (D-10): 指 ELF 文件大小 = `readelf -S` 累计. 物理跨度由 02 § D49 ledger 双轨制闸门 (D112/D57/D126) 覆盖, 不可混用. Back-link: 02-memory-topology.md § V2.2 ceiling 644KB)**
 - [ ] `make audit-shell` passes 4 checks
 - [ ] `make test-no-a-ext` boots on RV64IMAC
 - [ ] `make test-dtb-corruption` halts via SBI SRST

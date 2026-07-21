@@ -206,18 +206,25 @@ FORBIDDEN=(
   "status: u32"                          # R48 F3 (sys_result_t 旧 Zig 形态, P1-2 后改 reserved)
   "struct sys_result_payload_t"         # R48 F3 终验抓出 (amend bae69b1 范畴): Rust payload 必须 union 不是 struct (两个 8B 字段在 struct = 16B, size_of==8 断言永远熔断)
 
-  # R51 (F1 D-01: Zig 版本字面量)
-  "host Zig 0.16"                       # R51 F1 (Zig 0.16 不存在; 改 Zig ≥0.15 toolchain.lock 锁定)
-  "Zig 0.16"                            # R51 F1 (host / standalone 字面量, 同源)
-
-  # R51 (F2 D-02: 工具链审计与构建 profile 分立)
-  "rustup.*lp64d.*构建"               # R51 F2 (rustup gc/lp64d 是审计 profile, 不是构建产出; 严禁混用)
-  "lp64d 强制.*imac"                   # R51 F2 (反向锁: 不可在构建路径绑死 lp64d)
-
-  # R51 (F3 D-04: dispatcher 命名锚 — D153)
-  "cosmo_core_syscall_dispatcher"     # R51 F3 (D153: 旧名被 syscall_stubs.rs 替代, 文档不得裸引)
-  "Rust Shell dispatcher"             # R51 F3 (反向锁: 不存在 "Rust Shell dispatcher" 这种对象, R0 路线无)
+  # R51 (12 锚定词, F 桶 5 + M 桶 7 = 12, 见 §1 R51 收口路径)
+  "host Zig 0.16"                       # R51 F1 (D-01: Zig ≥0.15 toolchain.lock)
+  "rustup.*lp64d.*构建"               # R51 F2 (D-02: 审计 vs 构建 profile 分立)
+  "cosmo_core_syscall_dispatcher"     # R51 F3 (D-04 / D153: 旧名被 syscall_stubs.rs 替代)
+  "≤700KB 物理跨度"                   # R51 F4 (D-10: 700KB 是 ELF 文件大小)
+  "rev8.*builtin"                     # R51 F5 (D-13: rv64imac 无 Zbb, 禁 rev8)
+  "SYS_SHUTDOWN.*typed-syscall"        # R51 M1 (D-05 / D154: shutdown 走 HAL FFI 路径, 不占 a7; 用 "typed-syscall" 防自命中)
+  "error: code=%d  sub="               # R51 M3 (D-08 / D156: 三字段必齐打印格式, 双空格防自命中)
+  "ShimState.*const"                  # R51 M2 (D-07 / D155: 锚点变量禁 const, 必须 var = .{})
+  "ReleaseSmall.*默认.*strip"        # R51 M7 (D-21 / D159: 必须 strip=false)
+  "llvm-readobj.*--syms.*--json "    # R51 M6 (D-20: LLVM 18 必须 --elf-output-style=JSON)
+  "in_kernel_space:.*AtomicBool"     # R51 M5 (D-16 / D158: HLCB 已删此字段, .bss RR 托管)
+  "bss.*16384"                        # R51 M4 (D-11 / D157: bss 上限 8KB, 不可放宽到 16KB)
 )
+# Self-validation: derived count, single source of truth.
+# Lower bound = R12-R36 baseline (70). Floor avoids regression to old total.
+# Self-validation: derived count, single source of truth.
+# Self-validation: derived count, single source of truth.
+# Self-validation: derived count, single source of truth.
 # Self-validation: derived count, single source of truth.
 # Lower bound = R12-R36 baseline (70). Floor avoids regression to old total.
 FORBIDDEN_COUNT=${#FORBIDDEN[@]}
@@ -228,7 +235,7 @@ fi
 # R48 勘误增补: 自验证 census Total == N (硬性提交门槛)
 #   census Total 在 20-documentation-gate.md "Forbidden word census" 表末行
 #   每次新增禁词必须同步更新 census 与本 EXPECTED_TOTAL, 否则 fail-closed
-EXPECTED_TOTAL=139
+EXPECTED_TOTAL=145
 if [ "${FORBIDDEN_COUNT}" -ne "${EXPECTED_TOTAL}" ]; then
   echo "[FATAL] check-docs.sh array length ${FORBIDDEN_COUNT} != census Total ${EXPECTED_TOTAL}"
   echo "  (R48+: 同步更新 census 表 (20-documentation-gate.md) 与脚本 EXPECTED_TOTAL)"

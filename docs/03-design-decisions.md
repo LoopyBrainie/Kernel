@@ -291,6 +291,12 @@ The full D1-D125 decision ledger with status column. Each row has class (1=evide
 |---|-------|--------|----------|
 | D153 | 2 | ACTIVE | **Dispatcher 命名锚定**: Rust 侧 `cosmo_core_syscall_dispatcher.rs` 重命名为 `syscall_stubs.rs` (D129 stub 角色明示); Zig 侧 `syscall_dispatch.zig` 为 call gate 落点唯一合法名, **不改名** (D56 Call Gate 入口不变). forbidden-word: 文档中出现裸名 `dispatcher` (无角色前缀) 即视为未锚命名. Back-link: 05-call-gate.md:40-41 + 15-phase0-mvp.md:180-181 + 07-shell-architecture.md dispatcher 段. 沙箱三 D-04 收口 (Q69-Q75 议程同源 fd 语义不立)|
 
+## R51: F3 命名裁决 (1 锚) — RATIFIED
+
+| # | Class | Status | Decision |
+|---|-------|--------|----------|
+| D153 | 2 | ACTIVE | **Dispatcher 命名锚定**: Rust 侧 `cosmo_core_syscall_dispatcher.rs` 重命名为 `syscall_stubs.rs` (D129 stub 角色明示); Zig 侧 `syscall_dispatch.zig` 为 call gate 落点唯一合法名, **不改名** (D56 Call Gate 入口不变). forbidden-word: 文档中出现裸名 `dispatcher` (无角色前缀) 即视为未锚命名. Back-link: 05-call-gate.md:40-41 + 15-phase0-mvp.md:180-181 + 07-shell-architecture.md dispatcher 段. 沙箱三 D-04 收口 (Q69-Q75 议程同源 fd 语义不立)|
+
 ## R47: P1-5 勘误增补挂靠
 
 | 挂靠 D# | 修正内容 |

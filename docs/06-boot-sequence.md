@@ -68,8 +68,8 @@ _start:
     bne     t0, t1, .L_fatal_dtb_magic
 
     lw      t0, 4(a1)             # DTB total size (big-endian)
-    # byte-swap t0 (big → little)
-    ... (rev8 sequence)
+    # byte-swap t0 (big → little) — see R51-F5 (D-13) 锚 below for explicit form.
+    # `rev8` (RISC-V Zbb) is forbidden in rv64imac target; must be explicit slli+srli+or.
 
     add     t1, a1, t0            # t1 = dtb_end
     la      t2, _start
@@ -81,6 +81,8 @@ _start:
 .L_dtb_safe:
     # ==== D92: Early Boot Stack ====
     la      t0, __early_boot_stack_top
+    csrw    sscratch, t0
+    la      sp, __early_boot_stack_top
     csrw    sscratch, t0
     la      sp, __early_boot_stack_top
 
@@ -139,6 +141,59 @@ pub const HART_STACK_TOP: u32 = blk: {
     }
     break :blk @as(u32, HLCB_SIZE);  // 正常路径返回 HLCB_SIZE, 实际 sp 推导走 asm 路径
 };
+```
+
+# ==== R51-M5 (D-16): HLCB 删除 in_kernel_space + .bss 8B RR 托管 ====
+# R47 P1-1 (R48-1) extern struct 修复后, HLCB layout (D82) 删除 in_kernel_space 字段 (64B 严守).
+# 托管方案: .bss 单独 8B Hart-Local Control Block 用于 RR 调度 (每个 Hart 一份).
+# 同步: D107 (per-Hart range 锚定) + D150 (跨 Hart SBI RFENCE 同步).
+const HartLocalControl = packed struct(u64) {
+    in_kernel: u1,           // R51-M5: 与 R37 D128 一致, 不进 trap 热路径
+    reserved: u63 = 0,
+};
+var hart_local_control: [MAX_HARTS]HartLocalControl = [_]HartLocalControl{.{ .in_kernel = 0 }} ** MAX_HARTS;
+```
+
+# ==== R51-M2 (D-07) HLCB layout 锚点变量 ====
+# **锚点变量必须 .bss 零初始化**, Zig 形态 `var shim_state: ShimState = .{}` 显式零构造;
+# 不允许 .rodata const, 因为 Phase 0 runtime 需写 .bss 跨端共享状态 (D113 Shim cross-driver).
+# spec_lab 双向断言 R51-M2-bss-anchor.{sh,_negative.sh}:
+#   正向: 编译 zig 形态 `= .{}` 验证零构造编译通过
+#   反向: 改 `const` 期望编译失败 (comptime assert)
+const ShimState = extern struct {
+    cross_driver: u32 = 0,    // R51-M2 锚: 必须 .{} 零构造
+    padding: u32 = 0,
+};
+var shim_state: ShimState = .{};  // .bss 锚点 (R51-M2, D155)
+
+# ==== R51-F5 勘误: DTB 大端 → 小端 byte-reverse 必须显式 slli+srli ====
+#   原因: rv64imac target (D138) 没有 Zbb 扩展, `rev8 t0, t0` 在链接期 illegal
+#         (参照 R47 P3-4 jalr ra, t0 错误归因同源 — 假设了未启用扩展)
+#   反例: `rev8 t0, t0` (R47 错误形态)
+#   正例: 显式 8-step byte-reverse (R51-F5 锚, 下面的 ```asm fence)
+#   spec_lab 双向断言: R51-F5-rev8.sh (正向) + R51-F5-rev8_negative.sh (反向).
+
+```asm
+# ==== R51-F5 (D-13) byte-swap t0 (big → little) ====
+# Explicit 8-step permutation; no `rev8` mnemonic (rv64imac = no Zbb).
+# Back-link: 06 第 70 行 DTB total size 字段后, 该处用占位注释指向本围栏.
+
+slli    t1, t0, 56             # byte 0 → byte 7 位置
+srli    t2, t0, 56             # byte 7 → byte 0 位置
+or      t1, t1, t2             # t1 = bits[63:56] | bits[7:0]
+slli    t2, t0, 40             # byte 1 → byte 6 位置
+srli    t3, t0, 48             # byte 6 → byte 1 位置
+or      t1, t1, t2
+or      t1, t1, t3
+slli    t2, t0, 24             # byte 2 → byte 5 位置
+srli    t3, t0, 40             # byte 5 → byte 2 位置
+or      t1, t1, t2
+or      t1, t1, t3
+slli    t2, t0, 8              # byte 3 → byte 4 位置
+srli    t3, t0, 32             # byte 4 → byte 3 位置
+or      t1, t1, t2
+or      t1, t1, t3             # t1 = t0 byte-reversed (R51-F5 锚)
+# Note: 上述 12 行 raw 形式是 spec 草图; 实际实现可按 5 步合并, 但任何形式不得用 rev8.
 ```
 
 # Step 0 单 Hart 实现须走链接符号分支:

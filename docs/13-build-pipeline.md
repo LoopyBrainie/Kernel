@@ -77,6 +77,49 @@ zig build -Dtarget=server -Dsched=pin_binding
 ```
 
 ```zig
+// R51-M4 (D-11): Phase 0 ledger 上限固化 (编译期熔断, 越界 build ABORT)
+// 单一真相: 02 § D49 ceiling 644 KB; 各 section 严格 ≤ 限额
+pub const ledger_caps = struct {
+    pub const text_max: u32    = 81920;   // .text  ≤ 80 KB
+    pub const rodata_max: u32  = 10240;   // .rodata ≤ 10 KB
+    pub const data_max: u32    = 4096;    // .data   ≤ 4 KB
+    pub const bss_max: u32     = 8192;    // .bss    ≤ 8 KB
+};
+comptime {
+    if (kernel.text_size    > ledger_caps.text_max)   @compileError("R51-M4: text 越界");
+    if (kernel.rodata_size  > ledger_caps.rodata_max) @compileError("R51-M4: rodata 越界");
+    if (kernel.data_size    > ledger_caps.data_max)   @compileError("R51-M4: data 越界");
+    if (kernel.bss_size     > ledger_caps.bss_max)    @compileError("R51-M4: bss 越界");
+}
+```
+
+```zig
+// R51-M7 (D-21): ReleaseSmall 默认 `-Dstrip` 让 nm/readobj 输空表, 门禁空真通过.
+// 必须显式 `-Dstrip=false -Doptimize=ReleaseSafe`, 否则 D129 T-属性门禁 + D113 size-csv
+// 闸门都返回空表, 误判 ELF 合规. 沙箱三实测: ReleaseSmall 默认 + nm 输出空 → elf size gate PASS
+// 但实际 symbol 全 strip → 真实不通过. 修正: build.zig 强制 `-Dstrip=false`.
+pub const kernel_optimize: std.builtin.OptimizeMode = .ReleaseSafe;
+pub const kernel_strip: bool = false;  // R51-M7 强制 false; D-21 收口
+```
+
+```zig
+// R51-M6 (D-20): size-csv 工具链锁定 LLVM 18 兼容命令 (沙箱三实测撞过)
+// **正确命令**: llvm-readobj --syms --elf-output-style=JSON | jq '.[].Symbols[].Symbol'
+// **错误命令 (R47 草图)**: llvm-readobj --syms --json | jq '.[]' — LLVM 18 不存在 --json
+//   标志, 返回空 symbol, 误判 D113 size-csv 闸门通过 (空真). 必须 --elf-output-style=JSON.
+// jq 三层路径: .[] (program headers) → .Symbols[] (符号表) → .Symbol (Symbol struct)
+// spec_lab 双向断言 R51-M6-size-csv.{sh,_negative.sh}.
+pub fn size_csv_extract(kernel_elf: []const u8) ![]const u8 {
+    var stdout: [4096]u8 = undefined;
+    const argv = &[_][]const u8{
+        "llvm-readobj", "--syms", "--elf-output-style=JSON",
+    };
+    // 3 层 jq: .[].Symbols[].Symbol (note: NOT --json flag)
+    // ...
+}
+```
+
+```zig
 // D111 R31: build.zig 编译期门禁
 pub fn select_sched(num_harts: u16, has_global_coherence: bool) SchedBackend {
     const requested = build_options.sched;

@@ -29,6 +29,12 @@ All kernel returns use the 16-byte `sys_result_t` carrying an 8-byte `sys_result
 - On success: `value: u64` (fd, block id, length)
 - On failure: `error_pack: { remote_node_id u16, subsystem_id u16, error_code i32 }`
 
+**R51-M3 (D-08)**: Error print 字面量冻结 — 三字段必齐, **唯一合法格式**:
+```
+error: code=%d sub=0x%04X node=0x%04X
+```
+其中 `code` = `error_pack.error_code` (i32), `sub` = `error_pack.subsystem_id` (u16), `node` = `error_pack.remote_node_id` (u16). 缺任一字段即视为 R51 漂移. spec_lab 双向断言 `R51-M3-errorprint.{sh,_negative.sh}` 验: 正向 grep 字面量; 反向故意改 `node=0x%X` 缺 padding 期望被抓. QEMU log 三字段正则 + 实测 panic 输出解析.
+
 ## Q22 closure: `error_pack` (D89)
 
 ```c

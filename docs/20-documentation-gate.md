@@ -64,7 +64,9 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | R51 F1 Zig 版本字面量 | 2 | **135** | host Zig 0.16 / Zig 0.16 (D-01 R51 修订: Zig ≥0.15 toolchain.lock 锁定) |
 | R51 F2 toolchain audit vs build profile 分立 | 2 | **137** | rustup.*lp64d.*构建 / lp64d 强制.*imac (D-02 R51 修订: 审计=lpd64d, 构建=D138 imac lp64) |
 | R51 F3 dispatcher 命名锚 (D153) | 2 | **139** | cosmo_core_syscall_dispatcher (旧名禁用) / Rust Shell dispatcher (无此对象) |
-| **Total** | — | **139** | `${#FORBIDDEN[@]}` 派生 (R51 自校: N 必须 == 139) |
+| R51 F4 700KB 量纲澄清 (D-10) | 2 | **141** | ≤700KB 物理跨度 / ≤700KB 段跨度 (700KB 是 ELF 文件大小, 物理跨度归 02 ledger) |
+| R51 F5 rev8 禁 Zbb 假设 (D-13) | 2 | **143** | rev8.*builtin / Zbb rev8 (rv64imac 无 B/Zbb, 必须 slli+srli) |
+| **Total** | — | **143** | `${#FORBIDDEN[@]}` 派生 (R51 自校: N 必须 == 143) |
 
 (*Cumulative counts in this table are best-effort documentation; the canonical count is `${#FORBIDDEN[@]}` in the script.*)
 
