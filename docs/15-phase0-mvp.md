@@ -34,6 +34,8 @@ T1.1 + T1.2 ──────────┬── T1.12 initrd ≤ 50 build.zi
 
 ## Tasks
 
+**R51-F1 (D-01)**: Host Zig version is `Zig ≥0.15`, locked by `toolchain.lock`. Any `Zig 0.16` literal is forbidden. Back-link: `05-call-gate.md:193`.
+
 ### T1.1: build.zig SSOT translate-abi (D74)
 
 ```zig

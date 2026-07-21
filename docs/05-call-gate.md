@@ -190,7 +190,7 @@ pub const HLCB_SSCRATCH_INIT = asm {
 
 **Host 验证方法** (P1-1 强制):
 ```bash
-# 1. 用 host Zig 0.16 跑 @offsetOf 与 @sizeOf 自检
+# 1. 用 host Zig ≥0.15 (由 toolchain.lock 锁定) 跑 @offsetOf 与 @sizeOf 自检
 zig run -e 'const H = @import("kernel/include/sys/abi.zig").HLCB;
            std.debug.assert(@sizeOf(H) == 64);
            std.debug.assert(@offsetOf(H, "kernel_stack_base") == 32);

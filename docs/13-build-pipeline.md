@@ -10,6 +10,8 @@
 
 The build pipeline is a 3-stage `build.zig` chain that (1) compiles each language with profile-specific flags, (2) auto-generates cross-language FFI bindings from a Zig SSOT, and (3) runs 3 hard gates: SSOT alignment (L1-L4 of D74/D85/D86/D90), post-build ELF size gate (D101), and initrd file count gate (D105). All three gates fail closed and abort the build.
 
+**R51-F1 (D-01)**: Host Zig version is `Zig ≥0.15`, locked by `toolchain.lock` (not by `host Zig 0.16` — that version does not exist). The forbidden-word list enforces this: literal `Zig 0.16` / `host Zig 0.16` are banned. Back-link: `05-call-gate.md:193`.
+
 ## 3-stage build chain
 
 ```

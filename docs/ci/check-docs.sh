@@ -205,6 +205,10 @@ FORBIDDEN=(
   "code: u32"                            # R48 F3 (sys_result_t 旧 Rust 形态)
   "status: u32"                          # R48 F3 (sys_result_t 旧 Zig 形态, P1-2 后改 reserved)
   "struct sys_result_payload_t"         # R48 F3 终验抓出 (amend bae69b1 范畴): Rust payload 必须 union 不是 struct (两个 8B 字段在 struct = 16B, size_of==8 断言永远熔断)
+
+  # R51 (F1 D-01: Zig 版本字面量)
+  "host Zig 0.16"                       # R51 F1 (Zig 0.16 不存在; 改 Zig ≥0.15 toolchain.lock 锁定)
+  "Zig 0.16"                            # R51 F1 (host / standalone 字面量, 同源)
 )
 # Self-validation: derived count, single source of truth.
 # Lower bound = R12-R36 baseline (70). Floor avoids regression to old total.
@@ -216,7 +220,7 @@ fi
 # R48 勘误增补: 自验证 census Total == N (硬性提交门槛)
 #   census Total 在 20-documentation-gate.md "Forbidden word census" 表末行
 #   每次新增禁词必须同步更新 census 与本 EXPECTED_TOTAL, 否则 fail-closed
-EXPECTED_TOTAL=133
+EXPECTED_TOTAL=135
 if [ "${FORBIDDEN_COUNT}" -ne "${EXPECTED_TOTAL}" ]; then
   echo "[FATAL] check-docs.sh array length ${FORBIDDEN_COUNT} != census Total ${EXPECTED_TOTAL}"
   echo "  (R48+: 同步更新 census 表 (20-documentation-gate.md) 与脚本 EXPECTED_TOTAL)"
@@ -226,7 +230,7 @@ fi
 EXIT=0
 # Exclude this script + the gate catalog doc + the audit history file from path-level exclude.
 # Line-pattern exclude: skip lines that are clearly audit/catalog/propagation records.
-AUDIT_LINE_FILTER='grep -vE "新增禁词|传染面清单|\(R4[0-6] 修正|R4[0-6] 勘误增补|rename from|审计档案|审计动机|应为|应改|诚实性|命名诚实性|was: PTE|migration|原文|勘误后|P[1-3]-[0-9]+ \(R47|P[1-3]-[0-9]+ 修复|P[1-3]-[0-9]+ 勘误|P[1-3]-[0-9]+ 同款|R47 勘误|R47 增补|R47 撤销|R47 反杜撰|R47 立法|R47 立法注|R47 ctypes|R47 后回到|R47 默认|R46 勘误|R46 自然布局|R46 ledger|R46 双结构|R46 同步|R46 落地|R46 临时|R46 版|R46 关键|R46 形式|R46 错判|R46 臆想|R46 4\.2KB|R36 错算|R36 D80 原案|R37 D128|Step 0 trap 防御|不分配 Vec|原 char buf|原 cosmo_do_user_fault_fixup|OBSOLETED|勘误后|勘误前|R45 默认|R45 裁定|R45 原案|D151 R46|R46 勘误后"'
+AUDIT_LINE_FILTER='grep -vE "新增禁词|传染面清单|\(R4[0-6] 修正|R4[0-6] 勘误增补|R5[1-9]-[A-Z][0-9]+ \(D-|R5[1-9] [A-Z][0-9]+ \(D-|R51-[A-Z][0-9]+ \(D-0[1-9]|R51-F1 \(D-01|R51 note|R51 注|R51 修订|R51 自校|rename from|审计档案|审计动机|应为|应改|诚实性|命名诚实性|was: PTE|migration|原文|勘误后|P[1-3]-[0-9]+ \(R47|P[1-3]-[0-9]+ 修复|P[1-3]-[0-9]+ 勘误|P[1-3]-[0-9]+ 同款|R47 勘误|R47 增补|R47 撤销|R47 反杜撰|R47 立法|R47 立法注|R47 ctypes|R47 后回到|R47 默认|R46 勘误|R46 自然布局|R46 ledger|R46 双结构|R46 同步|R46 落地|R46 临时|R46 版|R46 关键|R46 形式|R46 错判|R46 臆想|R46 4\.2KB|R36 错算|R36 D80 原案|R37 D128|Step 0 trap 防御|不分配 Vec|原 char buf|原 cosmo_do_user_fault_fixup|OBSOLETED|勘误后|勘误前|R45 默认|R45 裁定|R45 原案|D151 R46|R46 勘误后"'
 for word in "${FORBIDDEN[@]}"; do
   if grep -rnF --exclude=check-docs.sh --exclude=20-documentation-gate.md --exclude=30-open-questions.md -- "$word" docs/ 2>/dev/null | eval "$AUDIT_LINE_FILTER"; then
     echo "[ERROR] Forbidden word found: $word"
