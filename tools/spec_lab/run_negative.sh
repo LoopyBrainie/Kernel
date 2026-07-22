@@ -26,7 +26,7 @@ done
 
 TOTAL=$((PASS + FAIL))
 echo "=========================================="
-echo "R49 spec_lab negative: $PASS/$TOTAL 反例被抓到"
+echo "R51 spec_lab negative: $PASS/$TOTAL 反例被抓到"
 if [[ "$FAIL" -gt 0 ]]; then
   echo "FAILED (反例未被抓到, runner 失效): ${FAILED_IDS[*]}"
   echo "=========================================="
