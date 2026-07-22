@@ -3338,3 +3338,30 @@ bash tools/spec_lab/assertions/check_goal_manifest.sh
 
 ---
 
+### Q77 — spec_lab 7 断言脚本 Phase 1 第一项交付 (R51 收官核验挂账)
+
+**当前 Spec 状态**:
+- R51-F4 (c1eb577): 7 对 M 桶 spec_lab 断言脚本已落地 (R51-M1~M7)
+- 但所有 7 对均为 **grep-based 文本断言**, 非编译期验证 (本计划 §5 风险 #3: "缺 zig 环境 ENOENT → `command -v zig || exit 0` fallback")
+- 03 总账 D154–D159 的 `Assertion:` 字段标注为 `(script pending, Q77)`
+
+**冲突点**:
+- spec_lab 设计硬性要求 #1 (R49 立法): "任何写进 `docs/*.md` 的指令级 / ABI 级代码片段, 必须能在编译期被验证, 否则不享受 'frozen' 身份"
+- 当前 M2/M4/M5/M7 四个断言是 text-grep 而非 compile-gate — 它们能抓 spec 文字漂移, 但抓不到 Zig 代码的编译期错误
+- Phase 1 交付物: 把这 4 条 text-grep 升级为 `zig build-obj` 编译验证 (与 R49-F1/F2/F3 同等级)
+
+**自毁条款** (照抄 GOV.1 "provisional 失效" 句式):
+> Phase 1 启动后第一个 commit 若不交付 Q77 (D154–D159 七条款全量 compile-gate spec_lab), D154–D159 全条款判为 **provisional 失效** — 即恢复为未立法状态, 必须重走 R51 立法流程.
+
+**Phase 1 第一项交付**: 触发条件 = Phase 1 启动.
+- 交付清单: R51-M2-bss-anchor / R51-M4-ledger-cap / R51-M5-hlcb-bss / R51-M7-strip-mode 四条 `zig build-obj` 编译断言
+- 完成判据: `bash tools/spec_lab/run_all.sh` → 11/11 (其中 4 条新增 compile-gate 通过)
+- 若 zig 环境仍不可用: 必须在 RUN_LOG.md 记录 `NO_ZIG=1` 环境标记 + 明确预计可用时间
+
+**禁止漂移自查**:
+- 不写 "M2/M4/M5/M7 已 frozen" (text-grep 不是 frozen)
+- 不写 "Phase 1 可跳过 Q77 直接立法"
+- 必须写 "Phase 1 第一项交付 Q77, 不交 = D154–D159 provisional 失效"
+
+---
+

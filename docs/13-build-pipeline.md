@@ -77,7 +77,7 @@ zig build -Dtarget=server -Dsched=pin_binding
 ```
 
 ```zig
-// R51-M4 (D-11): Phase 0 ledger 上限固化 (编译期熔断, 越界 build ABORT)
+// R51-M4 (D-11 / D157): Phase 0 ledger 上限固化 (编译期熔断, 越界 build ABORT)
 // 单一真相: 02 § D49 ceiling 644 KB; 各 section 严格 ≤ 限额
 pub const ledger_caps = struct {
     pub const text_max: u32    = 81920;   // .text  ≤ 80 KB
@@ -94,7 +94,7 @@ comptime {
 ```
 
 ```zig
-// R51-M7 (D-21): ReleaseSmall 默认 `-Dstrip` 让 nm/readobj 输空表, 门禁空真通过.
+// R51-M7 (D-21 / D159): ReleaseSmall 默认 `-Dstrip` 让 nm/readobj 输空表, 门禁空真通过.
 // 必须显式 `-Dstrip=false -Doptimize=ReleaseSafe`, 否则 D129 T-属性门禁 + D113 size-csv
 // 闸门都返回空表, 误判 ELF 合规. 沙箱三实测: ReleaseSmall 默认 + nm 输出空 → elf size gate PASS
 // 但实际 symbol 全 strip → 真实不通过. 修正: build.zig 强制 `-Dstrip=false`.

@@ -23,8 +23,9 @@ bash docs/ci/check-docs.sh        # forbidden-word gate (scans docs/ only)
 bash docs/ci/check-d-backlinks.sh # D# back-link gate (D126+)
 ```
 
-- **Forbidden-word gate**: 133 phrases in `docs/ci/check-docs.sh` (`EXPECTED_TOTAL=133`, hard self-check). Exit 1 = phrase hit; **exit 2 = `EXPECTED_TOTAL` mismatch** (the census row in `docs/20-documentation-gate.md` was not updated).
+- **Forbidden-word gate**: 145 phrases in `docs/ci/check-docs.sh` (`EXPECTED_TOTAL=145`, hard self-check). Exit 1 = phrase hit; **exit 2 = `EXPECTED_TOTAL` mismatch** (the census row in `docs/20-documentation-gate.md` was not updated).
 - **D# back-link gate**: every D# in `03-design-decisions.md` must be reachable from at least one subsystem doc via `grep`.
+- **R51 迭代协议**: 收官轮次 (R## closed) 最后一个 commit 之后, **必须全量重跑所有门禁** (`check-docs.sh` + `check-d-backlinks.sh` + `spec_lab/run_all.sh` + `run_negative.sh`). 本次 R51 D# 悬空 (D156/D157/D159) 的直接成因是 AGENDA commit 后未重跑回链门 — 中段 "passed (34)" 掩盖了终态 "34/37 FAIL". 此后每个收口轮次, 门禁全量重跑是硬性签发前提.
 
 ## Architecture (18-box)
 

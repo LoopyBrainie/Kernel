@@ -1,0 +1,6 @@
+# Wriggly-Octopus gitattributes — R51 收官核验立法
+# R51 裁决: *.sh 在 Windows 检出必须锁 LF (本仓库所有 shell 脚本运行于
+# bash/Linux 侧, CRLF 行尾导致 `bash script.sh` 报 `\r` 解析错误).
+# `check-docs.sh` / `check-d-backlinks.sh` / spec_lab/*.sh 统一受此规则.
+
+*.sh text eol=lf

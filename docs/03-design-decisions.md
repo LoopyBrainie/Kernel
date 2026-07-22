@@ -291,11 +291,11 @@ The full D1-D125 decision ledger with status column. Each row has class (1=evide
 |---|-------|--------|----------|
 | D153 | 2 | ACTIVE | **Dispatcher 命名锚定**: Rust 侧 `cosmo_core_syscall_dispatcher.rs` 重命名为 `syscall_stubs.rs` (D129 stub 角色明示); Zig 侧 `syscall_dispatch.zig` 为 call gate 落点唯一合法名, **不改名** (D56 Call Gate 入口不变). forbidden-word: 文档中出现裸名 `dispatcher` (无角色前缀) 即视为未锚命名. Back-link: 05-call-gate.md:40-41 + 15-phase0-mvp.md:180-181 + 07-shell-architecture.md dispatcher 段. 沙箱三 D-04 收口 (Q69-Q75 议程同源 fd 语义不立)|
 | D154 | 2 | ACTIVE | `SYS_SHUTDOWN = 0x28` 14 号表登记 (Phase 0 不实现; Phase 1 立法 typed-syscall 路径). Phase 0 power-off 走 **HAL FFI 不占 a7** 的 `cosmo_hal_shutdown()` 直接 SBI SRST (a0 reset_type=0, a1 reason=system_failure). 沙箱三 D-05 收口. |
-| D155 | 2 | ACTIVE | 锚点变量 `.bss` 零初始化 — Zig 形态 `var shim_state: ShimState = .{}` 显式零构造; 不允许 `.rodata const`. spec_lab 双轨断言 `R51-M2-bss-anchor.{sh,_negative.sh}` + zig build-obj 验证 `.{}` 编译通过. 沙箱三 D-07 收口. |
-| D156 | 2 | ACTIVE | `error_pack` 打印字面量冻结 — 唯一合法格式 `error: code=%d  sub=0x%04X node=0x%04X` 三字段必齐. spec_lab 双轨断言 `R51-M3-errorprint.{sh,_negative.sh}` + QEMU log 三字段正则. 沙箱三 D-08 收口. |
-| D157 | 2 | ACTIVE | Phase 0 ledger 上限固化 — `text ≤ 81920B` (80KB), `rodata ≤ 10240B` (10KB), `data ≤ 4096B` (4KB), `bss ≤ 8192B` (8KB). 越界 `build.zig @compileError` 熔断. spec_lab 双轨断言 `R51-M4-ledger-cap.{sh,_negative.sh}`. 沙箱三 D-11 收口. |
-| D158 | 2 | ACTIVE | HLCB 删除 `in_kernel_space` 字段 (R47 P1-1 extern struct 64B 严守); 托管方案: `.bss` 单独 8B Hart-Local Control 用于 RR 调度. 同步 D107 + D150. spec_lab 双轨断言 `R51-M5-hlcb-bss.{sh,_negative.sh}`. 沙箱三 D-16 收口. |
-| D159 | 2 | ACTIVE | `ReleaseSmall` 默认 `-Dstrip` 让 nm/readobj 输空表, 闸门空真过; 必须显式 `-Dstrip=false -Doptimize=ReleaseSafe`. spec_lab 双轨断言 `R51-M7-strip-mode.{sh,_negative.sh}`. 沙箱三 D-21 收口 (从大桶提到 M 桶, 变体). |
+| D155 | 2 | ACTIVE | 锚点变量 `.bss` 零初始化 — Zig 形态 `var shim_state: ShimState = .{}` 显式零构造; 不允许 `.rodata const`. spec_lab 双轨断言 `R51-M2-bss-anchor.{sh,_negative.sh}` (text-grep; compile-gate pending, Q77). 沙箱三 D-07 收口. |
+| D156 | 2 | ACTIVE | `error_pack` 打印字面量冻结 — 唯一合法格式 `error: code=%d  sub=0x%04X node=0x%04X` 三字段必齐. spec_lab 双轨断言 `R51-M3-errorprint.{sh,_negative.sh}` (text-grep; QEMU log 三字段正则). 沙箱三 D-08 收口. |
+| D157 | 2 | ACTIVE | Phase 0 ledger 上限固化 — `text ≤ 81920B` (80KB), `rodata ≤ 10240B` (10KB), `data ≤ 4096B` (4KB), `bss ≤ 8192B` (8KB). 越界 `build.zig @compileError` 熔断. spec_lab 双轨断言 `R51-M4-ledger-cap.{sh,_negative.sh}` (text-grep; compile-gate pending, Q77). 沙箱三 D-11 收口. |
+| D158 | 2 | ACTIVE | HLCB 删除 `in_kernel_space` 字段 (R47 P1-1 extern struct 64B 严守); 托管方案: `.bss` 单独 8B Hart-Local Control 用于 RR 调度. 同步 D107 + D150. spec_lab 双轨断言 `R51-M5-hlcb-bss.{sh,_negative.sh}` (text-grep; compile-gate pending, Q77). 沙箱三 D-16 收口. |
+| D159 | 2 | ACTIVE | `ReleaseSmall` 默认 `-Dstrip` 让 nm/readobj 输空表, 闸门空真过; 必须显式 `-Dstrip=false -Doptimize=ReleaseSafe`. spec_lab 双轨断言 `R51-M7-strip-mode.{sh,_negative.sh}` (text-grep; compile-gate pending, Q77). 沙箱三 D-21 收口 (从大桶提到 M 桶, 变体). |
 
 ## R47: P1-5 勘误增补挂靠
 
