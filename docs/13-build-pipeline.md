@@ -213,7 +213,10 @@ EXPECTED=(
 
 for elf in zig-out/bin/*; do
     [[ -f "$elf" ]] || continue
-    sym_json=$(llvm-readobj --syms --json "$elf" 2>/dev/null) || {
+    # R51-FIX (F-1 传染失败修补): 旧脚本用 `llvm-readobj --syms --json`, LLVM 18 不存在 --json 旗标,
+    # 沙箱三实测空表空真过. 新 size-csv 段 (13:107-115) 用 --elf-output-style=JSON + jq 三层.
+    # 本块 [OBSOLETED-by-R51-M6]: 旧命令在本仓库不再适用, 严禁复活.
+    sym_json=$(llvm-readobj --elf-output-style=JSON --syms "$elf" 2>/dev/null) || {
         echo "FATAL: cannot read $elf"; exit 1;
     }
     for entry in "${EXPECTED[@]}"; do

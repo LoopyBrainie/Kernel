@@ -179,7 +179,7 @@ The full D1-D125 decision ledger with status column. Each row has class (1=evide
 |---|-------|--------|----------|
 | D110 | 1 | ACTIVE | D91 adaptive 标志位 Bit 31 → Bit 30 重定位 + 解码次序「符号→Bit30→普通值」钉死 (Q26 选项 A — **R32 裁定 RATIFIED**) |
 | D112 | 1 | ACTIVE | D116 ex_table 二分查找统一用 `ld` (8B) 替代 `lwu` (4B),entry 16B 排序闸门 (Q27 选项 A — **R32 裁定 RATIFIED**) |
-| D113 | 1 | ACTIVE | D101 check_elf_sizes.sh 改用 `llvm-readobj --syms --json` + `jq` + `set -euo pipefail` (Q28 选项 A — **R32 裁定 RATIFIED**) |
+| D113 | 1 | ACTIVE | D101 check_elf_sizes.sh 改用 `llvm-readobj --syms --json` + `jq` + `set -euo pipefail` (Q28 选项 A — **R32 裁定 RATIFIED**). **R51-FIX (F-1 勘误增补)**: 旧命令 `llvm-readobj --syms --json` 在 LLVM 18 不存在 `--json` 旗标 (沙箱三实测撞过); 修正为 `llvm-readobj --syms --elf-output-style=JSON` + `jq '.[].Symbols[].Symbol'` (R51-M6). 旧脚本块 13:216 加 [OBSOLETED-by-R51-M6] 标注. |
 
 ## R33: 集成与门禁目录审计 (3 GAP reopen) — RATIFIED
 

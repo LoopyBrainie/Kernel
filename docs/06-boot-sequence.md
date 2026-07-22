@@ -31,7 +31,7 @@ Firmware Jump (a0=hartid, a1=dtb_phys)
   │   ├── D77: DTB 转储 (Primary Hart only, deferred to Phase B)
   │   ├── D33: 解析 memory nodes → HLCB
   │   ├── D92: csrw sscratch, __hart{N}_stack_top
-  │   └── D82: hlcb.in_kernel_space.store(true)
+  │   └── D82: hlcb.in_kernel_space.store(true)  [OBSOLETED-by-D158 (R51-M5), 托管迁移 .bss HartLocalControl.in_kernel]
   │
   └── Step 2 (kmain+, application ready)
       ├── D88: early_console SBI Stub → dev://uart0 切换
@@ -245,8 +245,12 @@ pub fn kmain(hart_id: u16) void {
     asm volatile ("csrw sscratch, %[t]"
         : : [t] "r" (@intFromPtr(stack_top)));
 
-    // D82: defense-in-depth
-    hlcb_table[hart_id].in_kernel_space.store(true, .SeqCst);
+    // D82: defense-in-depth  [OBSOLETED-by-D158 (R51-M5)]
+    // 字段已从 HLCB struct 删除 (R47 P1-1 extern struct 64B 严守),
+    // 托管迁移到 .bss 单独 HartLocalControl.in_kernel 字段 (D158).
+    // 此行原 `hlcb_table[hart_id].in_kernel_space.store(true, .SeqCst)` 不可编译.
+    // R51-FIX (F-2 传染失败修补): 标注 [OBSOLETED-by-D158] 同步 D158 治理.
+    hart_local_control[hart_id].in_kernel = 1;
 
     // D88: switch from SBI Stub to dev://uart0
     early_console_init();

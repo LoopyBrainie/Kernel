@@ -531,19 +531,20 @@ SIZE_PHASE1=$(stat -c%s build/kernel-phase1.elf)
 #### 字段自然布局与 sizeof 推导
 
 ```c
-/* HANDWRITTEN: tri-end asserts embedded */  // D121 marker
-// 09-memory-subsystem.md § FILE_TABLE (D151 升级, R46 勘误后)
-typedef struct {
+// [OBSOLETED-by-R47-撤销] (R51-FIX F-3 传染失败修补):
+// 原 R46 84B 自然布局与显式 padding 已被 R47 ctypes 实测反驳 (自然布局 sizeof=80B).
+// 本段历史代码保留作审计档案, 不参与本仓库当前实现.
+// 正确形态见下方: `file_entry_t` 自然 80B (R47 撤销裁定).
+typedef struct __attribute__((deprecated)) {  // 编译期 emit warning
     uint32_t inode;          // 4B @ offset 0
     uint32_t _pad0;          // 4B @ offset 4 (对齐 uint64)
     uint64_t block_index;    // 8B @ offset 8
     uint8_t  flags;          // 1B @ offset 16
     uint8_t  _pad1[7];       // 7B @ offset 17 (对齐 8 字节)
     char     name[60];       // 60B @ offset 24
-} file_entry_t;             // sizeof = 24 + 60 = 84B (R46 自然布局)
-// D151 R46: 50 × 84B = 4200B = 4.2KB (D46 ledger 同步 4KB → 4.2KB)
-_Static_assert(sizeof(file_entry_t) == 84, "D151 R46 natural layout");
-_Static_assert(_Alignof(file_entry_t) == 8, "D151 R46 align");
+} file_entry_t_r46;         // [OBSOLETED-by-R47-撤销]: sizeof = 24 + 60 = 84B (R46 误判)
+// D151 R46 ledger 4KB→4.2KB: [OBSOLETED-by-R47-撤销]
+// _Static_assert(sizeof(file_entry_t_r46) == 84, "R46 误判, R47 撤销")  // 不参与本仓库当前实现
 ```
 
 #### .rodata 模板 + .bss mutable_table 双结构
