@@ -3178,3 +3178,163 @@ bash tools/spec_lab/assertions/check_goal_manifest.sh
 - 不写 "rv32 N/A 永久" (永久排除违反跨端兼容性承诺)
 - 必须写 "rv32 ilp32 ABI 变体 Phase 2 第一项立法 (Q68)"
 
+---
+
+## R51 议程条目 (7 大桶挂账 — D-03/06/09/15/17/18/19 留 Phase 1 立法)
+
+> **R51 决议**: 以下 7 条 D-勘误在 R51 一轮**不立**, 但**必须书面挂账**留 Phase 1 第一项. 切割依据不是工作量, 是**依赖方向** —— 这 7 条的正确答案都挂在 Phase 1 未做的决策上 (fd 语义依赖 U-Mode fd 表 / CPIO 是 Phase 1 交付物 / buf 校验是 Phase 1 安全边界 / geiger 是 Phase 1 计划 / 等). **R51 显式点名**为 Phase 1 第一项, Phase 1 启动即立, 不许无限延后. 沙箱实测继续暴露的对应 DIVERGENCE 条目归此处, 不必重写决议.
+
+### Q69 — Rust crate 拓扑 (D-03, R51 挂账)
+
+**当前 Spec 状态**:
+- docs/07-shell-architecture.md 已有 fd 0/1/2 拓扑, 但未指定 U-Mode 依赖
+- 沙箱三实测 fd 0/1/2 走 M-Mode 直通 (Phase 0 现状)
+
+**冲突点**:
+- Phase 1 U-Mode 启动后, fd 0/1/2 必须经 U-Mode 调度再到 Rust Shell
+- crate 拓扑依赖 syscall ABI 立法 (D86/D119/D121)
+
+**Phase 1 第一项立法**: 触发条件 = U-Mode 立法完成.
+
+**禁止漂移自查**:
+- 不写 "Phase 1 兼容 fd 0/1/2 直通"
+- 必须写 "Phase 1 U-Mode 立法完成前, fd 0/1/2 走 M-Mode 直通 (R0 现状)"
+
+---
+
+### Q70 — file:// ro-memdisk 编译期嵌入 (D-06, R51 挂账)
+
+**当前 Spec 状态**:
+- D46 FILE_TABLE = 50 entries, initrd file count ≤ 50 (D105)
+- Phase 0 initrd 是 CPIO runtime parse (D62/D78)
+- 沙箱三实测 Phase 0 编译期嵌入 `@embedFile → .rodata` 替代 CPIO runtime parse
+
+**冲突点**:
+- `@embedFile` 改 build.zig 编译期逻辑, Phase 0 内存布局改变
+- CPIO 解析是 Phase 1 通用文件系统过渡形态
+- 两条路 Phase 0 选谁, 直接决定 Phase 1 filesystem 立法起点
+
+**Phase 1 第一项立法**: 触发条件 = CPIO 完成 (Phase 1 filesystem 交付).
+
+**禁止漂移自查**:
+- 不写 "Phase 0 用 @embedFile ro-memdisk"
+- 不写 "CPIO 永久 runtime parse"
+- 必须写 "Phase 0 memdisk 模式挂账 Phase 1 第一项 (Q70)"
+
+---
+
+### Q71 — D97 '0 unsafe' 改写 (D-09, R51 挂账)
+
+**当前 Spec 状态**:
+- D97: Rust Shell `unsafe` 计数 = 0
+- D129: stub `asm!` 块**必须 unsafe**, 与 D97 "0 unsafe" 字面冲突
+- 沙箱二实测 unsafe 计数 5 处 (payload 解码 1 + FFI 调用 2 + 其他 2)
+
+**冲突点**:
+- D97 字面与 D129 机制矛盾, 但 D129 必须 unsafe (R38 D129 立法)
+- "0 unsafe" 应解读为 "0 unsafe **除 FFI 桥接白名单 (D129 stub asm!)**" 还是 "Rust Shell 全 0 unsafe 退到 unsafe-free Rust subset"
+- 沙箱二 5 处 unsafe 中, 4 处是 D129 合法白名单, 1 处是 payload 解码 (应可改用 safe wrapper)
+
+**Phase 1 第一项立法**: 触发条件 = 第三方应用上架流程启动 (Phase 1 才需要 cargo geiger).
+
+**禁止漂移自查**:
+- 不写 "0 unsafe 绝对零"
+- 不写 "geiger Phase 0 启用"
+- 必须写 "0 unsafe 除 FFI 桥接白名单 (D129 stub asm! + payload 解码 safe wrapper)"
+
+---
+
+### Q72 — fd 0/1/2 立法 (D-15, R51 挂账)
+
+**当前 Spec 状态**:
+- M1 (D-05) 已加 SYS_FD_RESERVE=0x29 到 14 号表, 但 fd 0/1/2 预开 dev://uart0 未立法
+- 沙箱三实测 Phase 0 fd 0/1/2 走 M-Mode 直通, fd_table 不存在
+
+**冲突点**:
+- Phase 1 U-Mode 启动后, fd 0/1/2 必须经 U-Mode 调度
+- fd 语义依赖 syscall ABI 立法 (D86/D119/D121) + Q69 crate 拓扑
+
+**Phase 1 第一项立法**: 触发条件 = Phase 1 fd 语义 + U-Mode syscall 立法完成.
+
+**禁止漂移自查**:
+- 不写 "Phase 0 fd 0/1/2 = dev://uart0"
+- 必须写 "Phase 1 立法前 fd 0/1/2 走 M-Mode 直通, Phase 1 启动即重立法"
+
+---
+
+### Q73 — D33 单 Hart 退化路径 (D-17, R51 挂账)
+
+**当前 Spec 状态**:
+- D33: kmain first-step = DTB dump + HLCB parse
+- D141 (R40 立法): Phase 0 单 Hart 下 DTB 仅校验 + num_harts 断言, 栈区间由链接符号给
+- 沙箱三实测 D141 path 完整跑通, 但 "单 Hart vs 多 Hart 退化路径" 未定义切换边界
+
+**冲突点**:
+- D33 / D141 / D68 (secondary Hart spin-wait) 三者依赖关系, Phase 0 默认是单 Hart, 多 Hart 路径是 Phase 1
+- "单 Hart 时 D33 退化" = DTB 仅校验, num_harts 必为 1; "多 Hart 时 D33 全功能"
+
+**Phase 1 第一项立法**: 触发条件 = Phase 1 多 Hart 调度立法 (D43/D144/D145 联动).
+
+**禁止漂移自查**:
+- 不写 "单 Hart 退化为 Phase 1 主题"
+- 必须写 "Phase 1 多 Hart 立法时同步标 D33 refinement"
+
+---
+
+### Q74 — D103 buf 校验强度 (D-18, R51 挂账)
+
+**当前 Spec 状态**:
+- D103: 跨 FFI 签名禁 `&[u8]` (caller stack)
+- 14-syscall-api.md § cosmo_read/write: "Phase 0 仅 len ≤ 1536 闸门, 严格范围校验留 Phase 1"
+
+**冲突点**:
+- Phase 0 buf 校验强度 = len ≤ 1536 + .bss 来源, 这是"门闸"不是"安全边界"
+- Phase 1 安全边界需 MPU/SATP PTE 强制 user buf 可读性 + 防 TOCTOU
+- 沙箱三实测 buf 校验在 Phase 0 现状下"足够用但不安全"
+
+**Phase 1 第一项立法**: 触发条件 = Phase 1 跨 FFI 栈指针立法 (Pillar 1 红线 #3).
+
+**禁止漂移自查**:
+- 不写 "Phase 0 buf 校验强度 = Phase 1 等价"
+- 必须写 "Phase 0 = 门闸 (len 1536), Phase 1 = 安全边界 (MPU PTE)"
+
+---
+
+### Q75 — T1.17 `-Dip_family` 缺省 (D-19, R51 挂账)
+
+**当前 Spec 状态**:
+- T1.17 (15-phase0-mvp.md) 缺位, `-Dip_family` build option 缺省值未定
+- 沙箱三实测: `-Dip_family` 缺省 = v4 (IPv4 UDP), 非法值熔断
+- T1.17 任务本身不在 R49 立法清单, Phase 0 默认 IP family 立法缺位
+
+**冲突点**:
+- T1.17 立法 = Shim Layer 编译期立骨, 依赖 D131 (SHIM_PAYLOAD_MAX per-L4 派生)
+- 沙箱三 D-08/M3 同时挂账同一 spec 章节, 立法合并才合理
+
+**Phase 1 第一项立法**: 触发条件 = Shim Layer 编译期立骨 (Phase 1 net stack 立法前置).
+
+**禁止漂移自查**:
+- 不写 "T1.17 缺省 v4 已立"
+- 必须写 "T1.17 缺省/非法值熔断归 Phase 1 第一项 (Q75)"
+
+---
+
+### Q76 — check_goal_manifest.sh R50 滑账 (R51 挂账)
+
+**当前 Spec 状态**:
+- R49-GOV.1: GOAL × spec 冲突治理闸门 `check_goal_manifest.sh` 是 R50 第一项必交付
+- 沙箱三 2026-07-22 实测: R50 未交付, R51 收口时仍空缺
+- 本轮 (R51) §0.e 用户明文: "R50 manifest 未交付不阻塞本轮; Q76 check_goal_manifest.sh R52 前必补"
+
+**冲突点**:
+- R49-GOV.1 是治理流程硬性挂账, R50 滑账意味着 GOV-1 失效
+- R51 启动可绕开 R50, 但 R52 必须补 check_goal_manifest.sh 否则 GOV 全节失效
+
+**R52 第一项必交付**: 触发条件 = R51 收官签发后下一轮会话启动.
+
+**禁止漂移自查**:
+- 不写 "check_goal_manifest.sh R50 已交付"
+- 必须写 "check_goal_manifest.sh R52 前必补 (R50 滑账, GOV-1 失效待恢复)"
+
+---
+

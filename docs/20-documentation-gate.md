@@ -61,12 +61,19 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | R46 (无独立禁词) | 0 | 114 | R46 修正条目计入 R42 (R42/R46 双标) |
 | R47 P1-5 撤销 + P3-* 勘误增补 | 15 | 129 | P1-5 撤销 D151 84B 裁定 (3 条) + P3-1~P3-11 勘误增补 (12 条) |
 | R48 F3 sys_result_t 形态统一 | 4 | **133** | uint32_t code / code: u32 / status: u32 / struct sys_result_payload_t (终验补 1) |
-| R51 F1 Zig 版本字面量 | 2 | **135** | host Zig 0.16 / Zig 0.16 (D-01 R51 修订: Zig ≥0.15 toolchain.lock 锁定) |
-| R51 F2 toolchain audit vs build profile 分立 | 2 | **137** | rustup.*lp64d.*构建 / lp64d 强制.*imac (D-02 R51 修订: 审计=lpd64d, 构建=D138 imac lp64) |
-| R51 F3 dispatcher 命名锚 (D153) | 2 | **139** | cosmo_core_syscall_dispatcher (旧名禁用) / Rust Shell dispatcher (无此对象) |
-| R51 F4 700KB 量纲澄清 (D-10) | 2 | **141** | ≤700KB 物理跨度 / ≤700KB 段跨度 (700KB 是 ELF 文件大小, 物理跨度归 02 ledger) |
-| R51 F5 rev8 禁 Zbb 假设 (D-13) | 2 | **143** | rev8.*builtin / Zbb rev8 (rv64imac 无 B/Zbb, 必须 slli+srli) |
-| **Total** | — | **143** | `${#FORBIDDEN[@]}` 派生 (R51 自校: N 必须 == 143) |
+| R51 F1 Zig 版本字面量 | 1 | **134** | host Zig 0.16 (D-01: Zig ≥0.15 toolchain.lock 锁定) |
+| R51 F2 toolchain audit vs build profile 分立 | 1 | **135** | rustup.*lp64d.*构建 (D-02: 审计=lp64d, 构建=D138 imac lp64) |
+| R51 F3 dispatcher 命名锚 (D153) | 1 | **136** | cosmo_core_syscall_dispatcher (D153: 旧名被 syscall_stubs.rs 替代) |
+| R51 F4 700KB 量纲澄清 (D-10) | 1 | **137** | ≤700KB 物理跨度 (700KB 是 ELF 文件大小) |
+| R51 F5 rev8 禁 Zbb 假设 (D-13) | 1 | **138** | rev8.*builtin (rv64imac 无 B/Zbb) |
+| R51 M1 SYS_SHUTDOWN 路径冻结 (D154) | 1 | **139** | SYS_SHUTDOWN.*typed-syscall (shutdown 走 HAL FFI, 不占 a7) |
+| R51 M2 锚点变量 .bss 零构造 (D155) | 1 | **140** | ShimState.*const (锚点变量禁 const) |
+| R51 M3 error_pack 三字段冻结 (D156) | 1 | **141** | node=0x%04X\\? (三字段必齐, 缺任一字段视为漂移) |
+| R51 M4 ledger 上限固化 (D157) | 1 | **142** | bss.*16384 (bss 上限 8KB, 不可放宽) |
+| R51 M5 HLCB 字段托管 .bss (D158) | 1 | **143** | in_kernel_space:.*AtomicBool (字段已移 .bss) |
+| R51 M6 size-csv LLVM 18 命令 (D133 扩) | 1 | **144** | llvm-readobj.*--syms.*--json (LLVM 18 必须 --elf-output-style=JSON) |
+| R51 M7 ReleaseSmall strip 显式 (D159) | 1 | **145** | ReleaseSmall.*默认.*strip (必须 -Dstrip=false) |
+| **Total** | — | **145** | `${#FORBIDDEN[@]}` 派生 (R51 自校: N 必须 == 145) |
 
 (*Cumulative counts in this table are best-effort documentation; the canonical count is `${#FORBIDDEN[@]}` in the script.*)
 

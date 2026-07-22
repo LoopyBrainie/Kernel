@@ -213,7 +213,7 @@ FORBIDDEN=(
   "≤700KB 物理跨度"                   # R51 F4 (D-10: 700KB 是 ELF 文件大小)
   "rev8.*builtin"                     # R51 F5 (D-13: rv64imac 无 Zbb, 禁 rev8)
   "SYS_SHUTDOWN.*typed-syscall"        # R51 M1 (D-05 / D154: shutdown 走 HAL FFI 路径, 不占 a7; 用 "typed-syscall" 防自命中)
-  "error: code=%d  sub="               # R51 M3 (D-08 / D156: 三字段必齐打印格式, 双空格防自命中)
+  "node=0x%04X\\?"                     # R51 M3 (D-08 / D156: node= 字段收尾问号? 防止缺字段)
   "ShimState.*const"                  # R51 M2 (D-07 / D155: 锚点变量禁 const, 必须 var = .{})
   "ReleaseSmall.*默认.*strip"        # R51 M7 (D-21 / D159: 必须 strip=false)
   "llvm-readobj.*--syms.*--json "    # R51 M6 (D-20: LLVM 18 必须 --elf-output-style=JSON)
