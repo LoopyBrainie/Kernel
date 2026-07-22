@@ -1,7 +1,7 @@
-# 03 · Design Decisions (D1-D152 Full Table)
+# 03 · Design Decisions (D1-D160 Full Table)
 
-**Plan section**: §一 (R1-R46 audit rounds)
-**Status**: 45 GAPs RATIFIED (R31 D107-D111 + R32 D112-D113 + R33 D114-D116 + R34 D117-D119 + R35 D120-D122 + R36 D123-D125 + R37 D126-D128 + R38 D129-D131 + R39 D132-D134 + R40 D135-D137 + R41 D138-D140 + R42 D141-D143 + R43 D144-D146 + R44 D147-D149 + R45 D150-D152); 0 open questions
+**Plan section**: §一 (R1-R50 audit rounds)
+**Status**: 45 GAPs RATIFIED (R31-R45) + 7 R51 锚定 (D153-D159) + 1 R50 立法 (D160, profile matrix); 0 open questions
 **Column legend**: `Status` = ACTIVE / DEPRECATED / SUPERSEDED; `Superseded by` 显式登记 supersede 链
 
 ---
@@ -285,7 +285,11 @@ The full D1-D125 decision ledger with status column. Each row has class (1=evide
 | D151 | 2 | ACTIVE | file_entry_t **自然布局 80B** (inode@0 / block_index@8 / flags@16 / name@17, char name[60] 对齐 1, 隐式尾对齐 80), `_Static_assert(sizeof == 80)`; D46 FILE_TABLE .rodata 台账 **4 KB** (50 × 80B = 4000B ≤ 4096B). **R47 勘误增补 (P1-5)**: R46 临时裁定 84B / D46 4.2KB 经 ctypes 实测反驳 (char name[60] 对齐为 1, `pad@17–23` 不存在; 显式 padding 后实际为 88B), 本轮回滚 D151 至 80B / D46 4 KB; R46 `.rodata + .bss mutable_table` 双结构维持 (Q66 R46 A 选 — **R45 裁定 RATIFIED**, R47 勘误纠正 R46) |
 | D152 | 1 | ACTIVE | D130 decoder 收窄 0x73 主码 (FP CSR 访问): `funct3 ≠ 0` **且** CSR 编号 ∈ `{0x001 fflags, 0x002 frm, 0x003 fcsr}` 才返回 true, 其余 0x73 走真异常路径; FS=Off 阶段读 FP CSR 自动置 FS=Initial (Q67 — **R45 裁定 RATIFIED**) |
 
-## R51: F3 命名裁决 (1 锚) — RATIFIED
+## R50: ISA/ABI profile 矩阵立法 (1 锚) — RATIFIED
+
+| # | Class | Status | Decision |
+|---|-------|--------|----------|
+| D160 | 2 | ACTIVE | **ISA/ABI profile 矩阵**: 三档 profile 五元组 (ISA / mabi / RpcUnit 粒度 / BlockPool 池 / cache line) 立法; `embedded` 走 `rv64imac / lp64 / 1536B / 精简池 / 64B`, `qemu_virt` 走 `rv64imac / lp64 / 1536B / 全量池 / 64B` (rv64gc/lp64d 为 FPU 需求时特许变体), `server_compact` 走 `rv64gc / lp64d / 1536B / 96 页 compact 池 / 128B`; 粒度列当前一律 1536B, `endpoint_compact=256B` 记 PROVISIONAL 候选 (触及 frozen 门 `rpc_unit_t=1536`, 需独立 Q 研究, 不激活). 矩阵为索引, 语义细节在 02/08/13 各源 D#. 回追批准: 沙箱二 lp64d 构建追认为 qemu_virt 特许变体合规; 沙箱三 imac 构建追认为 qemu_virt 基线合规 (与 R51-F2 一致). 详见 `docs/16-profile-matrix.md` (Q78 OPEN: endpoint_compact 256B 粒度研究). 收口传染面: `08-risc-v-hal.md` D138 / `13-build-pipeline.md` D126 / `02-memory-topology.md` D45/D49 / `04-abi-contract.md` D71/D146 各自加"见 16-profile-matrix.md"索引注. **R51-FIX-F-1 勘误增补 (反向锁)**: D138 原文 `-mno-f/-mno-d/-mno-v` 伪 flag 已勘误 (march 字符串天然不含 f/d/v + feature disable + comptime 三件套, 见 R51 收口 R50 行 R50-1)
 
 | # | Class | Status | Decision |
 |---|-------|--------|----------|

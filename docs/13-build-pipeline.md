@@ -338,6 +338,7 @@ echo "✓ D126 stride gate passed ($PROFILE/$LAYOUT, measured $ACTUAL_PHYSICAL_K
 - `check_elf_sizes.sh` 升级点 (D113 → D126)
 - `15-phase0-mvp.md` T1.11 (D113 → D126)
 - `20-documentation-gate.md` 新增禁词: `stride 期望值未感知 profile` (已入册, R37)
+- `16-profile-matrix.md` (R50 D160 索引) — stride 列 (embedded/qemu_virt/server_compact 各池) 由本 D# 派生, 完整对照表见矩阵 doc
 
 **Cost / Benefit**:
 

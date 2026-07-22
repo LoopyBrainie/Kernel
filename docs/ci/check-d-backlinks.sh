@@ -24,16 +24,19 @@ EXCLUDE_FILES=(
   "30-open-questions.md"
   "check-docs.sh"
   "check-d-backlinks.sh"
+  "check_goal_manifest.sh"
 )
 
 EXIT=0
 
-# 1. Collect D126-D159 from the status table rows in 03.
-mapfile -t D_TAGS < <(grep -oE '\| D(12[6-9]|1[3-5][0-9]) \|' "$LEDGER" | sed -E 's/\| D([0-9]+) \|/\1/' | sort -u)
+# 1. Collect D126-D160 from the status table rows in 03.
+# R50: extended to D160 (profile matrix legislation).  Pattern matches
+# 126-159 OR 160-169 (future-proofs if more D# land).
+mapfile -t D_TAGS < <(grep -oE '\| D(12[6-9]|1[3-5][0-9]|16[0-9]) \|' "$LEDGER" | sed -E 's/\| D([0-9]+) \|/\1/' | sort -u)
 
-# R51-FIX: with D153-D159 added, floor is 34 (D126-D159 = 34)
-if [[ ${#D_TAGS[@]} -lt 34 ]]; then
-  echo "[FATAL] $GATE_NAME expected >=34 D126-D159 tags in $LEDGER, got ${#D_TAGS[@]}"
+# R50 floor: D126-D160 = 35 (D126-D152 R37-R45 + D153-D159 R51 + D160 R50)
+if [[ ${#D_TAGS[@]} -lt 35 ]]; then
+  echo "[FATAL] $GATE_NAME expected >=35 D126-D160 tags in $LEDGER, got ${#D_TAGS[@]}"
   exit 2
 fi
 
@@ -94,4 +97,4 @@ if [[ "$canary_hits" -ne 0 ]]; then
   exit 2
 fi
 
-echo "✓ $GATE_NAME passed (${#D_TAGS[@]} D126-D159 tags, all back-linked, canary self-test OK)"
+echo "✓ $GATE_NAME passed (${#D_TAGS[@]} D126-D160 tags, all back-linked, canary self-test OK)"

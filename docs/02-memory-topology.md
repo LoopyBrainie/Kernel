@@ -12,6 +12,8 @@ Wriggly-Octopus Phase 0 uses a deterministic, zero-heap memory topology totaling
 
 ## V2.2 physical memory layout (linker-enforced)
 
+> **R50 索引注 (D160)**: 下方 ledger 表按 profile 列出 V2.2 物理布局, 但 mabi (D138) / stride (D126) / cache line (D48, D146) / RpcUnit align (D71) 的**跨 profile 对照** (embedded / qemu_virt / server_compact) 见 [`16-profile-matrix.md`](16-profile-matrix.md). 矩阵为索引, 本 doc 为 source of truth.
+
 ```
 0x8020_0000 ┌─────────────────────────────────────┐  ← _start (D93 fixed base)
             │ .text (Zig kernel + RpcUnit)        │  ~80 KB

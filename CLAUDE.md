@@ -8,6 +8,35 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `Wriggly-Octopus` — frozen RISC-V S-Mode microkernel **spec blueprint**, tri-lingual (Zig kernel + C HAL + Rust `no_std` Shell). One invariant: **Block == RpcUnit == NetworkFrame == 1536 B**. Implementation artifacts (QEMU logs, syms.json) live under `mvp/` (the only `.gitignore` entry). Top-level: `SPEC.md`. External master plan: `C:\Users\LamKo\.claude\plans\specification-writing-risc-v-ultimate-wiggly-octopus.md` (~5500 lines, R1–R47).
 
+**This is a spec-only repo at top level.** There is no `Makefile`, `build.zig`, or `Cargo.toml` here — `SPEC.md` references `make build`/`make test` as Phase 0 goals, not implemented commands. Actual compilation artifacts are under `mvp/` (gitignored). The only runnable verification is the documentation gate + spec_lab assertion suite.
+
+### Non-obvious paths
+
+| Path | Role |
+|------|------|
+| `SPEC.md` | Headline claims, D-tag index, Phase 0 task table |
+| `tools/spec_lab/` | "frozen = 编译过的" extract-and-compile assertion suite (R49) |
+| `mvp/` | Gitignored — implementation artifacts (kernel.elf, QEMU logs, sandbox deliveries) |
+| `.gitattributes` | `*.sh text eol=lf` — all shell scripts must be LF on Windows checkout |
+
+## Quick commands (gate suite — MUST pass before commit)
+
+```bash
+bash docs/ci/check-docs.sh        # forbidden-word gate (145 phrases)
+bash docs/ci/check-d-backlinks.sh # D# back-link gate (D126+)
+
+# spec_lab assertions extracted from docs/*.md code fences
+bash tools/spec_lab/run_all.sh      # positive (expect all PASS)
+bash tools/spec_lab/run_negative.sh # negative (expect all FAIL — proves runner works)
+
+# R51 迭代协议 — 收官轮次全量重跑 (硬性签发前提):
+bash docs/ci/check-docs.sh && bash docs/ci/check-d-backlinks.sh && \
+  bash tools/spec_lab/run_all.sh && bash tools/spec_lab/run_negative.sh
+```
+
+- **Forbidden-word gate exit codes**: exit 1 = phrase hit; **exit 2 = `EXPECTED_TOTAL` mismatch** (census row in `docs/20-documentation-gate.md` was not updated). Never ignore exit 2.
+- **R51 迭代协议**: 收官轮次 (R## closed) 最后一个 commit 之后, **必须全量重跑所有门禁**. R51 D# 悬空 (D156/D157/D159) 的直接成因是 AGENDA commit 后未重跑回链门 — 中段 "passed (34)" 掩盖了终态 "34/37 FAIL". 此后每个收口轮次, 门禁全量重跑是硬性签发前提.
+
 ## Branch & commit discipline
 
 - **`dev`** — single linear branch. Pull = `--rebase`. **No merge commits ever**, no `--no-ff`.
@@ -15,17 +44,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **`release`** — publication port. `dev → release` with `--no-ff` **+ tag** (no tag = not a real release).
 - **Order is fixed**: `main` first, then `release` (so `release` stays `git log --graph` tip).
 - After every merge to `main`/`release`, run `git checkout dev` immediately — never let dev HEAD sit on a merge commit.
-
-## Documentation gate (MUST pass before commit)
-
-```bash
-bash docs/ci/check-docs.sh        # forbidden-word gate (scans docs/ only)
-bash docs/ci/check-d-backlinks.sh # D# back-link gate (D126+)
-```
-
-- **Forbidden-word gate**: 145 phrases in `docs/ci/check-docs.sh` (`EXPECTED_TOTAL=145`, hard self-check). Exit 1 = phrase hit; **exit 2 = `EXPECTED_TOTAL` mismatch** (the census row in `docs/20-documentation-gate.md` was not updated).
-- **D# back-link gate**: every D# in `03-design-decisions.md` must be reachable from at least one subsystem doc via `grep`.
-- **R51 迭代协议**: 收官轮次 (R## closed) 最后一个 commit 之后, **必须全量重跑所有门禁** (`check-docs.sh` + `check-d-backlinks.sh` + `spec_lab/run_all.sh` + `run_negative.sh`). 本次 R51 D# 悬空 (D156/D157/D159) 的直接成因是 AGENDA commit 后未重跑回链门 — 中段 "passed (34)" 掩盖了终态 "34/37 FAIL". 此后每个收口轮次, 门禁全量重跑是硬性签发前提.
 
 ## Architecture (18-box)
 

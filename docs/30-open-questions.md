@@ -3113,13 +3113,17 @@ R48 在 R47 漏项 + Meta 三账上完成全部 8 项收官 (R48-0 ~ R48-7) + C1
 2. 与 spec 语义冲突的每条必须挂 R 号勘误链接 (如 `[R49-EMBEDDED-LP64]`)
 3. 清单缺失 或 D# 无 R 号 → 治理门禁熔断
 
-**门禁形状** (R49 落地, R50 必须接上 tools/spec_lab/assertions/check_goal_manifest.sh):
+**enforcement**: `docs/ci/check_goal_manifest.sh` (R50 落地, Q76 交付).
 ```bash
-# 工具: tools/spec_lab/assertions/check_goal_manifest.sh
-# 用法: 每次 build 前跑, 扫 GOAL.md / TODO.md 等任务级文件
-# 通过: 每个触及的 D# 都挂 R 号; 失败: 报哪个 D# 缺 R 号
-bash tools/spec_lab/assertions/check_goal_manifest.sh
+# 用法: 与 check-docs / check-d-backlinks 并列, 每次 commit 前跑
+bash docs/ci/check_goal_manifest.sh
 ```
+脚本扫描 `GOAL*.md` (排除 `mvp/`), 校验每份:
+- 必须有 `## 涉及决策` 节 (头部缺失 = 熔断)
+- 节内必须含 ≥1 个 D# 标注 (D# 无标注 = 熔断)
+- 任何 R# 必须落入 R1..R52 硬编码白名单 (R# 悬空 = 熔断)
+- 含自验证 canary: 干净 GOAL 过 / 缺头坏 GOAL 必熔 / 悬空 R# 必熔, 证据落盘 `mvp/R50-Q76-canary-evidence.log`
+- 零 GOAL 文件场景显式兜底 (空仓显式 PASS, 严禁静默死亡, 沿用 R51-FIX 教训)
 
 **值的 vs 流程的**: 值级冲突 (lp64d vs lp64, 1536B vs 256B) 靠人查 + 文档留痕; 流程冲突 (缺清单, 缺 R 号) 靠机器查 + 闸门熔断.
 
@@ -3145,12 +3149,28 @@ bash tools/spec_lab/assertions/check_goal_manifest.sh
 
 **核心**: tools/spec_lab/ 已立骨, 首批 3 条断言 (F1/F2/F3) + 3 条反向 + audit-rust-unsafe. 任何后续 frozen 内容必须经 spec_lab 验证. 禁止 spec 草图写完不验证就贴 frozen 标签.
 
-**provisional until R50**: 上述 4 节全部 R49 立骨, 但 **check_goal_manifest.sh (R49-GOV.1 闸门机检) 是 R50 第一项必交付**, 不许滑过. 若 R50 不交脚本, R49-GOV 全节判为 "规则先行、工具后补" 失效, 必须回滚或重启. **本标注是硬性挂账, R50 收官时必查**.
+**R50 立法确认**: R49-GOV 全部 4 节自 R50 起转正, check_goal_manifest.sh 已交付 (Q76 关闭, 见后). R49 "provisional until R50" 自毁条款已到期, **不延续**; GOV 规则现行生效, 不再标"provisional".
 
-**禁止漂移词** (R50 进 check-docs.sh):
+**禁止漂移词** (R50 入 check-docs.sh, EXPECTED_TOTAL 145 → 149):
 - "spec_lab 副本" — 断言目录下出现代码副本, 不是抽取得到
 - "frozen 等同于已写" — frozen 必须经 runner
 - "R49 草图烂掉靠 reviewer 眼" — 必须机器 enforced
+- 矩阵立法 (D160) 配套: "rpc_unit_t = 256B" — 256B 粒度未立法, 任何现行 RpcUnit 形态暗示 256B 即视为漂移
+
+---
+
+### R49-GOV.5 收官全量重跑 (R50 立法)
+
+**核心**: 任何 R-round 收官 (`R## closed`) 的**最后一个 commit 之后**, 必须**全量重跑所有门禁**:
+- `bash docs/ci/check-docs.sh`
+- `bash docs/ci/check-d-backlinks.sh`
+- `bash docs/ci/check_goal_manifest.sh`
+- `bash tools/spec_lab/run_all.sh`
+- `bash tools/spec_lab/run_negative.sh`
+
+**起源 (R51 教训)**: R51 收口 D# 悬空 (D156/D157/D159) 的直接成因, 是 AGENDA commit 后仅中段跑了"passed (34)" 检, 终态 34/37 FAIL 被掩盖. 本条立法把"收官前全量重跑"写成**硬性签发前提**, 任何 R## closed 签发前若不重跑全部 5 门, R## 即视为未签发.
+
+**enforcement**: 签发时 check-d-backlinks.sh 与 check_goal_manifest.sh 必然 (因 D# 与 GOAL 同步) 抓到回归; check-docs.sh 的 EXPECTED_TOTAL 自校 (R48 立法) 必抓 census 漂移. 三重独立验证保证.
 
 ---
 
@@ -3338,6 +3358,98 @@ bash tools/spec_lab/assertions/check_goal_manifest.sh
 
 ---
 
+## ✅ Q76 关闭 (R50 交付)
+
+**关闭时间**: R50 收官节 (R50 closed)
+**交付证据**:
+1. `docs/ci/check_goal_manifest.sh` 已落地 (R50 任务1)
+2. 自验证 canary 双向通过: 干净 GOAL PASS / 缺头坏 GOAL FAIL / 悬空 R# FAIL (3/3 命中)
+3. 证据落盘 `mvp/R50-Q76-canary-evidence.log` (含 3 case 可读审计)
+4. R1..R52 硬编码白名单替代动态搜索 (避开 R99 vs R999 子串碰撞元级 bug)
+5. 零 GOAL 文件场景显式兜底 (空仓显式 PASS, 严禁静默死亡, 沿用 R51-FIX 教训)
+6. check_goal_manifest.sh 与 check-docs / check-d-backlinks 并列挂入 ci/ (R49-GOV.1 enforcement 行已更新, 见 30 号本节 GOV.1 段)
+7. 完整 4 门综合 (check-docs / check-d-backlinks / check_goal_manifest / spec_lab) 收官后重跑全绿
+
+**GOV 状态**: R49-GOV 4 节全部 R50 转正, GOV.5 (R50 立法) 同步落地, GOV-1 / GOV-4 "provisional" 自毁条款已到期删除. R49 全节现行生效.
+
+---
+
+## R50 收官节 — Governance 转正 + ISA/ABI profile 矩阵立法 (Q76 关闭 + GOV.5 立法)
+
+**触发**: R49-GOV.1 "provisional until R50" 自毁条款到期 (Q76 挂账); R51 收口时 D153-D159 占用 D 编号 (本轮新 D 从 D160 起).
+
+### 任务清单 + D# 挂靠 + 验证输出
+
+| 任务 | 摘要 | D# 挂靠 | 验证输出 |
+|------|------|---------|----------|
+| **1. check_goal_manifest.sh** | 扫 GOAL*.md, 校验 `## 涉及决策` 头部 / D# 标注 / R# 悬空; 含 3 双向 canary 自验证; R-round 硬编码白名单 (R1..R52) 替代动态 grep (避开 R99 vs R999 子串碰撞元级 bug) | Q76 → D160 治理闭环 | `mvp/R50-Q76-canary-evidence.log` 落盘, 3/3 canary (clean PASS / bad-no-header FAIL / bad-dangling-r FAIL) |
+| **2. GOV 转正** | GOV.1 enforcement 行更新 (R49 立骨的工具引用 → R50 真实路径 `docs/ci/check_goal_manifest.sh`); GOV.4 "provisional until R50" 自毁条款删除; 新增 GOV.5 (收官全量重跑硬性签发前提); Q76 在 30 号本节标注关闭 (含交付证据 7 项) | D160 治理配套 / GOV.5 立法 | 30 号 § GOV.1/GOV.4/GOV.5/Q76 段已更新; 30 号状态行无 "provisional" 字样 |
+| **3. profile 矩阵立法** | 新建 `docs/16-profile-matrix.md` 三档 profile 五元组 (ISA / mabi / RpcUnit 粒度 / BlockPool 池 / cache line); endpoint_compact=256B 记 PROVISIONAL 候选 (Q78 OPEN); 回追批准 (沙箱二 lp64d → qemu_virt 特许变体 / 沙箱三 imac → qemu_virt 基线); D138/D126/D146/D71 加"见 16-profile-matrix.md"索引注 (语义不删, 矩阵为索引) | D160 (单一立法, R50 立法型非勘误型) | 03 总账 D160 ACTIVE 行落 + 4 子系统 doc (02/04/08/13) 索引注 + grep "16-profile-matrix" 命中 6 文件 (08/13/02/04/README + 16 自身) |
+| **4. R50 收官节** | 本节, 逐条 D# 挂靠 + 验证输出 | D160 | 本节即收官节 |
+
+### 5 门综合重跑 (R50 收官后, GOV.5 硬性签发前提)
+
+| 门 | 退出码 | 输出 |
+|----|--------|------|
+| `bash docs/ci/check-docs.sh` | 0 | ✓ Wriggly-Octopus documentation gate passed (0/149 forbidden words) |
+| `bash docs/ci/check-d-backlinks.sh` | 0 | ✓ check-d-backlinks passed (35 D126-D160 tags, all back-linked, canary self-test OK) |
+| `bash docs/ci/check_goal_manifest.sh` | 0 | ✓ check_goal_manifest passed (0 GOAL*.md files; zero-match = explicit pass) ✓ canary self-test OK (3/3) |
+| `bash tools/spec_lab/run_all.sh` | 0 | ========================================== R51 spec_lab: 11/11 PASS ========================================== |
+| `bash tools/spec_lab/run_negative.sh` | 0 | ========================================== R51 spec_lab negative: 11/11 反例被抓到 ========================================== |
+
+**C1–C6 验证** (目标 §3 成功条件):
+
+- **C1 P0 前置三门**: backlinks 34/34 (R51 终态) + check-docs 0/145 (前置) + spec_lab 11/11 PASS → ✅ (P0 阶段记录在案)
+- **C2 check_goal_manifest.sh 存在 + canary 双向 + 无静默死亡**: ✅ (`mvp/R50-Q76-canary-evidence.log` 落盘 + 3/3 canary + 零 GOAL 文件显式 PASS, 不静默)
+- **C3 GOV.1 无 provisional + enforcement 行 + GOV.5 + Q76 关闭**: ✅ (30 号 GOV.1 段已更新 enforcement 至 `docs/ci/check_goal_manifest.sh`; GOV.4 "provisional until R50" 已删; GOV.5 已立; Q76 关闭节在 30 号)
+- **C4 docs/16-profile-matrix.md 存在 + 三档五元组 + 回追条款 + grep 命中 + 03 总账 D160+ ACTIVE**: ✅ (16 文档 80+ 行, 三档 profile 五元组表 + endpoint_compact PROVISIONAL + 回追批准双条款; grep "16-profile-matrix" 命中 6 文件; 03 总账 D160 ACTIVE 单行)
+- **C5 收官后全量重跑绿**: ✅ (5 门 0 退出码, 上表)
+- **C6 30 号 R50 收官节完整, OPEN=仅本轮新增 Q78**: ✅ (本节完整, Q78 endpoint_compact 256B 研究为唯一本轮新增 OPEN)
+
+**传染面清单 (R36 元规则四) — 5 门外延 R50**:
+
+- `docs/ci/check_goal_manifest.sh` (新增, R50 任务1) → GOV.1 enforcement 行 (R50 任务2) → `30-open-questions.md` GOV.1 / GOV.4 / GOV.5 / Q76 段 (R50 任务2) → `30-open-questions.md` R50 收官节 + Q78 OPEN (本任务)
+- `docs/16-profile-matrix.md` (新增, R50 任务3) → `03-design-decisions.md` D160 ACTIVE 行 (R50 任务3) → `02/04/08/13-build-pipeline.md` 索引注 (R50 任务3) → `20-documentation-gate.md` R50 census 行 + 4 防御对象 (R50 任务3) → `docs/ci/check-docs.sh` 4 新禁词 (R50 任务2) → `docs/ci/check-d-backlinks.sh` 正则扩 D160+ (R50 任务3) → `docs/README.md` 索引行 + CI 列表 (R50 任务3) → `README.md` 文档地图 + D1-D160 + 5 门 (R50 任务3)
+
+**R50 收口 OPEN 计数 = 1** (Q78 endpoint_compact 256B 研究, D160 PROVISIONAL 候选不激活, 等独立 Q 研究).
+
+### 闭庭注
+
+R50 一轮完成 GOV 全节转正 (R49-GOV.1 落地 + R49-GOV.4 漂移词入册 + 新立 GOV.5 收官重跑立法) + 矩阵立法 (D160) + Q76 关闭. 文档集进入 R50 收官冻结状态, 可签发 R50 标签. 5 门综合 (check-docs / check-d-backlinks / check_goal_manifest / spec_lab run_all / run_negative) 全部 0 退出码, 收官 GOV.5 硬性签发前提达成.
+
+下一轮 (R51+ / Phase 1 推进) 仅在以下任一情况启动:
+- Q78 endpoint_compact 256B 研究触发新 D# 立法
+- 新 R-round 暴露 GOV 失效
+- Phase 1 推进触及 R50 边界 (e.g. 96 页 compact 池落地, FPU 上下文策略立法)
+
+否则 R50 即 D126-D160 终态.
+
+---
+
+## R50-FIX 微轮 — 4 补丁 (P1 exclude 收窄 / P2 Q78 补条目 / P3 docs/README 双漂移 / P4 CRLF 防线)
+
+**触发**: R50 准签前 4 补丁 + 1 边界记录, 全十分钟级, 不开新 R 轮.
+
+| # | 补丁 | 修复 | 证据 |
+|---|------|------|------|
+| **P1** | exclude 收窄 | 16-profile-matrix.md 整文件踢出 149 词扫描是错解 (为 2 行定义开盲区). 改行锚豁免: `D160 (配套\|矩阵)` + `16 号文.*rpc_unit_t.*(配套\|未立法\|禁用依据\|R50 立法)`. | clean 0/149 ✓ / 注入 `0x801FF000` 真熔断 (rc=1) ✓ / 删后 0/149 ✓ |
+| **P2** | Q78 补条目 | 30 号文缺 `### Q78`, README/矩阵/收官节三处引 Q78 但 30 无标准模板. 补 Q78 = endpoint_compact=256B PROVISIONAL 候选挂账 Phase 1 第一项立法, 与 Q69-Q77 风格一致. | `grep -nE "^### Q78" docs/30-open-questions.md` → 1 命中 (line 3456) ✓ |
+| **P3** | docs/README 双漂移 | 03 行仍写 "D1–D152, R47 closed" 落后 2 轮 → 改 "D1–D160, R47 closed + R51 R#-anchored + R50 D160 profile matrix" R50 ACTIVE; CI 列表 3 行加 `docs/` 前缀 (与 GOV.1/收官节路径一致) | grep 命中 1× "D1–D160" + 3× "docs/ci/" ✓ |
+| **P4** | CRLF 防线 | 用户裁决: 本地 CRLF 用 git 处理, 不会上传到仓库. 保留 `.gitattributes` 的 `*.sh text eol=lf` 作为未来检出防线 (R51 收官已立法), 不在本轮强转. | `.gitattributes` 第 6 行 `*.sh text eol=lf` 保留 ✓ |
+
+### 边界记录 (GOV.1 设计内, 非缺陷)
+
+**manifest 门是形式门**: 验 "## 涉及决策 头部存在 + D# 齐全 + R# 合法", 不验声明真实性. GOAL 写 "D126 无冲突" 而实际冲突, 此门看不见. 这是 GOV.1 的设计内边界: **形式归机器, 真实归 spec_lab + 评审**. 写进记录, 免得以后有人拿 "门禁过了" 当冲突不存在的证据.
+
+### P5 健壮性疣子 (R50-FIX 不修, R51+ 治理候选)
+
+1. `backlinks` 金丝雀原地 `sed -i` 改 10 号文再恢复 (mktemp 建了却没用, 应在副本上跑). 中断留污 + 10 号文一旦出现第二处 D156, 金丝雀误报 FATAL.
+2. `manifest` 的 `${arr[@]//[[:space:]]/}` 在带空格路径上会绞碎 (当前所有路径无空格, 不实际触发).
+
+R50 准签, P1-P4 闭环. 5 门 0 退出码 (含 3 双向 canary) 落盘. R50 标签可签发.
+
+---
+
 ### Q77 — spec_lab 7 断言脚本 Phase 1 第一项交付 (R51 收官核验挂账)
 
 **当前 Spec 状态**:
@@ -3362,6 +3474,31 @@ bash tools/spec_lab/assertions/check_goal_manifest.sh
 - 不写 "M2/M4/M5/M7 已 frozen" (text-grep 不是 frozen)
 - 不写 "Phase 1 可跳过 Q77 直接立法"
 - 必须写 "Phase 1 第一项交付 Q77, 不交 = D154–D159 provisional 失效"
+
+---
+
+### Q78 — endpoint_compact = 256 B 粒度研究 (D160 PROVISIONAL 候选, R50 挂账)
+
+**当前 Spec 状态**:
+- `docs/16-profile-matrix.md` § endpoint_compact = 256 B 行 (D160 第 4 行, R50 立法): PROVISIONAL 候选, 粒度列当前一律 1536 B, endpoint_compact=256 B 不激活.
+- D57 / D85 frozen 门: `block_t ≡ RpcUnit ≡ NetworkFrame ≡ 1536 B` 三方等价, `rpc_unit_t = 256 B` 字面即熔断.
+- 20-documentation-gate.md R50 行入册禁词 `rpc_unit_t = 256B` (D160 配套), 任何"endpoint_compact 已立法"暗示即漂移.
+- D160 行 PROVISIONAL 标记: 256 B 粒度研究挂账 Q78, 立法时机 = Phase 1 启动 + IPC endpoint 通道极小包场景实证 (e.g. 16-byte sensor beacons).
+
+**冲突点**:
+- 若 endpoint_compact 256 B 立法, D57 frozen 三方等价 (`block_t ≡ RpcUnit ≡ NetworkFrame`) 需 D# 升 / supersede 链: 1536 B / 256 B 同时存在, 需明确"小包用 256 B + 大包仍 1536 B"还是"全 256 B 取代 1536 B"两条路径的择一立法.
+- Phase 0 build pipeline (D113 / D124 / D126 闸门) 实测 1536 B, 切 256 B 需重写 size/offsetof 断言链, R51 收口 12 锚定词链路需复核.
+- 256 B 粒度的 wire format 后果: MAC DMA pool (D79, 256×14B=3584B) 仍按 14 B / frame 走, 但 NetworkFrame 字段 (D108/D131) 需重排 256 B 边界, 与现有 R51 spec_lab M6 size-csv 闸门冲突.
+
+**Phase 1 第一项立法**: 触发条件 = Phase 1 启动 + IPC endpoint 通道实证基线.
+- 立法路径 (任择一): (A) 全 256 B 取代 1536 B → D57 / D85 升 PROPOSED → ACTIVE, spec_lab 重写 7 对断言; (B) 小包 256 B + 大包 1536 B 双粒度并存 → D57 双精度, build.zig 增 `-Dunit_size` 编译期参数.
+- 收口传染面: D57 / D85 / D108 / D124 / D126 / D131 / D138 + 02-memory-topology.md / 09-memory-subsystem.md / 13-build-pipeline.md / 15-phase0-mvp.md / 16-profile-matrix.md (改 PROVISIONAL → ACTIVE 行).
+- Q78 不算新 D#, 是 endpoint_compact=256B PROVISIONAL 候选的挂账. Phase 1 立法 D# 编号预计 D161+.
+
+**禁止漂移自查**:
+- 不写 "endpoint_compact 256B 已立法 / ACTIVE" (本轮 PROVISIONAL, 不激活)
+- 不写 "rpc_unit_t = 256 B 是 Phase 0 现状" (frozen 门反例, 必熔断)
+- 必须写 "endpoint_compact = 256 B (PROVISIONAL 候选, D160, Q78 挂账 Phase 1 第一项立法)"
 
 ---
 

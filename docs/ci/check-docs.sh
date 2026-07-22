@@ -219,6 +219,12 @@ FORBIDDEN=(
   "llvm-readobj.*--syms.*--json "    # R51 M6 (D-20: LLVM 18 必须 --elf-output-style=JSON)
   "in_kernel_space:.*AtomicBool"     # R51 M5 (D-16 / D158: HLCB 已删此字段, .bss RR 托管)
   "bss.*16384"                        # R51 M4 (D-11 / D157: bss 上限 8KB, 不可放宽到 16KB)
+
+  # R50 (GOV.4 立法 + 矩阵立法, D160, 4 条新禁词)
+  "spec_lab 副本"                     # R49-GOV.4 (R50 入册): 断言目录下出现代码副本, 不是抽取得到
+  "frozen 等同于已写"                 # R49-GOV.4 (R50 入册): frozen 必须经 runner 验证
+  "R49 草图烂掉靠 reviewer 眼"       # R49-GOV.4 (R50 入册): 必须机器 enforced, 不靠眼
+  "rpc_unit_t = 256B"                # R50 D160 (矩阵立法): 256B 粒度未立法, 任何 RpcUnit 形态暗示 256B 即视为漂移
 )
 # Self-validation: derived count, single source of truth.
 # Lower bound = R12-R36 baseline (70). Floor avoids regression to old total.
@@ -235,7 +241,7 @@ fi
 # R48 勘误增补: 自验证 census Total == N (硬性提交门槛)
 #   census Total 在 20-documentation-gate.md "Forbidden word census" 表末行
 #   每次新增禁词必须同步更新 census 与本 EXPECTED_TOTAL, 否则 fail-closed
-EXPECTED_TOTAL=145
+EXPECTED_TOTAL=149
 if [ "${FORBIDDEN_COUNT}" -ne "${EXPECTED_TOTAL}" ]; then
   echo "[FATAL] check-docs.sh array length ${FORBIDDEN_COUNT} != census Total ${EXPECTED_TOTAL}"
   echo "  (R48+: 同步更新 census 表 (20-documentation-gate.md) 与脚本 EXPECTED_TOTAL)"
@@ -248,9 +254,9 @@ EXIT=0
 # R48 老豁免规则: "勘误词出现在注释行"则放行 — 这是 F-1 漏洞根因.
 # R51 新规则: R37-R45 描述行通过 "R4[0-9]+ 勘误" 等锚定模式豁免 (历史反向锁描述).
 #                R51 新加反向锁必须挂 [OBSOLETED-by-...] 才能豁免 (双轨防线).
-AUDIT_LINE_FILTER='grep -vE "\[OBSOLETED|rename from|审计档案|审计动机|应为|应改|诚实性|命名诚实性|was: PTE|migration|原文|R4[0-6] 勘误|R4[0-6] 修正|R36 错算|R36 D80 原案|R37 勘误|R37 修正|R37 D128|R38 勘误|R39 勘误|R40 勘误|R41 勘误|R42 勘误|R43 勘误|R44 勘误|R45 勘误|R45 默认|R45 裁定|R45 原案|D151 R46|R46 勘误|R46 修正|R46 落地|R46 同款|R46 反杜撰|R46 自然布局|R46 ledger|R46 双结构|R46 同步|R46 临时|R46 版|R46 关键|R46 形式|R46 错判|R46 臆想|R46 勘误后|R47 勘误|R47 修正|R47 落地|R47 反杜撰|R47 增补|R47 撤销|R47 立法|R47 立法注|R47 ctypes|R47 后回到|R47 默认|R48 勘误|R49 勘误|R51 note|R51 注|R51 修订|R51 自校|R51 命名锚|R51 D153|R51-F1|R51-F2|R51-F3|R51-F4|R51-F5|R51-M1|R51-M2|R51-M3|R51-M4|R51-M5|R51-M6|R51-M7|R51-AGENDA|P[1-3]-[0-9]+ 修复|P[1-3]-[0-9]+ 勘误|P[1-3]-[0-9]+ 同款|P[1-3]-[0-9]+ \(R47|Step 0 trap 防御|不分配 Vec|原 char buf|原 cosmo_do_user_fault_fixup|勘误后|勘误前|D153 决策|Dispatcher 命名锚定|重命名裁决|新增禁词|传染面清单"'
+AUDIT_LINE_FILTER='grep -vE "\[OBSOLETED|rename from|审计档案|审计动机|应为|应改|诚实性|命名诚实性|was: PTE|migration|原文|R4[0-6] 勘误|R4[0-6] 修正|R36 错算|R36 D80 原案|R37 勘误|R37 修正|R37 D128|R38 勘误|R39 勘误|R40 勘误|R41 勘误|R42 勘误|R43 勘误|R44 勘误|R45 勘误|R45 默认|R45 裁定|R45 原案|D151 R46|R46 勘误|R46 修正|R46 落地|R46 同款|R46 反杜撰|R46 自然布局|R46 ledger|R46 双结构|R46 同步|R46 临时|R46 版|R46 关键|R46 形式|R46 错判|R46 臆想|R46 勘误后|R47 勘误|R47 修正|R47 落地|R47 反杜撰|R47 增补|R47 撤销|R47 立法|R47 立法注|R47 ctypes|R47 后回到|R47 默认|R48 勘误|R49 勘误|R51 note|R51 注|R51 修订|R51 自校|R51 命名锚|R51 D153|R51-F1|R51-F2|R51-F3|R51-F4|R51-F5|R51-M1|R51-M2|R51-M3|R51-M4|R51-M5|R51-M6|R51-M7|R51-AGENDA|P[1-3]-[0-9]+ 修复|P[1-3]-[0-9]+ 勘误|P[1-3]-[0-9]+ 同款|P[1-3]-[0-9]+ \(R47|Step 0 trap 防御|不分配 Vec|原 char buf|原 cosmo_do_user_fault_fixup|勘误后|勘误前|D153 决策|Dispatcher 命名锚定|重命名裁决|新增禁词|传染面清单|D160 (配套|矩阵)|16 号文.*rpc_unit_t.*(配套|未立法|禁用依据|R50 立法)"'
 for word in "${FORBIDDEN[@]}"; do
-  if grep -rnF --exclude=check-docs.sh --exclude=20-documentation-gate.md --exclude=30-open-questions.md -- "$word" docs/ 2>/dev/null | eval "$AUDIT_LINE_FILTER"; then
+  if grep -rnF --exclude=check-docs.sh --exclude=check-d-backlinks.sh --exclude=check_goal_manifest.sh --exclude=20-documentation-gate.md --exclude=30-open-questions.md -- "$word" docs/ 2>/dev/null | eval "$AUDIT_LINE_FILTER"; then
     echo "[ERROR] Forbidden word found: $word"
     EXIT=1
   fi

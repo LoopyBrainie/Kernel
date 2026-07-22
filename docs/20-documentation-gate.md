@@ -26,6 +26,7 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | Round | New | Cumulative | Note |
 |-------|-----|------------|------|
 | R12 文字校准 | 6 | 6 | 基线 |
+| R12 文字校准 | 6 | 6 | 基线 |
 | R13 V2.2 topology | 1 | 7 | |
 | R14 §十.6 文字 | 1 | 8 | |
 | R16 1536B network | 3 | 11 | |
@@ -73,7 +74,8 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | R51 M5 HLCB 字段托管 .bss (D158) | 1 | **143** | in_kernel_space:.*AtomicBool (字段已移 .bss) |
 | R51 M6 size-csv LLVM 18 命令 (D133 扩) | 1 | **144** | llvm-readobj.*--syms.*--json (LLVM 18 必须 --elf-output-style=JSON) |
 | R51 M7 ReleaseSmall strip 显式 (D159) | 1 | **145** | ReleaseSmall.*默认.*strip (必须 -Dstrip=false) |
-| **Total** | — | **145** | `${#FORBIDDEN[@]}` 派生 (R51 自校: N 必须 == 145) |
+| R50 GOV.4 三词入册 + 矩阵 D160 配套 | 4 | **149** | spec_lab 副本 / frozen 等同于已写 / R49 草图烂掉靠 reviewer 眼 (R49-GOV.4 R50 入册) + rpc_unit_t = 256B (D160 矩阵: endpoint_compact=256B 未立法) |
+| **Total** | — | **149** | `${#FORBIDDEN[@]}` 派生 (R50 自校: N 必须 == 149) |
 
 (*Cumulative counts in this table are best-effort documentation; the canonical count is `${#FORBIDDEN[@]}` in the script.*)
 
@@ -204,6 +206,10 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | `22KB 缺口` | R47 | P3-11 R48: 改 D49 双行制, 已命名子段 581.5 KB + 余量 62.5 KB = ceiling 644 KB, 此禁词保留防 R47 伪闭合回归 |
 | `hartid<<SHIFT` | R47 | P3-1 off-by-one, 改 `(hartid+1)<<SHIFT` |
 | `struct sys_result_payload_t` | R48 | F3 Rust payload 必须 union 不是 struct (终验抓出: 两个 8B 字段在 struct = 16B, size_of==8 断言永远熔断) |
+| `spec_lab 副本` | R49-GOV.4 (R50) | D160 矩阵: 断言目录下出现代码副本, 不是抽取得到 (frozen = 编译过的) |
+| `frozen 等同于已写` | R49-GOV.4 (R50) | D160 矩阵: frozen 必须经 runner 验证, 不靠手写 |
+| `R49 草图烂掉靠 reviewer 眼` | R49-GOV.4 (R50) | D160 矩阵: 必须机器 enforced, R50 check_goal_manifest.sh 落地 |
+| `rpc_unit_t = 256B` | R50/D160 | 矩阵立法: endpoint_compact=256B 未立法, 任何现行 RpcUnit 形态暗示 256B 即熔断 (Q78 OPEN) |
 
 ## How to add a new forbidden word
 
@@ -215,21 +221,21 @@ where `N` is derived live from the array length. The script enforces a **lower f
 6. Migrate any existing docs that use the word
 7. Verify gate passes again
 
-## D# 回链机检 (P0-5 / R47)
+## D# 回链机检 (P0-5 / R47 / R50 扩)
 
 每个 D126+ 决策号必须在其 contagion 目标文档（subsystem spec 文件）中可被 `grep` 命中；空回链 = 传染未闭环 = 闸门熔断。脚本：`docs/ci/check-d-backlinks.sh`。
 
 ```bash
 $ bash docs/ci/check-d-backlinks.sh
-✓ check-d-backlinks passed (27 D126-D152 tags, all back-linked)
+✓ check-d-backlinks passed (35 D126-D160 tags, all back-linked, canary self-test OK)
 ```
 
-规则（R47 立法）：
+规则（R47 立法 / R50 扩 D160+）：
 - D# 来源：`docs/03-design-decisions.md` status table（`| D### | class | ACTIVE|...` 行）
-- 排除文件（数据载体，搜索时跳过）：`03-design-decisions.md`、`20-documentation-gate.md`、`30-open-questions.md`、`ci/check-docs.sh`、`ci/check-d-backlinks.sh`
+- 排除文件（数据载体，搜索时跳过）：`03-design-decisions.md`、`20-documentation-gate.md`、`30-open-questions.md`、`ci/check-docs.sh`、`ci/check-d-backlinks.sh`、`ci/check_goal_manifest.sh`
 - 词边界匹配：`(^|[^0-9])D###([^0-9]|$)` 防 D1260 等子串假阳
 - 失败模式：熔断并打印缺失 D# 列表
-- 自验证：`${#D_TAGS[@]} ≥ 27`（D126-D152 全集），不足即 FATAL exit 2
+- 自验证：`${#D_TAGS[@]} ≥ 35`（D126-D160 全集 = R37-R45 27 + R51 7 + R50 1），不足即 FATAL exit 2
 
 ## Cross-references
 

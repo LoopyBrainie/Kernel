@@ -503,6 +503,7 @@ llvm-objdump -d build/kernel.elf \
 - `13-build-pipeline.md` 新增 `make audit-no-fp-kernel` 闸门 + `build_options.kernel_march` 派生
 - `15-phase0-mvp.md` T1.1 升级为 D138 + 新增 T1.24 (no-FP-asm 测试)
 - `20-documentation-gate.md` **新增禁词**: "kernel FP 隐式 allowed" / "FS=Off 默认 by default"
+- `16-profile-matrix.md` (R50 D160 索引) — mabi 列 (embedded/qemu_virt/server_compact × lp64/lp64d) 由本 D# 派生, 完整对照表见矩阵 doc
 
 ### 元规则校验
 

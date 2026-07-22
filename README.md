@@ -1,63 +1,137 @@
-# Wriggly-Octopus
+# Wriggly-Octopus 🐙
 
-RISC-V S-Mode microkernel blueprint — tri-lingual (Zig kernel + C HAL + Rust no_std Shell).
-1536 B unified invariant seed (`Block == RpcUnit == NetworkFrame`), 4 Pillars red-line aggregation, zero-heap static pool invariant, 16 KB Hart-Local stack, embedded MVP footprint target.
+> A triple-language-verifiable RISC-V S-Mode microkernel — specified, not yet implemented.
 
-## Status (R47 close-out)
+**One invariant binds everything:** `Block == RpcUnit == NetworkFrame == 1536 B`. From a 16 KB-stack embedded SoC to a multi-socket NUMA server, that single number never changes.
 
-- **Audit rounds**: R1–R46 closed, R47 勘误增补 landed (`docs/03-design-decisions.md` § R47: P1-5 rollback of R46 D151 84B/4.2KB misjudgement).
-- **Decision ledger**: D1–D152 ACTIVE in `docs/03-design-decisions.md` (D62 DEPRECATED; D91/D96/D101/D104/D106/D116 SUPERSEDED).
-- **Q&A register**: Q22–Q67 全闭 (`docs/30-open-questions.md` 0 OPEN).
-- **Documentation gate**: `bash docs/ci/check-docs.sh` — currently `0/N forbidden words` where `N = ${#FORBIDDEN[@]}` 派生 (no hardcoded magic number).
-- **R46+ 恢复条件**: any of (a) `make build` triggers new doc-gate熔断, (b) RISC-V Profile RVA23 + AIA + RVV 1.0 introduces new Pillar, (c) Phase 1 Sv39 SATP 启用时审计 D26/D31/D84/D109/D143 联动.
+---
 
-## Repo contents
+## Why this exists
 
-| Path | Purpose |
-|------|---------|
-| `SPEC.md` | Top-level claim page (R47 rewrite per D120) |
-| `GOAL.md` | R47 close-out task list (P0→P3 + C1–C15) |
-| `README.md` | This file |
-| `docs/00-ffi-pillars.md` | 4 Pillars aggregation, single source of red lines (D125) |
-| `docs/01-system-overview.md` | System diagram and phase matrix |
-| `docs/02-memory-topology.md` | V2.2 memory map + ceiling/measured dual-track (D133) |
-| `docs/03-design-decisions.md` | Full decision ledger D1–D152 with status + supersede chains |
-| `docs/04-abi-contract.md` | Syscall ABI, 16 B red line (D86) |
-| `docs/05-call-gate.md` | Call Gate stub, HLCB layout extern struct (D153 candidate) |
-| `docs/06-boot-sequence.md` | entry.S, Step 0/1/2 sequence, D95 Anti-Trampling |
-| `docs/07-shell-architecture.md` | Phase 0 Shell S-Mode co-residency (D97) |
-| `docs/08-risc-v-hal.md` | RISC-V HAL, FS/VS state machine, SBI fallbacks |
-| `docs/09-memory-subsystem.md` | BlockPool/NodePool layout, FILE_TABLE |
-| `docs/10-error-handling.md` | sys_error_decode, negative errno convention |
-| `docs/11-network-driver.md` | Shim Layer, network_frame_t wire format |
-| `docs/12-scheduler.md` | RR + Work-Stealing + Pin-Binding (D145) |
-| `docs/13-build-pipeline.md` | check_elf_sizes.sh, build.zig profile×layout |
-| `docs/14-syscall-api.md` | arity table, signing rules, path-pool mechanism |
-| `docs/15-phase0-mvp.md` | Phase 0 DoD T-tasks (T1.1–T1.28) |
-| `docs/20-documentation-gate.md` | Gate contract + forbidden word census |
-| `docs/30-open-questions.md` | Q&A audit history (R37–R46, append-only) |
-| `docs/ci/check-docs.sh` | Forbidden-word gate (runs in CI) |
+Most microkernel specs live in a single language and a single document. When implementation begins, the spec drifts — C headers say one thing, Rust types say another, Zig structs say a third. **Wriggly-Octopus** solves this by making the spec *triple-language-verifiable* before a single line of kernel code is committed:
+
+- **Zig** kernel dispatcher + build system
+- **C** HAL (hardware abstraction layer)
+- **Rust** `no_std` shell (userspace co-resident in S-Mode)
+
+Every cross-language ABI decision is frozen in `docs/` and mechanically enforced by a documentation gate. The compiler catches spec bugs before they become kernel bugs.
 
 ## Quick start
 
+You don't build a kernel here — you verify the spec.
+
 ```bash
-# Forbidden-word gate (must pass before any commit)
-bash docs/ci/check-docs.sh
-
-# Read the 4 Pillars first — everything downstream cites these
-cat docs/00-ffi-pillars.md
-
-# For any new D-tag proposal, follow the contagion-surface checklist
-# in docs/03-design-decisions.md § "元规则: RATIFIED 传染面清单"
+# Clone and run the gate suite (all five must pass):
+bash docs/ci/check-docs.sh        # 149 forbidden-word phrases
+bash docs/ci/check-d-backlinks.sh # every design decision (D126+) must be cited
+bash docs/ci/check_goal_manifest.sh # GOAL*.md manifests (R49-GOV.1, Q76)
+bash tools/spec_lab/run_all.sh    # compile assertions extracted from docs
+bash tools/spec_lab/run_negative.sh # prove the runner catches broken code
 ```
 
-## Conventions
+> [!NOTE]
+> This is a **spec-only repo**. There is no `Makefile` or `build.zig` at the top level. Implementation artifacts live under `mvp/` (gitignored). `SPEC.md` references `make build` / `make test` as Phase 0 goals — not as commands you can run today.
 
-- 每处修改附传染面清单 (R36 元规则四): 受影响文档 + 任务编号 + 禁词条目。
-- 数字必须带量纲标签 (e.g. `644 KB ceiling`, `~497.5 KB measured`), 派生值不得 `(估)` 喂断言 (R39 D133)。
-- 审计历史 (superseded 内容) 保留并显式标注, 不删除 (GOAL §2.4)。
-- 仅修改文档, 不编写实现代码 (Phase 0 进入实现期后由 R47+ DoD 接管, see `SPEC.md` 收官注脚)。
+Read the architecture in 5 minutes:
+
+```bash
+cat docs/00-ffi-pillars.md        # the 4 red lines everything else must cite
+cat docs/01-system-overview.md    # 18-box architecture + phase matrix
+```
+
+## The invariant
+
+```
+1536 B = 8 B header + 1528 B payload
+       = 14 B MAC header + 1522 B Ethernet frame (external wire)
+       = one block_t = one RpcUnit = one NetworkFrame
+```
+
+This isn't a convention — it's a **compiler-enforced type identity** (`offsetof` assertions across Zig, C, and Rust). Change the number anywhere, and the doc-gate melts down.
+
+## Architecture (18 boxes)
+
+```
+Dispatch     ① Rust Shell           ② Zig Dispatcher       ③ Scheme Router
+Subsystems   ④ file://  ⑤ dev://uart0  ⑥ dev://network  ⑦ scheme://
+HAL + C ABI  ⑧ C HAL                ⑨ RISC-V HAL (FS/VS, AIA, csrr time)
+Invariants   ⑩ BlockPool  ⑪ NodePool (132KB NOLOAD)  ⑫ RpcUnit  ⑬ NetworkFrame
+             ⑭ block_t ≡ RpcUnit ≡ NetworkFrame (cross-language offsetof)
+Evolution    ⑮ Phase 0 soft-boundary  →  ⑯ Phase 1 Sv39 PTE hard isolation
+Profiles     ⑰ Static (RR, 16KB stack)  ⑱ Server (Work-Stealing, FS/VS lazy)
+```
+
+See `docs/01-system-overview.md` for the full diagram.
+
+## Four pillars
+
+Every subsystem doc must cite these. A restatement without a back-link is a doc-gate violation.
+
+| Pillar | Red line | Defined in |
+|--------|----------|------------|
+| **1. ABI & FFI** | Cross-language structs: only `u8/u16/u32/u64 + u8[N]` | `04-abi-contract.md` |
+| **2. `sys_result_t` 16 B** | Return value fits in a0/a1 register pair | `14-syscall-api.md` |
+| **3. `sscratch` + `in_kernel_space`** | Trap entry dual-defense: HLCB per-hart | `05-call-gate.md` |
+| **4. Graceful degradation** | A-extension absent? Fall back. No coherence? IPI timeout. | `08-risc-v-hal.md` |
+
+Single source of truth: `docs/00-ffi-pillars.md` (D125).
+
+## Documentation map
+
+| If you need to know about… | Read |
+|----------------------------|------|
+| The 1536 B invariant and how it's enforced | `docs/09-memory-subsystem.md` |
+| How syscalls cross the S-Mode boundary | `docs/05-call-gate.md`, `docs/14-syscall-api.md` |
+| The boot sequence (Step 0 → Step 1 → Step 2) | `docs/06-boot-sequence.md` |
+| How errors propagate across languages | `docs/10-error-handling.md` |
+| The scheduler (RR vs Work-Stealing) | `docs/12-scheduler.md` |
+| Network driver and Shim Layer | `docs/11-network-driver.md` |
+| Every design decision ever made (D1–D160) | `docs/03-design-decisions.md` |
+| ISA/ABI profile matrix (D160) | `docs/16-profile-matrix.md` |
+| What "frozen" means and how it's verified | `tools/spec_lab/README.md` |
+| Phase 0 MVP task list (T1.1–T1.28) | `docs/15-phase0-mvp.md` |
+
+## The spec lab
+
+> **R49 legislation**: any instruction-level or ABI-level code snippet written into `docs/*.md` must survive a compiler. Otherwise it doesn't get "frozen" status.
+
+The spec lab (`tools/spec_lab/`) extracts code fences from markdown by anchor, feeds them to real compilers (`clang`, `zig build-obj`, `riscv64-linux-gnu-gcc`), and verifies they compile. Each positive assertion has a negative twin that deliberately breaks the code — proving the runner actually catches failures.
+
+```bash
+bash tools/spec_lab/run_all.sh      # "can this spec code compile?" → expect all PASS
+bash tools/spec_lab/run_negative.sh # "does the runner catch broken code?" → expect all FAIL
+```
+
+No copies of code are stored in the lab — everything is extracted live from `docs/`. A copy that's three months old is a doc-drift time bomb.
+
+## Branch discipline
+
+```
+dev ───────●────●────●────●────●──→  (linear, no merge commits, pull --rebase)
+            \         \        \
+             → main    → main   → main  (--no-ff archive, no tag)
+                        \              → release (--no-ff + tag, always the tip)
+```
+
+- **`dev`** — single source of truth. Every commit lands here.
+- **`main`** — key-version archive. `--no-ff` merge from dev, no tag required.
+- **`release`** — publication port. Must carry a tag. **Order: main first, release second** (so release is always `git log --graph` tip).
+
+After every merge to main or release, immediately `git checkout dev`. Dev's HEAD must never sit on a merge commit.
 
 ## Contributing
 
-Spec-only contributions. Open against `dev` branch (linear, no merge commits); archive to `main` via `--no-ff`; release to `release` via `--no-ff` + tag.
+Spec-only contributions. Open against `dev`. Every change needs a contamination-surface checklist (R36): which docs are affected, which task numbers, which forbidden-word entries.
+
+Before committing:
+```bash
+bash docs/ci/check-docs.sh && bash docs/ci/check-d-backlinks.sh && \
+  bash docs/ci/check_goal_manifest.sh && \
+  bash tools/spec_lab/run_all.sh && bash tools/spec_lab/run_negative.sh
+```
+
+## Adjacent work
+
+- **Phase 1** (Sv39 PTE isolation, Work-Stealing scheduler, Page-Aggregation compact storage) — fully scoped, deferred
+- **External master plan**: `C:\Users\LamKo\.claude\plans\specification-writing-risc-v-ultimate-wiggly-octopus.md` (~5500 lines, R1–R47 audit rounds)
+- **Implementation sandboxes**: under `mvp/` (QEMU logs, kernel ELF builds, shell binaries)
