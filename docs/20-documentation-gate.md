@@ -77,7 +77,8 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | R50 GOV.4 三词入册 + 矩阵 D160 配套 | 4 | **149** | spec_lab 副本 / frozen 等同于已写 / R49 草图烂掉靠 reviewer 眼 (R49-GOV.4 R50 入册) + rpc_unit_t = 256B (D160 矩阵: endpoint_compact=256B 未立法) |
 | R52 第四节血统缺口登记册收口 (D161/D162/D163) | 1 | **150** | -fno-stack-protector (D161: C HAL 栈保护器必启 -fstack-protector-strong, 严禁 -fno-stack-protector 出现于 docs/) |
 | R53 Naming Taxonomy SSOT 立法 (D164/D165/D166/D167) | 4 | **154** | neura_sys_result_t / basal_sys_result_t / cortix_sys_result_t / synapse_sys_result_t (D165: 跨语言公共符号不加组件前缀, 4 反向锚, Linux 内核惯例; 与 D121 5 struct 白名单 + D171 neura_ syscall 前缀三向正交) |
-| **Total** | — | **154** | `${#FORBIDDEN[@]}` 派生 (R53 自校: N 必须 == 154) |
+| R59 neura_ syscall API 立法 (D171) + R60 命名迁移最终封口 (D172) | 14 | **168** | cosmo_open / cosmo_read / cosmo_write / cosmo_close / cosmo_seek / cosmo_stat / cosmo_yield / cosmo_ping / cosmo_rpc_send / cosmo_pte_map_6arg / cosmo_ipc_send_6arg / cosmo_open_stub / cosmo_pte_map_6arg_fn / cosmo_node_id (13 条 D171 派生禁词 + 1 条 D172 元规则: 历史引用豁免策略; R60 收口统一入册, EXPECTED_TOTAL 154→168; R58 因 Q69 阻塞跳过, Phase 1 待启) |
+| **Total** | — | **168** | `${#FORBIDDEN[@]}` 派生 (R60 自校: N 必须 == 168) |
 
 (*Cumulative counts in this table are best-effort documentation; the canonical count is `${#FORBIDDEN[@]}` in the script.*)
 

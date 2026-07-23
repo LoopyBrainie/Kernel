@@ -7,6 +7,10 @@
 
 ---
 
+> **D172 历史引用豁免声明** (R60 RATIFIED): 本文件 R37-R45 审计档案段落, R30/R31 历史 bug 描述, R55-R59 命名迁移前的决策上下文, 围栏外的 markdown 段落 / 表格行 / 引用块保留 `cosmo_call_gate` 等旧名引用, 不强迁, 以维持历史准确性; 围栏内代码块 (asm / rust / bash / c) 的当前有效代码示例按 R54-R59 命名迁移同步。D172 适用对象不限于本文件, 泛化到所有 1X 子系统文档 (例 `10-error-handling.md:231` R30/R31 spec 引用)。见 `docs/03-design-decisions.md` D172 立法条款。
+
+---
+
 <!-- 当新 design tension 出现且 locked ledger 无法解决时, 在此段展开新 Q-number + Options A/B/C。
      R37-R45 审计已收官, 新 Q 只在满足 R46+ 恢复条件 (make build 熔断 / RVA23+ 新 Pillar / Phase 1 Sv39 SATP) 时开。 -->
 
@@ -274,8 +278,8 @@ trap_entry:
 ```asm
 # R37 D128 裁定: D73 立法原样保留, 不加 SIE 临界区、不加 amoswap
 # Q42 Tier 3 RMW 雷因没引入 RMW 而天然不存在
-cosmo_call_gate:
-    la      t0, __cosmo_dispatcher_ptr
+basal_call_gate:
+    la      t0, __basal_dispatcher_ptr
     ld      t0, 0(t0)
     jr      t0
 ```
@@ -380,17 +384,17 @@ cosmo_call_gate:
 # kernel/arch/riscv64/call_gate/entry_call_gate.S
 # D129: 纯汇编全局符号, 不导出 C/Rust 原型
 .section .text
-.global cosmo_call_gate
-cosmo_call_gate:
+.global basal_call_gate
+basal_call_gate:
     # D56 + D73: NO sscratch, NO ecall
-    la      t0, __cosmo_dispatcher_ptr
+    la      t0, __basal_dispatcher_ptr
     ld      t0, 0(t0)
     jr      t0
     # D129 注释: a7 由 stub 的 asm! 块负责写入, 本函数不读不写 a7
 ```
 
 ```rust
-// D129: 每个 syscall stub 用 asm! 封装 mv a7 + call cosmo_call_gate
+// D129: 每个 syscall stub 用 asm! 封装 mv a7 + call basal_call_gate
 // clobber 列表完整覆盖 ra, t0-t6, 除返回寄存器外 a0-a7, memory
 #[inline(never)]
 pub unsafe fn neura_open(path: *const u8, flags: u32) -> sys_result_t {
@@ -401,8 +405,8 @@ pub unsafe fn neura_open(path: *const u8, flags: u32) -> sys_result_t {
         "mv a0, {path}",
         "mv a1, {flags}",
         "mv a7, {a7}",
-        "call cosmo_call_gate",
-        sym cosmo_call_gate,
+        "call basal_call_gate",
+        sym basal_call_gate,
         in("a0") path as u64,
         in("a1") flags as u64,
         in("a7") a7,                       // D129: a7 由 asm! 写入, 编译器不能重排
@@ -420,12 +424,12 @@ pub unsafe fn neura_open(path: *const u8, flags: u32) -> sys_result_t {
 make test-syscall-a7-preserve
 for stub in neura_open neura_read neura_write neura_close neura_seek neura_stat neura_yield; do
   llvm-objdump -d build/kernel.elf \
-    | grep -B3 "call.*cosmo_call_gate" \
-    | grep -q "mv a7, .*${stub#cosmo_}" \
+    | grep -B3 "call.*basal_call_gate" \
+    | grep -q "mv a7, .*${stub#neura_}" \
     || { echo "D129 FAIL: stub $stub missing a7 setup before call"; exit 1; }
 done
-# D129 二道闸门: cosmo_call_gate 符号表属性必须是 T (text, 全局)
-nm build/kernel.elf | awk '$3=="cosmo_call_gate" {print $2}' | grep -q '^T$' || { echo "D129 FAIL"; exit 1; }
+# D129 二道闸门: basal_call_gate 符号表属性必须是 T (text, 全局)
+nm build/kernel.elf | awk '$3=="basal_call_gate" {print $2}' | grep -q '^T$' || { echo "D129 FAIL"; exit 1; }
 ```
 
 **传染面清单**:

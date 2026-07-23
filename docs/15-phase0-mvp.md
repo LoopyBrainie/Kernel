@@ -361,3 +361,14 @@ Wave 4: Defer Phase 1 (D26/D31/D43/D83/D91/D102/D104)
 - [ ] `make test-jumbo-on` 1500B MTU roundtrip byte-identical
 - [ ] Documentation gate `bash docs/ci/check-docs.sh` 0/N forbidden words (N = `${#FORBIDDEN[@]}` 派生; D115 R33, R37-R46 入册, R47 D151 撤销)
 - [ ] **R49-C7 证据补丁: harness verdict 必须落盘 artifacts/** — 任何 Exit criteria 触发的 smoke / shutdown / boot 检查, 必须把 `verdict=PASS|FAIL` 与关键 marker (如 `shutting down` / `COSMO BOOT OK` / `error: code=`) 写到 `artifacts/<test>.verdict` 与 `artifacts/<test>.log` 双文件. 沙箱二 C7 缺口 (verdict 仅 echo, 未落盘) 起, 证据从此受规矩管. 验收: `tools/check_artifacts_on_disk.sh` 扫描所有 `artifacts/*.verdict`, 缺失 → gate 熔断
+
+---
+
+## Naming Migration Reference (D172 back-link)
+
+本 Phase 0 MVP 实现遵循 Neur-Aegis 命名体系 (R53-R60 收口):
+
+- **D171** (R59): T1.1 `basal/include/sys/abi.zig` SSOT 输入路径 (D170 替代 D74); T1.7 C HAL `basal_panic_abort` 单一 panic 出口 (D168); T1.4-T1.6 `basal_hal_*` 14 符号族 (D166 范式); T1.10 `basal_atomic_cas_ptr`; 用户态 syscall stub 通过 `basal_call_gate` (D169) 跳入 dispatcher。
+- **D172** (R60): 历史审计豁免策略。Phase 0 spec 历史叙述 (R30/R31 R47 等) 中旧 `cosmo_*` 命名引用保留, 当前有效代码已同步; 详见 `30-open-questions.md` 文件头部 D172 声明段 + `03-design-decisions.md` D172 立法条款。
+
+任何 Phase 0 MVP 任务的 syscall / C HAL / Shell 调用都必须使用新前缀 (`neura_*` syscall API, `basal_*` C HAL 内部, `cortix_*` Shell crate 待 R58/Q69 解除阻塞)。
