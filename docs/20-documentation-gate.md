@@ -76,7 +76,8 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | R51 M7 ReleaseSmall strip 显式 (D159) | 1 | **145** | ReleaseSmall.*默认.*strip (必须 -Dstrip=false) |
 | R50 GOV.4 三词入册 + 矩阵 D160 配套 | 4 | **149** | spec_lab 副本 / frozen 等同于已写 / R49 草图烂掉靠 reviewer 眼 (R49-GOV.4 R50 入册) + rpc_unit_t = 256B (D160 矩阵: endpoint_compact=256B 未立法) |
 | R52 第四节血统缺口登记册收口 (D161/D162/D163) | 1 | **150** | -fno-stack-protector (D161: C HAL 栈保护器必启 -fstack-protector-strong, 严禁 -fno-stack-protector 出现于 docs/) |
-| **Total** | — | **150** | `${#FORBIDDEN[@]}` 派生 (R52 自校: N 必须 == 150) |
+| R53 Naming Taxonomy SSOT 立法 (D164/D165/D166/D167) | 4 | **154** | neura_sys_result_t / basal_sys_result_t / cortix_sys_result_t / synapse_sys_result_t (D165: 跨语言公共符号不加组件前缀, 4 反向锚, Linux 内核惯例; 与 D121 5 struct 白名单 + D171 neura_ syscall 前缀三向正交) |
+| **Total** | — | **154** | `${#FORBIDDEN[@]}` 派生 (R53 自校: N 必须 == 154) |
 
 (*Cumulative counts in this table are best-effort documentation; the canonical count is `${#FORBIDDEN[@]}` in the script.*)
 

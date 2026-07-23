@@ -222,6 +222,8 @@ D74 SSOT 白名单 Phase 0 冻结, 仅 5 struct 由 `translate-abi.py` 自动生
 
 **D121 落地约束 ①**: 白名单 Phase 0 冻结, 新增条目必须挂决策号, 禁止静默扩展。
 
+**R53 D165 回链 (命名法 SSOT 互不冲突)**: 本节 D121 5 struct (`sys_result_t` / `sys_result_payload_t` / `RpcUnit` / `NetworkFrame` / `block_t`) 在 `docs/` 任何位置出现时不得携带 `neura_` / `basal_` / `cortix_` / `synapse_` 任一前缀字面串 (D165 反向锚定, Linux 内核惯例)。FFI 规则决定 *什么能跨语言传*, 命名 SSOT 决定 *类型/函数叫什么*, 两者正交。详见 `docs/00-naming-taxonomy.md` § 3 (D165 跨语言无前缀规则)。
+
 **5-Layer Defense L1 描述重写** (D121 补强):
 - 旧 L1: "SSOT auto-generation" — 有 L1 漏检风险 (手写文件未覆盖)
 - 新 L1: "SSOT diff (白名单 5 struct) ∪ compile-time assert (全体跨三端类型)" — 双道防御网, 消除「L1 有洞」模糊表述

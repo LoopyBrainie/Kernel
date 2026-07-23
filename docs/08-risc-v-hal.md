@@ -10,6 +10,8 @@
 
 The RISC-V HAL provides a uniform interface to hardware features that vary across the embedded ↔ server spectrum. Each feature has a 2-3 tier fallback so that a single binary runs on Allwinner D1s (RV64IMAC) and SiFive HiFive Unmatched (RV64GC) without recompilation.
 
+**R53 D166 回链 (basal_ 分批范式)**: 本节涉及 C HAL `cosmo_*` 前缀向 `basal_*` 的迁移 (R54 panic 族 / R55 call_gate 族 / R56 hal_ 族 / R57 ABI 过滤 / R59 basal_node_id), 共 23 个符号分 5 批迁移, 每批独立 R## 收口全量门禁, 单批变更不得跨多个 D# 撤销 (D166 范式)。详见 `docs/00-naming-taxonomy.md` § 4 (D166 basal_ 分批迁移范式)。
+
 ## Feature matrix and fallback tiers
 
 | Feature | Tier 1 (Server) | Tier 2 (Embedded) | Tier 3 (Fallback) | Decision |

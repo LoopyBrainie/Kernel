@@ -10,15 +10,17 @@
 
 Wriggly-Octopus is a tri-lingual (Zig + C HAL + Rust no_std) S-Mode microkernel organized into three layers: (1) the **dispatch layer** that routes syscalls from Shell to subsystems, (2) the **subsystem layer** that provides file, device, and IPC services, and (3) the **unified invariant layer** that holds the 1536 B `Block == RpcUnit == NetworkFrame` contract. Phase 0 collapses layers 1-2 into S-Mode co-residency; Phase 1 separates them with Sv39 PTE alignment.
 
+**R53 D164 系统层改名**: 系统全称 `Wriggly-Octopus` → **`Neur-Aegis`** (CLI 命名空间 `neura`)。三大组件代号 (Basal/Synapse/Cortix) 见 18-box 图中 ⑧ / ② / ① 标注。详见 `docs/00-naming-taxonomy.md` § 1 + § 2 (D164 系统级命名 + 三大组件代号)。
+
 ## 18-box architecture (top-level)
 
 ```
 ┌─────────────────── 18-box top-level architecture ───────────────────┐
 │                                                                       │
 │  ──── Layer 1: Dispatch ────                                         │
-│  ① Rust no_std Shell (Phase 0 S-Mode 共址, D97 容器化审计)          │
+│  ① Rust no_std Shell — Cortix (R58, 撤销 cosmo_kernel)              │
 │       ↓  Call Gate (D56/D62/D73 物理分治)                            │
-│  ② Zig Kernel Dispatcher (D89/Q22 sys_result_t)                     │
+│  ② Zig Kernel Dispatcher — Synapse (R55, D153 锁定 syscall_dispatch.zig) │
 │       ↓                                                              │
 │  ③ Scheme Router (D9.2 lr.d/sc.d or D87/D94 soft fallback)         │
 │       │                                                              │
@@ -29,7 +31,7 @@ Wriggly-Octopus is a tri-lingual (Zig + C HAL + Rust no_std) S-Mode microkernel 
 │       └── ⑦ scheme:// router (D9.2 + D79/D85 RpcUnit)             │
 │                                                                       │
 │  ──── Layer 3: HAL + C ABI ────                                     │
-│  ⑧ C HAL (cosmo_panic_abort D76 + cosmo_console D88)               │
+│  ⑧ C HAL — Basal (R54 收 cosmo_*→basal_*) (early_console_init D88) │
 │  ⑨ RISC-V HAL (csrr time D21 + AIA/PLIC D32/D38/D67/D83)          │
 │                                                                       │
 │  ═════ Unified 1536B Invariant (D57) ═════                         │

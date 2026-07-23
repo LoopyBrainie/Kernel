@@ -10,6 +10,8 @@
 
 The build pipeline is a 3-stage `build.zig` chain that (1) compiles each language with profile-specific flags, (2) auto-generates cross-language FFI bindings from a Zig SSOT, and (3) runs 3 hard gates: SSOT alignment (L1-L4 of D74/D85/D86/D90), post-build ELF size gate (D101), and initrd file count gate (D105). All three gates fail closed and abort the build.
 
+**R53 D167 回链 (命名变更纪律 5 步闭环)**: 本节涉及 SSOT 路径迁移 D74 (`kernel/include/sys/abi.zig`) → D170 (`basal/include/sys/abi.zig`, R54 收口)。任何代号 / 目录 / 前缀变更须经 5 步闭环: (1) D## 立法, (2) 1X 子系统文档回链, (3) 禁词 census 同步, (4) 分批迁移 (D166 范式), (5) spec_lab 断言脚本同步。详见 `docs/00-naming-taxonomy.md` § 11 (D167 命名变更纪律)。
+
 **R51-F1 (D-01)**: Host Zig version is `Zig ≥0.15`, locked by `toolchain.lock` (not by `host Zig 0.16` — that version does not exist). The forbidden-word list enforces this: literal `Zig 0.16` / `host Zig 0.16` are banned. Back-link: `05-call-gate.md:193`.
 
 **R51-F2 (D-02)**: Toolchain audit vs build profile — **two distinct profiles must not be conflated**:

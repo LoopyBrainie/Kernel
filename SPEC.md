@@ -1,7 +1,7 @@
-# Wriggly-Octopus: RISC-V Tri-Lingual Microkernel
+# Neur-Aegis: RISC-V Tri-Lingual Microkernel (R53 顶层改名)
 
-**Date**: 2026-07-17
-**Status**: D1-D125 frozen (R31-R36 18 GAPs RATIFIED); 0 open questions
+**Date**: 2026-07-23
+**Status**: D1-D167 frozen (R31-R53 RATIFIED); 0 open questions
 **Owner**: Brra1n0
 **Branch**: dev
 **Supersedes**: —
