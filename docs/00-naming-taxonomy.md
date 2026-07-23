@@ -83,24 +83,24 @@ D121 5 struct 白名单 — **不加任何组件前缀**:
 
 ---
 
-## 7. Syscall API 前缀 (D171 RATIFIED)
+## 7. Syscall API 前缀 (D171 RATIFIED, R59 收口)
 
-跨语言 syscall 入口统一使用 **`neura_`** 前缀:
+跨语言 syscall 入口统一使用 **`neura_`** 前缀 (R59 迁移自旧前缀 `cosmo_*`):
 
-| 旧 (R58 前) | 新 (R59 后) | Phase |
-|---|---|---|
-| `cosmo_open` | `neura_open` | Phase 0 |
-| `cosmo_read` | `neura_read` | Phase 0 |
-| `cosmo_write` | `neura_write` | Phase 0 |
-| `cosmo_close` | `neura_close` | Phase 0 |
-| `cosmo_seek` | `neura_seek` | Phase 0 |
-| `cosmo_stat` | `neura_stat` | Phase 0 |
-| `cosmo_yield` | `neura_yield` | Phase 0 |
-| `cosmo_ping` | `neura_ping` | Phase 0 |
-| `cosmo_pte_map_6arg` | `neura_pte_map_6arg` | Phase 1 typed |
-| `cosmo_ipc_send_6arg` | `neura_ipc_send_6arg` | Phase 1 typed |
+| Syscall | Phase |
+|---|---|
+| `neura_open` | Phase 0 |
+| `neura_read` | Phase 0 |
+| `neura_write` | Phase 0 |
+| `neura_close` | Phase 0 |
+| `neura_seek` | Phase 0 |
+| `neura_stat` | Phase 0 |
+| `neura_yield` | Phase 0 |
+| `neura_ping` | Phase 0 |
+| `neura_pte_map_6arg` | Phase 1 typed |
+| `neura_ipc_send_6arg` | Phase 1 typed |
 
-> **D171 立法**: syscall API 入口(用户态 shell 可调用的 FFI 符号)统一 `neura_` 前缀,与项目品牌一致;内部 C HAL 函数(`basal_*`)与 Shell crate(`cortix_*`)分立。
+> **D171 立法** (R59 收口): syscall API 入口 (用户态 shell 可调用的 FFI 符号) 统一 `neura_` 前缀, 与项目品牌 Neur-Aegis 一致; 内部 C HAL 函数 (`basal_*`) 与 Shell crate (`cortix_*`) 分立。R59 前旧名 `cosmo_*` 已废止 (D172 围栏外历史审计豁免)。
 
 ---
 

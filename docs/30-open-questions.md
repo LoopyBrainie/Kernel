@@ -393,7 +393,7 @@ cosmo_call_gate:
 // D129: 每个 syscall stub 用 asm! 封装 mv a7 + call cosmo_call_gate
 // clobber 列表完整覆盖 ra, t0-t6, 除返回寄存器外 a0-a7, memory
 #[inline(never)]
-pub unsafe fn cosmo_open(path: *const u8, flags: u32) -> sys_result_t {
+pub unsafe fn neura_open(path: *const u8, flags: u32) -> sys_result_t {
     let a7: u64 = SYS_OPEN;
     let mut ret_low: u64;
     let mut ret_high: u64;
@@ -418,7 +418,7 @@ pub unsafe fn cosmo_open(path: *const u8, flags: u32) -> sys_result_t {
 ```bash
 # D129 编译期闸门: objdump 校验每个 stub 调用点前必有 a7 写入
 make test-syscall-a7-preserve
-for stub in cosmo_open cosmo_read cosmo_write cosmo_close cosmo_seek cosmo_stat cosmo_yield; do
+for stub in neura_open neura_read neura_write neura_close neura_seek neura_stat neura_yield; do
   llvm-objdump -d build/kernel.elf \
     | grep -B3 "call.*cosmo_call_gate" \
     | grep -q "mv a7, .*${stub#cosmo_}" \
@@ -2640,7 +2640,7 @@ void file_table_init(void) {
 }
 
 // D151 运行时文件操作: 写 mutable_table
-int cosmo_read(int fd, void *buf, size_t len) {
+int neura_read(int fd, void *buf, size_t len) {
     // ... (不变) 但块索引更新写 mutable_table[fd].block_index
     if (new_block_index != mutable_table[fd].block_index) {
         mutable_table[fd].block_index = new_block_index;  // D151: 写 .bss

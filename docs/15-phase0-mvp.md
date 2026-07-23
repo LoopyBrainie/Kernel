@@ -188,7 +188,7 @@ kernel/arch/riscv64/call_gate/
 └── HLCB.zig
 ```
 
-**Verify**: Shell `cosmo_open("scheme://0/...")` reaches kernel dispatcher; cargo-geiger 0 unsafe.
+**Verify**: Shell `neura_open("scheme://0/...")` reaches kernel dispatcher; cargo-geiger 0 unsafe.
 
 ### T1.10: sys_atomic_cas_ptr 3-tier (D94)
 

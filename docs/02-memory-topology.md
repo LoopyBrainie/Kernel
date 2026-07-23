@@ -151,7 +151,7 @@ BlockPool is split in 4KB pages per D45 sparse formula. NodePool is `NOLOAD` in 
 Phase 0 does not need a node table, but the 132 KB placeholder:
 - **Formats the address space** uniformly across embedded/server
 - **Enables binary identity** between 16 KB-stack SoC and NUMA server builds
-- **Reserves the range** for future `cosmo_node_id → fd` translation tables
+- **Reserves the range** for future `basal_node_id → fd` translation tables
 - Costs zero (no physical pages, no runtime reads)
 
 ## Cross-references

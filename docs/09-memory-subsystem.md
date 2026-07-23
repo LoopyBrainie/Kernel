@@ -302,7 +302,7 @@ void file_table_init(void) {
 }
 
 // D151 运行时文件操作: 写 mutable_table
-int cosmo_read(int fd, void *buf, size_t len) {
+int neura_read(int fd, void *buf, size_t len) {
     // ... (不变) 但块索引更新写 mutable_table[fd].block_index
     if (new_block_index != mutable_table[fd].block_index) {
         mutable_table[fd].block_index = new_block_index;
@@ -311,7 +311,7 @@ int cosmo_read(int fd, void *buf, size_t len) {
 }
 ```
 
-**传染面**: `14-syscall-api.md` § cosmo_open/read/write 改写 mutable_table + `13-build-pipeline.md` § FILE_TABLE 编译期生成 + `20-documentation-gate.md` 新增禁词 "FILE_TABLE 单一不可变"。
+**传染面**: `14-syscall-api.md` § neura_open/read/write 改写 mutable_table + `13-build-pipeline.md` § FILE_TABLE 编译期生成 + `20-documentation-gate.md` 新增禁词 "FILE_TABLE 单一不可变"。
 
 ## initrd file count gate (D105)
 
@@ -568,7 +568,7 @@ void file_table_init(void) {
 }
 
 // D151 运行时文件操作: 写 mutable_table, 不写 FILE_TABLE
-int cosmo_read(int fd, void *buf, size_t len) {
+int neura_read(int fd, void *buf, size_t len) {
     // ... (不变) 但块索引更新写 mutable_table[fd].block_index
     if (new_block_index != mutable_table[fd].block_index) {
         mutable_table[fd].block_index = new_block_index;  // D151: 写 .bss
@@ -619,5 +619,5 @@ readelf -W -s build/kernel.elf | grep FILE_TABLE | grep -q "OBJECT" \
 
 **新增禁词**: "FILE_TABLE 单一不可变" / "FILE_TABLE sizeof=80" / "FILE_TABLE 总计 4KB"
 
-**传染面**: `09-memory-subsystem.md` § D151 本增补 + `14-syscall-api.md` § cosmo_open/read/write 改写 mutable_table + `13-build-pipeline.md` § FILE_TABLE 编译期生成 (84B 派生) + D46 台账 4KB→4.2KB + `20-documentation-gate.md` 新增禁词三条。
+**传染面**: `09-memory-subsystem.md` § D151 本增补 + `14-syscall-api.md` § neura_open/read/write 改写 mutable_table + `13-build-pipeline.md` § FILE_TABLE 编译期生成 (84B 派生) + D46 台账 4KB→4.2KB + `20-documentation-gate.md` 新增禁词三条。
 
