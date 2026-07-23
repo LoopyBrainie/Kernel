@@ -37,7 +37,7 @@ zig build audit-globals  # checks against whitelist
 ctags -R kernel/hal/c | grep -E '^[a-z_]+ +.*\(\*\)' | diff - audits/allowed_fn_ptrs.txt
 
 # 4. Cross-language FFI: only D74-generated symbols
-nm kernel.elf | grep ' U ' | grep -v '__cosmo_abi_' | grep -q . || {
+nm kernel.elf | grep ' U ' | grep -v '__basal_abi_' | grep -q . || {
     echo "FATAL: Shell links non-SSOT symbol"; exit 1;
 }
 ```
