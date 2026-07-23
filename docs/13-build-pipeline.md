@@ -1,8 +1,8 @@
 # 13 · Build Pipeline (SSOT + Profile Switch + 3 Hard Gates)
 
 **Plan section**: §十三
-**Key decisions**: D48, D74, D81, D93, D100, D101, D105
-**Status**: Frozen; 3 hard gates + SSOT auto-generation
+**Key decisions**: D48, D74, D81, D93, D100, D101, D105, D126, D133, D138, D146, D157, D159, D160, **D161, D162** (R52 cflag 防线)
+**Status**: Frozen; 3 hard gates + SSOT auto-generation + cflag 防线 (R52 收口)
 
 ---
 
@@ -59,6 +59,23 @@ pub fn build(b: *std.Build) void {
 ```
 
 The translator walks the Zig SSOT, generates matching `#[repr(C, align(N))]` Rust structs, and matching `_Static_assert`-guarded C structs. Manual edits to the generated files are detected by `git diff` pre-commit hook and rejected (R21 D74 forbids hand-written abi.rs).
+
+## D161 + D162: cflag 编译期防线 (R52 收口)
+
+**Why these**: Phase 0 无 MMU，16KB Hart-Local 栈 (D107) 是为数不多的活防线。栈溢出只能靠编译期哨兵抓。C HAL 必须开栈保护器 + 单函数栈帧警告阀；Zig 路径同步 `_Static_assert(@sizeOf(@Frame(fn)) ≤ 2048)` 形态约束。详见 `03-design-decisions.md` § R52 D161/D162 立法条。
+
+```bash
+# D161: C HAL 栈保护器必启 (-fstack-protector-strong)
+# D162: 单函数栈帧警告阀 (-Wstack-usage=2048, warning-as-error)
+zig build -Dcflags_c_hal="-fstack-protector-strong -Wstack-usage=2048 -Werror=stack-usage"
+```
+
+**禁止形态**: `-fno-stack-protector` 严禁出现于 `docs/` (R52 D161 forbidden-word, 见 `check-docs.sh` 末段)。Windows MVP 早先用 `-fno-stack-protector` 是 v2.1 §3.2 防御静默消失的实例；R52 立法后, `build.zig` 必须显式 `-fstack-protector-strong`, cflags 链中不得出现 `-fno-stack-protector`。
+
+**传染面**:
+- `08-risc-v-hal.md` § panic 多通道 (D139 + `__stack_chk_fail` D161 → `sbi_cold_reboot` D163)
+- `15-phase0-mvp.md` T1.11 cflag 闸 (D161/D162 进 verify-elf)
+- `check-docs.sh` 新增禁词 `-fno-stack-protector` (R52 D161 收口)
 
 ## D93 + D111: Profile switch + Work-Stealing compile-time guard
 

@@ -301,6 +301,16 @@ The full D1-D125 decision ledger with status column. Each row has class (1=evide
 | D158 | 2 | ACTIVE | HLCB 删除 `in_kernel_space` 字段 (R47 P1-1 extern struct 64B 严守); 托管方案: `.bss` 单独 8B Hart-Local Control 用于 RR 调度. 同步 D107 + D150. spec_lab 双轨断言 `R51-M5-hlcb-bss.{sh,_negative.sh}` (text-grep; compile-gate pending, Q77). 沙箱三 D-16 收口. |
 | D159 | 2 | ACTIVE | `ReleaseSmall` 默认 `-Dstrip` 让 nm/readobj 输空表, 闸门空真过; 必须显式 `-Dstrip=false -Doptimize=ReleaseSafe`. spec_lab 双轨断言 `R51-M7-strip-mode.{sh,_negative.sh}` (text-grep; compile-gate pending, Q77). 沙箱三 D-21 收口 (从大桶提到 M 桶, 变体). |
 
+## R52: 第四节血统缺口登记册收口 (3 锚) — RATIFIED
+
+> **立法动机**: 推演 v2.1 §3.2/§3.3/§4.1 的栈保护器 + 单函数栈帧警告阀两条编译期防线在 frozen spec (`docs/` + `SPEC.md`) 中零提及；SRST reset_type 单一 `a0=0` 假设在 Windows MVP 落地为 `a0=1` (D-IMPL-05: 配 QEMU `-no-reboot` 干净退出) 而未立法归口。R52 一次性补齐三条缺口, 不允许"防御在无任何裁决记录下静默消失"或"工具行为驱动偏离停留在 RUNBOOK 注释里"。
+
+| # | Class | Status | Decision |
+|---|-------|--------|----------|
+| D161 | 1 | ACTIVE | C HAL 编译期栈保护器必启: `-fstack-protector-strong` (Phase 0 全程, 包含 D139 panic 路径与 D140 退化路径), C HAL 提供 `__stack_chk_guard` 哨兵 (`.rodata` 单一全局, 链接期单实例) + `__stack_chk_fail` 实现 (走 UART0 MMIO 死信熔断 → `sbi_cold_reboot` 物理复位, 与 D95/D139 fail-stop 同款). 16KB Hart-Local 栈 (D107) 是 Phase 0 为数不多的活防线, 栈溢出只能靠哨兵抓到. Back-link: `13-build-pipeline.md` § D161 cflags 段 + `08-risc-v-hal.md` § panic 多通道 (D139 + __stack_chk_fail) + `15-phase0-mvp.md` T1.11 cflag 闸. forbidden-word: `-fno-stack-protector` 严禁出现于 `docs/` (R52 D161 收口). spec_lab 计划: `R52-M1-stack-protector.{sh,_negative.sh}` (text-grep; compile-gate pending, Q77). |
+| D162 | 1 | ACTIVE | C HAL 单函数栈帧警告阀 `-Wstack-usage=2048` (warning-as-error). Phase 0 16KB Hart-Local 栈 + ≥8 帧安全余量 (2048B × 8 = 16384B ≤ 16384B). Zig 路径同步 `_Static_assert(@sizeOf(@Frame(fn)) ≤ 2048)` per-fn 检查. 编译器警告转错误阻止隐式栈深增长悄悄突破 16KB 上限. Back-link: `13-build-pipeline.md` § D162 警告阀段 + `15-phase0-mvp.md` T1.11. spec_lab 计划: `R52-M2-stack-usage.{sh,_negative.sh}` (text-grep; compile-gate pending, Q77). |
+| D163 | 1 | ACTIVE | SBI SRST `reset_type` 双轨语义立法, **不再是单一 `a0=0` 假设**: (a) `sbi_shutdown(reason)` = `(a0=0, a1=reason)`, 用于 planned shutdown 路径 (D154 SYS_SHUTDOWN HAL FFI); (b) `sbi_cold_reboot(reason)` = `(a0=1, a1=reason)`, 用于 fatal stop 路径 (D95 DTB collision / D136 Step 0 trap / D139 panic 递归 / `__stack_chk_fail` D161). SBI v2.0 §9.4 双档均合法. Windows MVP D-IMPL-05 (配 QEMU `-no-reboot` 干净退出) 走 cold_reboot 路径合规 — 工具行为驱动偏离, 经此 D# 立法归口. Back-link: `06-boot-sequence.md` § D136/D163 双轨 SRST + `08-risc-v-hal.md` § panic 多通道 + `15-phase0-mvp.md` T1.11 SRST 用例 + `16-profile-matrix.md` § 各 profile SRST 默认. spec_lab 计划: `R52-M3-srst-dual.{sh,_negative.sh}` (text-grep: `a0=0` shutdown vs `a0=1` cold_reboot 调用点对照). |
+
 ## R47: P1-5 勘误增补挂靠
 
 | 挂靠 D# | 修正内容 |

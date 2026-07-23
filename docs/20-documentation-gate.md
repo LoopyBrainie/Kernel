@@ -75,7 +75,8 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | R51 M6 size-csv LLVM 18 命令 (D133 扩) | 1 | **144** | llvm-readobj.*--syms.*--json (LLVM 18 必须 --elf-output-style=JSON) |
 | R51 M7 ReleaseSmall strip 显式 (D159) | 1 | **145** | ReleaseSmall.*默认.*strip (必须 -Dstrip=false) |
 | R50 GOV.4 三词入册 + 矩阵 D160 配套 | 4 | **149** | spec_lab 副本 / frozen 等同于已写 / R49 草图烂掉靠 reviewer 眼 (R49-GOV.4 R50 入册) + rpc_unit_t = 256B (D160 矩阵: endpoint_compact=256B 未立法) |
-| **Total** | — | **149** | `${#FORBIDDEN[@]}` 派生 (R50 自校: N 必须 == 149) |
+| R52 第四节血统缺口登记册收口 (D161/D162/D163) | 1 | **150** | -fno-stack-protector (D161: C HAL 栈保护器必启 -fstack-protector-strong, 严禁 -fno-stack-protector 出现于 docs/) |
+| **Total** | — | **150** | `${#FORBIDDEN[@]}` 派生 (R52 自校: N 必须 == 150) |
 
 (*Cumulative counts in this table are best-effort documentation; the canonical count is `${#FORBIDDEN[@]}` in the script.*)
 
@@ -210,6 +211,7 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | `frozen 等同于已写` | R49-GOV.4 (R50) | D160 矩阵: frozen 必须经 runner 验证, 不靠手写 |
 | `R49 草图烂掉靠 reviewer 眼` | R49-GOV.4 (R50) | D160 矩阵: 必须机器 enforced, R50 check_goal_manifest.sh 落地 |
 | `rpc_unit_t = 256B` | R50/D160 | 矩阵立法: endpoint_compact=256B 未立法, 任何现行 RpcUnit 形态暗示 256B 即熔断 (Q78 OPEN) |
+| `-fno-stack-protector` | R52 D161 | C HAL 栈保护器必启 -fstack-protector-strong; v2.1 §3.2 防御静默消失的反向锁 |
 
 ## How to add a new forbidden word
 

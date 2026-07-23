@@ -121,7 +121,7 @@ _start:
     j kmain
 ```
 
-**Verify**: QEMU boots with corrupt DTB → SBI SRST halt; valid DTB → reaches kmain.
+**Verify**: QEMU boots with corrupt DTB → SBI SRST halt (R52 D163: cold_reboot 路径, a0=1); valid DTB → reaches kmain.
 
 ### T1.5: S-Mode Hart ID OpenSBI FFI (D99)
 
@@ -208,6 +208,19 @@ kernel/arch/riscv64/call_gate/
 ```
 
 **Verify**: Hand-edit one struct size in source → gate aborts; revert → gate passes. Add `sys_result_aux_t` symbol → still passes (D113 substring-immune).
+
+### T1.11b: cflag 编译期防线 (R52 D161/D162 收口)
+
+```bash
+# D161: C HAL 栈保护器必启 (-fstack-protector-strong)
+# D162: 单函数栈帧警告阀 (-Wstack-usage=2048, warning-as-error)
+zig build -Dcflags_c_hal="-fstack-protector-strong -Wstack-usage=2048 -Werror=stack-usage"
+```
+
+**Verify**:
+- D161: `nm kernel.elf | grep __stack_chk_guard` 必须单一实例 (`.rodata` 链接期唯一); 故意写一个越界数组函数 → build ABORT (`-fstack-protector-strong` 触发 `__stack_chk_fail` 链接)
+- D162: 故意写一个 3KB 栈帧函数 → build ABORT (`-Werror=stack-usage` 升级 warning)
+- D161 + D162 联防: 16KB Hart-Local 栈 (D107) + 2048B 单帧上限 → ≥8 帧安全余量
 
 ### T1.12: initrd ≤ 50 build.zig gate (D105)
 

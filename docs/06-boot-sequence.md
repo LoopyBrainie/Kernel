@@ -504,9 +504,10 @@ trap_entry:
     // D136 勘误 ②: SBI SRST 参数语义 (RISC-V SBI v2.0 §9.4)
     //   a0 = reset type: 0=shutdown / 1=cold reboot / 2=warm reboot
     //   a1 = reason:     0=none / 1=system failure
+    // R52 D163: fatal stop 路径走 cold_reboot (a0=1), 与 D95/D139 路径同款
     li      a7, SBI_EXT_SRST
     li      a6, SBI_SRST_SYSTEM_RESET
-    li      a0, 0                        // reset_type = shutdown
+    li      a0, 1                        // reset_type = cold_reboot (D163 fatal stop)
     li      a1, 1                        // reason = system failure
     ecall
 1:  j      1b

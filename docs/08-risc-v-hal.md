@@ -539,7 +539,7 @@ panic 路径强制**三通道冗余**:
 
 ```c
 /* HANDWRITTEN: tri-end asserts embedded */  // D121 marker
-// kernel/hal/panic.c (D139 完整实现)
+// kernel/hal/panic.c (D139 + D163 完整实现)
 #include <sbi.h>
 #include <stdint.h>
 
@@ -557,7 +557,8 @@ static inline bool d139_try_enter_panic(void) {
 void cosmo_panic_abort_fmt(const char *file, int line, const char *fmt, ...) {
     if (!d139_try_enter_panic()) {
         // 递归 panic, 直接 reset, 不再尝试输出
-        sbi_system_reset(0, 1, SBI_SRST_SYSTEM_RESET);
+        // D163: fatal stop 路径走 sbi_cold_reboot (a0=1, a1=reason)
+        sbi_system_reset(1, 1);  // (reset_type=cold_reboot, reason=system_failure)
         __builtin_unreachable();
     }
 
@@ -575,8 +576,8 @@ void cosmo_panic_abort_fmt(const char *file, int line, const char *fmt, ...) {
         }
     }
 
-    // 通道 3: 都失败, 强制 reset
-    sbi_system_reset(0, 1, SBI_SRST_SYSTEM_RESET);
+    // 通道 3: 都失败, 强制 reset (D163 cold_reboot 路径)
+    sbi_system_reset(1, 1);  // (reset_type=cold_reboot, reason=system_failure)
     __builtin_unreachable();
 }
 ```
@@ -602,6 +603,49 @@ make test-d139-panic-reset
 
 ---
 
+## D163 增补 (R52): SBI SRST `reset_type` 双轨语义 — `sbi_shutdown` vs `sbi_cold_reboot`
+
+> **回链**: R52 立法, 第四节血统缺口登记册收口。`sbi_system_reset(0, 1)` 单一假设不再成立; SBI v2.0 §9.4 三档 reset_type (`0=shutdown / 1=cold_reboot / 2=warm_reboot`) 各自有合法场景, 必须显式分流。
+
+### 立法
+
+```c
+// D163 双轨分流 (HAL FFI 边界)
+// 路径 A: planned shutdown (D154 SYS_SHUTDOWN HAL FFI 路径)
+static inline void sbi_shutdown(uint32_t reason) {
+    sbi_system_reset(0, reason);  // (reset_type=shutdown, reason)
+    __builtin_unreachable();
+}
+// 路径 B: fatal stop (D95 DTB collision / D136 Step 0 trap / D139 panic / D161 __stack_chk_fail)
+static inline void sbi_cold_reboot(uint32_t reason) {
+    sbi_system_reset(1, reason);  // (reset_type=cold_reboot, reason)
+    __builtin_unreachable();
+}
+```
+
+**调用点分流**:
+- `sbi_shutdown(reason)` ← D154 power-off 路径 (planned, 用户/系统主动)
+- `sbi_cold_reboot(reason)` ← D95/D136/D139/D161 所有不可恢复路径 (fatal, 物理停机+冷启)
+
+### 立法动机 (Windows MVP D-IMPL-05)
+
+MVP 早先全部用 `sbi_system_reset(0, 1)` (单一 shutdown), 配 QEMU `-no-reboot` 时 QEMU 不退出 — `0=shutdown` 期望 firmware 处理 reset, 但 OpenSBI 在 `-no-reboot` 下直接 halt QEMU。MVP 改 `sbi_system_reset(1, 1)` (cold_reboot) 后, QEMU 干净退出。
+
+R52 D163 立法归口: 工具行为驱动偏离不再是 "MVP 自行改的口径", 而是有 D# 背书的合法 spec 行为 — fatal stop 路径全部走 cold_reboot, planned shutdown 才走 shutdown。MVP D-IMPL-05 历史偏差升级为 D163 双轨分流。
+
+### 与 R46 勘误的关系
+
+R46 勘误 ② 把 `sbi_system_reset(0, 1, SBI_SRST_SYSTEM_RESET)` 修订为双参 `(reset_type, reset_reason)`, 删去 `SBI_SRST_SYSTEM_RESET` 常量。R52 D163 在 R46 勘误之上**进一步分流** reset_type, 不冲突, 不替代。
+
+### 传染面
+
+- `06-boot-sequence.md` § D136 Step 0 trap 已升 cold_reboot (R52)
+- `15-phase0-mvp.md` T1.11 SRST 用例分流双轨
+- `16-profile-matrix.md` § 各 profile SRST 默认 (planned shutdown vs fatal stop)
+- `check-docs.sh` 不新增禁词 (D163 是分流语义, 不与既有禁词冲突)
+
+---
+
 ## D141 增补 (R42 Q56, R46 反杜撰勘误后): Hart ID 来源机制 — a0 权威 + DTB num_harts 断言 (cross-ref 06-boot-sequence.md § D141)
 
 D99 `_start: mv tp, a0` 在 `-bios none` 直启模式下契约仍受 a0 完整性保护: Phase 0 启动器 (OpenSBI) 把 hwid 写入 a0 后即校验, 失败则 SRST。**R46 反杜撰纪律**勘误后, R42 Q56 的 "SBI HSM `sbi_hart_get_id` fallback" 已被**禁用**:
@@ -616,7 +660,8 @@ static uint32_t cosmo_get_hart_id(uint32_t a0_hint, const void *dtb) {
     uint32_t dtb_harts = dtb_count_cpu_nodes(dtb);  // DT 节点扫描
     if (a0_hint >= dtb_harts) {
         // D141: a0 越界 DTB 声明的 hart 数, 直接 SRST
-        sbi_system_reset(SBI_SRST_SYSTEM_RESET, 1);
+        // R52 D163: fatal stop 路径走 cold_reboot (a0=1), 配 -no-reboot 干净退出
+        sbi_system_reset(1, 1);  // (reset_type=cold_reboot, reason=system_failure)
     }
     return a0_hint;  // D141: a0 权威
 }
@@ -776,12 +821,12 @@ static inline bool is_fp_or_vv_opcode(uint32_t instr) {
 R46 裁定 (Brra1n0): THR-empty 状态在 **LSR (offset 5) bit 5 (0x20)**, 不是 MCR (offset 4) bit 0 (DTR)。原代码轮询 DTR 位恒 1, panic 路径自己先死循环。QEMU virt 16550 **按字节访问**, `uint32_t*` 索引错。
 
 ```c
-// kernel/hal/panic.c (D139 R46 勘误后, 完整 panic 三通道)
+// kernel/hal/panic.c (D139 R46 勘误后, 完整 panic 三通道; R52 D163 升 cold_reboot)
 void cosmo_panic_abort_fmt(const char *file, int line, const char *fmt, ...) {
     // D139 递归防御 (D127 load/store-only, 禁 RMW)
     if (!d139_try_enter_panic()) {
-        // R46 勘误: SBI SRST 双参 (reset_type, reset_reason), 不存在 SBI_SRST_SYSTEM_RESET 常量
-        sbi_system_reset(0, 1);  // (reset_type=shutdown, reason=system_failure)
+        // R52 D163: fatal stop 路径走 sbi_cold_reboot (a0=1), 不再 shutdown (a0=0)
+        sbi_system_reset(1, 1);  // (reset_type=cold_reboot, reason=system_failure)
         __builtin_unreachable();
     }
 
@@ -799,8 +844,8 @@ void cosmo_panic_abort_fmt(const char *file, int line, const char *fmt, ...) {
         }
     }
 
-    // 通道 3: 都失败, 强制 reset
-    sbi_system_reset(0, 1);  // R46 勘误: 双参, 不带常量
+    // 通道 3: 都失败, 强制 reset (R52 D163 cold_reboot 路径)
+    sbi_system_reset(1, 1);  // (reset_type=cold_reboot, reason=system_failure)
     __builtin_unreachable();
 }
 ```
