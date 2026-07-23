@@ -79,7 +79,8 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | R53 Naming Taxonomy SSOT 立法 (D164/D165/D166/D167) | 4 | **154** | neura_sys_result_t / basal_sys_result_t / cortix_sys_result_t / synapse_sys_result_t (D165: 跨语言公共符号不加组件前缀, 4 反向锚, Linux 内核惯例; 与 D121 5 struct 白名单 + D171 neura_ syscall 前缀三向正交) |
 | R59 neura_ syscall API 立法 (D171) + R60 命名迁移最终封口 (D172) | 14 | **168** | cosmo_open / cosmo_read / cosmo_write / cosmo_close / cosmo_seek / cosmo_stat / cosmo_yield / cosmo_ping / cosmo_rpc_send / cosmo_pte_map_6arg / cosmo_ipc_send_6arg / cosmo_open_stub / cosmo_pte_map_6arg_fn / cosmo_node_id (13 条 D171 派生禁词 + 1 条 D172 元规则: 历史引用豁免策略; R60 收口统一入册, EXPECTED_TOTAL 154→168; R58 因 Q69 阻塞跳过, Phase 1 待启) |
 | R58 补执行 (D173 Q69 豁免) — cortix_kernel crate 名迁移 | 1 | **169** | cosmo_kernel (D173 派生禁词; Q69 Rust crate 拓扑阻塞由 D173 正交论证豁免: crate 命名空间标识 vs 运行时数据流 fd 0/1/2 路由; R58 补执行在 R60 之后追加, EXPECTED_TOTAL 168→169; 实际传染面 1 文件 1 行 `07-shell-architecture.md:92 use cosmo_kernel` → `use cortix_kernel`) |
-| **Total** | — | **169** | `${#FORBIDDEN[@]}` 派生 (R58 补执行自校: N 必须 == 169) |
+| R61 D171 增补 — syscall 编号表 11-15 (HAL-暴露型 syscall 入口) | 5 | **174** | cosmo_copy_from_user / cosmo_copy_to_user / cosmo_atomic_cas_ptr / cosmo_hal_set_next_timer / cosmo_hal_fs_is_dirty (R59 计划文件 §1.2 漏列的 5 个 syscall 入口; R61 在 R58 补之后追加, EXPECTED_TOTAL 169→174; syscall 0x0B-0x0F 编号表 5 行 `cosmo_*` → `neura_*`; 接口层剥离 HAL 限定符 `hal_` (例 `neura_set_next_timer` 非 `neura_hal_set_next_timer`); 30-open-questions.md line 2400/2404 stale cross-ref 同步) |
+| **Total** | — | **174** | `${#FORBIDDEN[@]}` 派生 (R61 自校: N 必须 == 174) |
 
 (*Cumulative counts in this table are best-effort documentation; the canonical count is `${#FORBIDDEN[@]}` in the script.*)
 

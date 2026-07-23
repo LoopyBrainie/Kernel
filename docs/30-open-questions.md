@@ -2397,11 +2397,11 @@ comptime {
 **当前 Spec 状态**:
 - D115: "SUM (sstatus Bit 18) 搭便车在 trap_entry 自动保存/恢复"
 - D116: ex_table fixup 强制清零 SUM=0
-- 06-boot-sequence.md:172-178: `cosmo_do_user_fault_fixup` 显式清 SUM=0
+- 06-boot-sequence.md:172-178: `basal_do_user_fault_fixup` 显式清 SUM=0
 
 **冲突点 (R44 元规则六: 嵌套异常全场景)**:
 
-- User U-Mode SUM=1, 跑 cosmo_copy_from_user, 触发 page fault (D116 ex_table 命中)
+- User U-Mode SUM=1, 跑 neura_copy_from_user, 触发 page fault (D116 ex_table 命中)
 - Fixup: SUM=0 (D115 协同), 注入 EFAULT, sret
 - 但 fixup 自己可能触发 page fault (fixup 代码在 kernel text, 通常不会; 但若 fixup 操作 touch 一个尚未映射的栈页)
 - 嵌套 page fault → trap_entry → trap_handler → nested trap
