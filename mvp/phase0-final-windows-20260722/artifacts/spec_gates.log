@@ -1,0 +1,146 @@
+﻿=== check-docs.sh ===
+✓ Wriggly-Octopus documentation gate passed (0/149 forbidden words)
+
+=== check-d-backlinks.sh ===
+✓ check-d-backlinks passed (35 D126-D160 tags, all back-linked, canary self-test OK)
+
+=== check_goal_manifest.sh ===
+✓ check_goal_manifest passed (0 GOAL*.md files; zero-match = explicit pass)
+✓ check_goal_manifest canary self-test OK (3/3: clean passes, bad-no-header fails, bad-dangling-r fails)
+
+=== spec_lab run_all.sh ===
+==> R49-F1-jr.sh
+powershell : extracted: /d/myProject/Kernel/tools/spec_lab/extracted/R49-F1-jr.ext (lines 52-70 of docs/05-call-gate.md
+)
+所在位置 行:1 字符: 107
++ ... ing]::UTF8; powershell -ExecutionPolicy Bypass -File "D:\myProject\Ke ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (extracted: /d/m...5-call-gate.md):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+PASS: R49-F1-jr (05-call-gate.md § entry_call_gate.S 已勘误为 jr t0)
+
+==> R49-F2-lwu.sh
+extracted: /d/myProject/Kernel/tools/spec_lab/extracted/R49-F2-lwu.ext (lines 56-143 of docs/06-boot-sequence.md)
+PASS: R49-F2-lwu (06-boot-sequence.md § Step 0 DTB magic 加载已勘误为 lwu)
+
+==> R49-F3-hlcb1.sh
+extracted: /d/myProject/Kernel/tools/spec_lab/extracted/R49-F3-hlcb1.ext (lines 56-143 of docs/06-boot-sequence.md)
+PASS: R49-F3-hlcb1 (06-boot-sequence.md § HLCB_SIZE=1 边界条款已立法)
+
+==> R51-F5-rev8.sh
+extracted: /d/myProject/Kernel/tools/spec_lab/extracted/R51-F5-rev8.ext (lines 177-196 of docs/06-boot-sequence.md)
+PASS: R51-F5-rev8 (06-boot-sequence.md § byte-swap 已显式化为 slli+srli)
+
+==> R51-M1-sys-shutdown.sh
+PASS: R51-M1-sys-shutdown (SYS_SHUTDOWN=0x28 双处登记 + D154 回链)
+
+==> R51-M2-bss-anchor.sh
+extracted: /d/myProject/Kernel/tools/spec_lab/extracted/R51-M2-bss-anchor.ext (lines 156-196 of docs/06-boot-sequence.m
+d)
+PASS: R51-M2-bss-anchor (var shim_state: ShimState = .{} 零构造)
+
+==> R51-M3-errorprint.sh
+PASS: R51-M3-errorprint (error: code=%d sub=0x%04X node=0x%04X 三字段齐)
+
+==> R51-M4-ledger-cap.sh
+extracted: /d/myProject/Kernel/tools/spec_lab/extracted/R51-M4-ledger-cap.ext (lines 80-93 of docs/13-build-pipeline.md
+)
+PASS: R51-M4-ledger-cap (text≤80KB rodata≤10KB data≤4KB bss≤8KB + @compileError)
+
+==> R51-M5-hlcb-bss.sh
+extracted: /d/myProject/Kernel/tools/spec_lab/extracted/R51-M5-hlcb-bss.ext (lines 145-154 of docs/06-boot-sequence.md)
+PASS: R51-M5-hlcb-bss (HLCB 删 in_kernel_space, .bss HartLocalControl.in_kernel 托管)
+
+==> R51-M6-size-csv.sh
+PASS: R51-M6-size-csv (--elf-output-style=JSON + jq [].Symbols[].Symbol)
+
+==> R51-M7-strip-mode.sh
+extracted: /d/myProject/Kernel/tools/spec_lab/extracted/R51-M7-strip-mode.ext (lines 97-102 of docs/13-build-pipeline.m
+d)
+PASS: R51-M7-strip-mode (kernel_strip: bool = false, -Dstrip=false 显式)
+
+==========================================
+R51 spec_lab: 11/11 PASS
+==========================================
+
+=== spec_lab run_negative.sh ===
+==> R49-F1-jr_negative.sh
+PASS: R49-F1-jr_negative (反例 jalr ra, t0 确实被正向断言抓到)
+
+==> R49-F2-lwu_negative.sh
+PASS: R49-F2-lwu_negative (反例 lw 确实被正向断言抓到)
+
+==> R49-F3-hlcb1_negative.sh
+PASS: R49-F3-hlcb1_negative (反例缺 @compileError 确实被正向断言抓到)
+
+==> R51-F5-rev8_negative.sh
+extracted: /d/myProject/Kernel/tools/spec_lab/extracted/R51-F5-rev8.ext (lines 177-196 of docs/06-boot-sequence.md)
+FAIL: R51-F5-rev8 指令行仍含 'rev8' — 假设 Zbb 不可用, 必须 slli+srli
+PASS: R51-F5-rev8_negative (反例 rev8 被正向抓到, RC=1)
+
+==> R51-M1-sys-shutdown_negative.sh
+FAIL: R51-M1 SYS_SHUTDOWN 值不为 0x28
+PASS: R51-M1-sys-shutdown_negative (反例 0x30 被正向抓到, RC=1)
+
+==> R51-M2-bss-anchor_negative.sh
+extracted: /d/myProject/Kernel/tools/spec_lab/extracted/R51-M2-bss-anchor.ext (lines 156-196 of docs/06-boot-sequence.m
+d)
+FAIL: R51-M2 锚点变量被 const 绑定 — 违反 D155
+PASS: R51-M2-bss-anchor_negative (反例 const 被正向抓到, RC=1)
+
+==> R51-M3-errorprint_negative.sh
+FAIL: R51-M3 error print 缺 node=0x%04X (或 padding 丢失)
+PASS: R51-M3-errorprint_negative (反例 缺 node= 被正向抓到, RC=1)
+
+==> R51-M4-ledger-cap_negative.sh
+extracted: /d/myProject/Kernel/tools/spec_lab/extracted/R51-M4-ledger-cap.ext (lines 80-93 of docs/13-build-pipeline.md
+)
+FAIL: R51-M4 ledger_caps 缺失: bss_max.*8192
+---- 抽取内容 ----
+// R51-M4 (D-11 / D157): Phase 0 ledger 上限固化 (编译期熔断, 越界 build ABORT)
+// 单一真相: 02 § D49 ceiling 644 KB; 各 section 严格 ≤ 限额
+pub const ledger_caps = struct {
+    pub const text_max: u32    = 81920;   // .text  ≤ 80 KB
+    pub const rodata_max: u32  = 10240;   // .rodata ≤ 10 KB
+    pub const data_max: u32    = 4096;    // .data   ≤ 4 KB
+    pub const bss_max: u32     = 16384;    // .bss    ≤ 8 KB
+};
+comptime {
+    if (kernel.text_size    > ledger_caps.text_max)   @compileError("R51-M4: text 越界");
+    if (kernel.rodata_size  > ledger_caps.rodata_max) @compileError("R51-M4: rodata 越界");
+    if (kernel.data_size    > ledger_caps.data_max)   @compileError("R51-M4: data 越界");
+    if (kernel.bss_size     > ledger_caps.bss_max)    @compileError("R51-M4: bss 越界");
+}
+PASS: R51-M4-ledger-cap_negative (反例 bss=16384 被正向抓到, RC=1)
+
+==> R51-M5-hlcb-bss_negative.sh
+extracted: /d/myProject/Kernel/tools/spec_lab/extracted/R51-M5-hlcb-bss.ext (lines 145-155 of docs/06-boot-sequence.md)
+FAIL: R51-M5 06-boot-sequence.md 含未标注 OBSOLETED 的 in_kernel_space 引用
+147:    in_kernel_space: bool = true,  // NEGATIVE: 复活 D82
+148:# R47 P1-1 (R48-1) extern struct 修复后, HLCB layout (D82) 删除 in_kernel_space 字段 (64B 严守).
+PASS: R51-M5-hlcb-bss_negative (反例 复活 in_kernel_space 被正向抓到, RC=1)
+
+==> R51-M6-size-csv_negative.sh
+FAIL: R51-M6 活代码仍含 --syms --json (LLVM 18 不存在 --json)
+107:// **正确命令**: llvm-readobj --syms --syms --json | jq '.[].Symbols[].Symbol'
+PASS: R51-M6-size-csv_negative (反例 --syms --json 被正向抓到, RC=1)
+
+==> R51-M7-strip-mode_negative.sh
+extracted: /d/myProject/Kernel/tools/spec_lab/extracted/R51-M7-strip-mode.ext (lines 97-102 of docs/13-build-pipeline.m
+d)
+FAIL: R51-M7 kernel_strip 非显式 false
+---- 抽取内容 ----
+// R51-M7 (D-21 / D159): ReleaseSmall 默认 `-Dstrip` 让 nm/readobj 输空表, 门禁空真通过.
+// 必须显式 `-Dstrip=false -Doptimize=ReleaseSafe`, 否则 D129 T-属性门禁 + D113 size-csv
+// 闸门都返回空表, 误判 ELF 合规. 沙箱三实测: ReleaseSmall 默认 + nm 输出空 → elf size gate PASS
+// 但实际 symbol 全 strip → 真实不通过. 修正: build.zig 强制 `-Dstrip=false`.
+pub const kernel_optimize: std.builtin.OptimizeMode = .ReleaseSafe;
+pub const kernel_strip: bool = true;  // R51-M7 强制 false; D-21 收口
+PASS: R51-M7-strip-mode_negative (反例 strip=true 被正向抓到, RC=1)
+
+==========================================
+R51 spec_lab negative: 11/11 反例被抓到
+==========================================
+
+ALL SPEC GATES PASS (5/5)

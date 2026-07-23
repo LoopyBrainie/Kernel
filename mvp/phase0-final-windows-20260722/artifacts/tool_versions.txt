@@ -1,0 +1,150 @@
+================================================================================
+tool_versions.txt — 本地环境普查 (P0 落盘, 2026-07-22 22:?? UTC+8)
+================================================================================
+基准对照: docs/ + SPEC.md, 16 号文 profile 矩阵 D160 (qemu_virt 基线)
+环境: Windows 11 25H2 (10.0.x) · PowerShell 7.6.3 · 用户-scope scoop 管理
+约束: 用户授权前, 不修改系统环境 (PATH / rustup target add / 新装包)
+
+--------------------------------------------------------------------------------
+[zig]            主机用 0.16.0 (scoop 装) |  spec 写 0.15.2 (toolchain.lock)
+--------------------------------------------------------------------------------
+  路径:    C:\Users\LamKo\scoop\shims\zig.exe
+  来源:    scoop bucket=main  (zig 0.16.0, installed 2026-07-06 08:37:46)
+  实际:    0.16.0
+  期望:    0.15.2 (spec/toolchain.lock L3-L4: zig 0.15.2 / x86_64-linux tarball)
+  DIVERGENCE: zig 0.16.0 vs spec 0.15.2 — D-ENV-01
+  备注:    R51-F1 (D-01) 禁字面 "host Zig 0.16" 仅约束 docs/ ; 0.16 >= 0.15 兼容
+           0.16 引入 Build API 破坏性变更 (例如 Step 1/Step 2 顺序, .addSystemCommand
+           字段形态, b.pathFromRoot). build.zig 需按 0.16 写, 不能 1:1 用 0.15 草图.
+
+--------------------------------------------------------------------------------
+[qemu]           11.0.0 (scoop 装) |  spec 写 7.2.22
+--------------------------------------------------------------------------------
+  路径:    C:\Users\LamKo\scoop\apps\qemu\current\qemu-system-riscv64.exe
+  来源:    scoop bucket=main (qemu 11.0.0, installed 2026-07-22 22:??)
+  实际:    QEMU emulator version 11.0.0 (v11.0.0-12122-ga4bb4b10c9)
+  期望:    qemu 7.2.22 (spec/toolchain.lock L7-L8: deb:qemu-system-misc bookworm)
+  DIVERGENCE: qemu 11.0.0 vs spec 7.2.22 — D-ENV-02
+  备注:    qemu 9 起 OpenSBI 默认捆绑 fw_dynamic.elf 改路径; qemu 11 默认
+           -bios 默认 = builtin, 启动 OpenSBI v1.x. 影响 D95 校验时序.
+           ABI 风险: 9+ 引入若干 RISC-V 段对齐改动, 需实测.
+
+--------------------------------------------------------------------------------
+[rust]           rustc 1.97.1 (scoop 装) |  spec 写 1.88.0
+--------------------------------------------------------------------------------
+  路径 rustc: C:\Users\LamKo\scoop\apps\rustup\current\.rustup\toolchains\stable-x86_64-pc-windows-msvc\bin\rustc.exe
+  路径 cargo: 同上 bin\cargo.exe
+  路径 rustup-proxy: C:\Users\LamKo\scoop\apps\rustup\current\.cargo\bin\rustup.exe
+  实际 rustc:  1.97.1 (8bab26f4f 2026-07-14)
+  实际 rustup: 1.29.0 (28d1352db 2026-03-05) (proxy only, no default toolchain 配置)
+  期望:        rustc 1.88.0 / rustup 1.29 / cargo 1.88 (spec/toolchain.lock L5-L6)
+  DIVERGENCE: rustc 1.97.1 vs spec 1.88.0 — D-ENV-03
+  备注:        rustup proxy 在本机未配 default toolchain (rustup show: no default
+               configured). 实际编译必须直调 toolchain/bin/rustc.exe, 不能用
+               C:\Users\LamKo\scoop\apps\rustup\current\.cargo\bin\rustc.exe (proxy 报
+               "no default configured"). build.zig 需用绝对路径.
+
+--------------------------------------------------------------------------------
+[rust-targets]   已装: riscv64gc-unknown-none-elf |  spec 写 双装: gc + imac
+--------------------------------------------------------------------------------
+  路径:    C:\Users\LamKo\scoop\apps\rustup\current\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib\rustlib\
+  实际:    仅有 riscv64gc-unknown-none-elf (riscv64imac-unknown-none-elf 不在)
+  期望:    双装 (spec/toolchain.lock L6: riscv64gc-unknown-linux-gnu, riscv64imac-unknown-none-elf)
+  DIVERGENCE: 仅装 riscv64gc, 缺 imac — D-ENV-04
+  处置:    用户授权前禁 rustup target add. 本轮 Rust shell 暂用 riscv64gc, 经
+           -C target-feature=-f,-d,-v,-b 切软浮点 + 禁 B/Zbb 扩展, ABI 与 imac
+           对齐. 见 DIVERGENCE.md D-ENV-04 处置细节.
+
+--------------------------------------------------------------------------------
+[llvm]           22.1.8 (scoop 装) |  spec 写 18.1.8
+--------------------------------------------------------------------------------
+  路径:    C:\Users\LamKo\scoop\apps\llvm\current\bin\
+  实际:    clang / llvm-readobj / llvm-nm / llvm-objcopy / llvm-size 全 22.1.8
+  期望:    llvm 18.1.8 (spec/toolchain.lock L9-L10)
+  DIVERGENCE: llvm 22.1.8 vs spec 18.1.8 — D-ENV-05
+  备注:    R51-M6 闸门要求 llvm-readobj --elf-output-style=JSON; LLVM 22 该旗标
+           稳定. 18→22 期间 schema 字段略增 (e.g. 段名 "Symbols" 仍存在), 不破.
+           仅 jq 路径 .[].Symbols[].Symbol 三层不可改.
+
+--------------------------------------------------------------------------------
+[bash]           5.3.9(1)-release (x86_64-pc-cygwin) |  spec 写 "bash 来源与版本"
+--------------------------------------------------------------------------------
+  路径:    C:\Users\LamKo\scoop\apps\git\current\bin\bash.exe (Git Bash 捆绑)
+  实际:    GNU bash 5.3.9(1)-release (x86_64-pc-cygwin)
+  期望:    未冻结具体版本 (P0 普查清单)
+  备注:    cygwin MSYS 类, 路径 /d/myProject/Kernel 形式. 门禁脚本 (docs/ci/*)
+           用 shebang `#!/usr/bin/env bash` 直跑 OK; spec_lab 抽 .ext 路径含
+           /d/myProject/..., PowerShell 拦截 stderr "extracted: /d/..." 当异常
+           但 bash 进程实际 exit 0 (4 个正向 PASS, 0 个 FAIL).
+
+--------------------------------------------------------------------------------
+[jq]            不需要, 用户确认 pwsh/python 等价
+--------------------------------------------------------------------------------
+  路径:    N/A
+  实际:    未装
+  期望:    不强求 (R51-M6 闸门可用 pwsh + ConvertFrom-Json 等价)
+  备注:    D113 jq 解析改用 PowerShell 原生 ConvertFrom-Json (见本轮 jq 替代脚本
+           tools/check_elf_sizes.ps1). 不安装 jq 也不需要 PATH 改.
+
+--------------------------------------------------------------------------------
+[python]         3.14.6 (scoop 装) |  spec 写 "python3 翻译器"
+--------------------------------------------------------------------------------
+  路径:    C:\Users\LamKo\scoop\apps\python\current\python.exe
+  实际:    Python 3.14.6
+  期望:    未冻结 (translate_abi.py 用 #!/usr/bin/env python3)
+  备注:    OK, 3.14 兼容 pathlib + dataclasses.
+
+--------------------------------------------------------------------------------
+[git]            2.54.0.windows.1
+--------------------------------------------------------------------------------
+  路径:    C:\Users\LamKo\scoop\shims\git.exe
+  实际:    git version 2.54.0.windows.1
+
+--------------------------------------------------------------------------------
+[OpenSBI]        由 qemu 11.0.0 内置 (-bios default 行为)
+--------------------------------------------------------------------------------
+  来源:    qemu 11.0.0 自带 OpenSBI v1.x 固件 (fw_dynamic.elf 内嵌)
+  实际:    banner 形如 "OpenSBI v1.x" (待 P2 落盘实测)
+  期望:    OpenSBI 提供 sbi_console_putchar / sbi_srst_system_reset
+  备注:    D88 / D95 / D76 / D117 四个 sbi_* 调用依赖此固件. QEMU 11 默认
+           -bios = builtin, 启动后即进 OpenSBI; 不需另传 -bios 参数.
+
+--------------------------------------------------------------------------------
+[cargo-bin]      本机 .cargo/bin/ 内容
+--------------------------------------------------------------------------------
+  路径:    C:\Users\LamKo\.cargo\bin\
+  实际:    cargo-embed.exe, cargo-flash.exe, probe-rs.exe (仅嵌入式工具)
+  备注:    没有 cargo.exe 直接副本, 必须从 toolchain/bin/ 调; 或在
+           build.zig 里设绝对路径.
+
+================================================================================
+DIVERGENCE 摘要 (详见 DIVERGENCE.md, 本表是 quick view)
+================================================================================
+  D-ENV-01  zig 0.16.0 vs spec 0.15.2  (工具版本)
+  D-ENV-02  qemu 11.0.0 vs spec 7.2.22 (工具版本)
+  D-ENV-03  rustc 1.97.1 vs spec 1.88.0 (工具版本)
+  D-ENV-04  riscv64gc-only vs spec 双装  (目标缺 imac, 用户授权前禁 add)
+  D-ENV-05  llvm 22.1.8 vs spec 18.1.8  (工具版本, R51-M6 闸门 flag 兼容)
+  D-ENV-06  scoop PowerShell ExecutionPolicy 拦截
+  D-ENV-07  PowerShell 把 stderr "extracted: /d/..." 当 RemoteException
+  D-ENV-08  rustup proxy 未配 default toolchain, 必须直调 toolchain/bin/
+
+================================================================================
+P3 门禁实测本地输出 (10+3+1 PASS, 与 5 个 spec gate 全部一致)
+================================================================================
+  docs/ci/check-docs.sh           0/149 forbidden words  (EXIT=0)
+  docs/ci/check-d-backlinks.sh    35/35 D126-D160 + canary  (EXIT=0)
+  docs/ci/check_goal_manifest.sh  0 GOAL*.md + canary 3/3  (EXIT=0)
+  tools/spec_lab/run_all.sh       11/11 PASS  (R49-F1,F2,F3 + R51-F5,M1..M7)
+  tools/spec_lab/run_negative.sh  11/11 caught  (全部反向反例被正向抓到)
+
+================================================================================
+本轮 P1 实施前置 (基于本表)
+================================================================================
+  - build.zig 走 zig 0.16 API (Step1/Step2 顺序, .addSystemCommand 字段形态,
+    b.pathFromRoot 等)
+  - cargo 走绝对路径, 不走 rustup proxy (proxy 报 "no default configured")
+  - llvm-nm / llvm-readobj 走 llvm 22.1.8 绝对路径
+  - 闸门脚本用 bash 5.3.9 (cygwin) 跑, jq 替代用 pwsh ConvertFrom-Json
+  - Rust shell 暂用 riscv64gc + -C target-feature=-f,-d,-v,-b 切 imac ABI 等价
+  - qemu 启动行不传 -bios, 用默认 builtin (OpenSBI v1.x)

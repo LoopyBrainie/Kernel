@@ -1,0 +1,29 @@
+﻿=== P3 Step 1: 3脳clean rebuild 鈫?sha256 ===
+  build 1...
+  build_1.sha256 : 86243284A8CD506F75AF23CCD6E903F788AC270DAE14608FE540D5E990AE5B52
+  build 2...
+  build_2.sha256 : 86243284A8CD506F75AF23CCD6E903F788AC270DAE14608FE540D5E990AE5B52
+  build 3...
+  build_3.sha256 : 86243284A8CD506F75AF23CCD6E903F788AC270DAE14608FE540D5E990AE5B52
+C3 PASS: 3 builds identical (86243284A8CD506F75AF23CCD6E903F788AC270DAE14608FE540D5E990AE5B52)
+
+=== P3 Step 2: Section sizes (R51-M4 ledger_caps) ===
+     text	   data	    bss	    dec	    hex	filename
+     1964	      0	  25192	  27156	   6a14	D:\myProject\Kernel\mvp\phase0-final-windows-20260722\zig-out\bin\kernel.elf
+
+=== P3 Step 3: nm 5 struct anchors (D101/D113) ===
+  sys_result_t : size=16 PASS
+  network_frame_t : size=1536 PASS
+  rpc_unit_t : size=1536 PASS
+  block_t : size=1536 PASS
+  sys_result_payload_t : size=8 PASS
+C4 PASS: 5 struct sizes verified
+
+=== P3 Step 4: spec 鍐呴儴闂ㄧ (check-docs / check-d-backlinks / check_goal_manifest / spec_lab) ===
+check-docs PASS
+check-d-backlinks PASS
+check_goal_manifest PASS
+spec_lab run_all PASS
+spec_lab run_negative PASS
+
+ALL P3 GATES PASS

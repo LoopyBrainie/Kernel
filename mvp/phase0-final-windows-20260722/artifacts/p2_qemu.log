@@ -1,0 +1,12 @@
+﻿=== Run 1 ===
+  exited rc=[]
+=== Run 2 ===
+  exited rc=[]
+=== Run 3 ===
+  exited rc=[]
+
+=== Verdict ===
+  run_1 : cosmo=True prompts=6 echo=True shutdown=True  => PASS
+  run_2 : cosmo=True prompts=6 echo=True shutdown=True  => PASS
+  run_3 : cosmo=True prompts=6 echo=True shutdown=True  => PASS
+C2 PASS: 3 runs all show markers + clean exit
