@@ -113,7 +113,7 @@ static inline bool cosmo_atomic_cas_ptr(
         // D108 R31 fix: Tier 2 MUST pair csrc sstatus, SIE with SBI IPI sync.
         // Single-Hart SIE disable cannot block remote Hart writes.
         if (!has_ipi_capability) {
-            cosmo_panic_abort("Tier 2 requires SBI IPI (D108)");
+            basal_panic_abort("Tier 2 requires SBI IPI (D108)");
         }
         register_t prev = csr_read_clear(sstatus, SSTATUS_SIE);
         sbi_send_ipi(peer_mask);                          // notify peer Harts
@@ -203,7 +203,7 @@ static inline bool cosmo_atomic_cas_ptr(
         return cur == old_val;
     } else if (has_a_extension && !has_global_coherence) {
         if (!has_ipi_capability) {
-            cosmo_panic_abort(__FILE__, __LINE__, "Tier 2 requires SBI IPI (D108)");
+            basal_panic_abort(__FILE__, __LINE__, "Tier 2 requires SBI IPI (D108)");
         }
         register_t prev = csr_read_clear(sstatus, SSTATUS_SIE);
         sbi_send_ipi(peer_mask);
@@ -212,7 +212,7 @@ static inline bool cosmo_atomic_cas_ptr(
         while (!ipi_acked(peer_mask)) {
             if (csrr_read(time) > deadline) {
                 // D117 binding: panic 输出 peer_mask + 发起 Hart ID,定位信息
-                cosmo_panic_abort_fmt(__FILE__, __LINE__,
+                basal_panic_abort_fmt(__FILE__, __LINE__,
                     "D94 Tier 2 IPI ACK timeout: peer_mask=0x%lx hart_id=%u",
                     (unsigned long)peer_mask, current_hart_id());
             }
@@ -521,7 +521,7 @@ llvm-objdump -d build/kernel.elf \
 
 ### 问题与动机
 
-D117 R34 fix: Tier 2 IPI ACK 1ms timeout 后 `cosmo_panic_abort_fmt(...)` 输出 peer_mask + hart_id, 假设 panic 一定能输出。但 panic 自身可能死锁:
+D117 R34 fix: Tier 2 IPI ACK 1ms timeout 后 `basal_panic_abort_fmt(...)` 输出 peer_mask + hart_id, 假设 panic 一定能输出。但 panic 自身可能死锁:
 
 - **路径 1 (SBI putchar)**: D88 之前使用, RISC-V SBI v2.0 §5.1 Legacy Console Putchar (EID=0x01)。若 OpenSBI 自身 hang (e.g., DTB parse 中), 输出字符排队不到 console, kernel silent。
 - **路径 2 (UART0 MMIO)**: D88 之后使用, 直接 MMIO 写 UART0 THR 寄存器 (QEMU virt 默认 0x10000000)。若 UART0 硬件故障 / 寄存器访问 trap, 死循环。
@@ -537,7 +537,7 @@ panic 路径强制**三通道冗余**:
 2. **通道 2 (UART0 MMIO)**: `early_console_is_uart0_ready()` 检测通过后, 直接 MMIO 写, 兼容 D88 后期
 3. **通道 3 (`sbi_system_reset`)**: 通道 1 + 2 都失败, 调 M-Mode 强制 reset, 保证 kernel 退出 (与 D95 DTB collision 同款 reset 路径)
 
-**递归 panic 防御**: `__cosmo_panic_in_progress` 静态标志 (D127 load/store-only, 用 `__atomic_load_n` + `__atomic_store_n` 不用 RMW), 入口检测若已在 panic 则直接 `sbi_system_reset` 不再尝试输出, 防止 stack overflow。
+**递归 panic 防御**: `__basal_panic_in_progress` 静态标志 (D127 load/store-only, 用 `__atomic_load_n` + `__atomic_store_n` 不用 RMW), 入口检测若已在 panic 则直接 `sbi_system_reset` 不再尝试输出, 防止 stack overflow。
 
 ```c
 /* HANDWRITTEN: tri-end asserts embedded */  // D121 marker
@@ -546,17 +546,17 @@ panic 路径强制**三通道冗余**:
 #include <stdint.h>
 
 // D139: panic 递归防御 (D127 load/store-only 严格遵守, 禁 RMW)
-static volatile uint8_t __cosmo_panic_in_progress = 0;
+static volatile uint8_t __basal_panic_in_progress = 0;
 
 static inline bool d139_try_enter_panic(void) {
     // D127: load + store 路径, 无 RMW (无 amoswap/cas)
-    uint8_t cur = __atomic_load_n(&__cosmo_panic_in_progress, __ATOMIC_ACQUIRE);
+    uint8_t cur = __atomic_load_n(&__basal_panic_in_progress, __ATOMIC_ACQUIRE);
     if (cur) return false;  // 已在 panic, 不再输出
-    __atomic_store_n(&__cosmo_panic_in_progress, 1, __ATOMIC_RELEASE);
+    __atomic_store_n(&__basal_panic_in_progress, 1, __ATOMIC_RELEASE);
     return true;
 }
 
-void cosmo_panic_abort_fmt(const char *file, int line, const char *fmt, ...) {
+void basal_panic_abort_fmt(const char *file, int line, const char *fmt, ...) {
     if (!d139_try_enter_panic()) {
         // 递归 panic, 直接 reset, 不再尝试输出
         // D163: fatal stop 路径走 sbi_cold_reboot (a0=1, a1=reason)
@@ -595,7 +595,7 @@ make test-d139-panic-reset
 ### 传染面
 
 - `06-boot-sequence.md` § early_console_init 添加 `early_console_is_uart0_ready()` 检测函数 (返回 bool)
-- `15-phase0-mvp.md` T1.7 (cosmo_panic_abort C HAL) 升级为 D139 + 新增 T1.25 (panic fail-stop 测试)
+- `15-phase0-mvp.md` T1.7 (basal_panic_abort C HAL) 升级为 D139 + 新增 T1.25 (panic fail-stop 测试)
 - `20-documentation-gate.md` **新增禁词**: "panic 假定成功" / "panic fall-through 单一路径"
 
 ### 元规则校验
@@ -742,7 +742,7 @@ D94 Tier 3 增加 `num_harts > 1` 检测, 多 Hart 走 SBI IPI 自旋锁 (与 Ti
         uint64_t deadline = csrr_read(time) + d94_tier2_timeout_ticks;
         while (!ipi_acked(peer_mask)) {
             if (csrr_read(time) > deadline) {
-                cosmo_panic_abort_fmt(...);  // D117 timeout
+                basal_panic_abort_fmt(...);  // D117 timeout
             }
         }
         bool match = (*dest == old_val);
@@ -824,7 +824,7 @@ R46 裁定 (Brra1n0): THR-empty 状态在 **LSR (offset 5) bit 5 (0x20)**, 不�
 
 ```c
 // kernel/hal/panic.c (D139 R46 勘误后, 完整 panic 三通道; R52 D163 升 cold_reboot)
-void cosmo_panic_abort_fmt(const char *file, int line, const char *fmt, ...) {
+void basal_panic_abort_fmt(const char *file, int line, const char *fmt, ...) {
     // D139 递归防御 (D127 load/store-only, 禁 RMW)
     if (!d139_try_enter_panic()) {
         // R52 D163: fatal stop 路径走 sbi_cold_reboot (a0=1), 不再 shutdown (a0=0)

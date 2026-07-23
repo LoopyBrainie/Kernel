@@ -115,9 +115,9 @@ The full D1-D125 decision ledger with status column. Each row has class (1=evide
 | D71 | 2 | ACTIVE | RpcUnit align(64) unified |
 | D72 | 2 | ACTIVE | Open path ≤ 60 chars |
 | D73 | 1 | ACTIVE | **Call Gate does NOT touch sscratch (R21) — 现行真相, D62 取代者** |
-| D74 | 1 | ACTIVE | SSOT for ABI (build.zig translate-abi) |
+| D74 | 1 | **DEPRECATED** | SSOT for ABI (build.zig translate-abi). **SUPERSEDED by D170** (R54 收口): SSOT 输入路径从 `kernel/include/sys/abi.zig` 迁至 `basal/include/sys/abi.zig`. D74 路径条款撤销, 仅保留"translate-abi 编译期生成器"语义. Back-link: `13-build-pipeline.md` § SSOT 生成器段. |
 | D75 | 2 | ACTIVE | 4KB physical page alignment (SPI Flash) |
-| D76 | 1 | ACTIVE | cosmo_panic_abort C HAL single panic |
+| D76 | 1 | **DEPRECATED** | `basal_panic_abort` C HAL single panic. **SUPERSEDED by D168** (R54 收口): C HAL panic 路径函数名 `cosmo_panic_abort` → `basal_panic_abort` (绑 Basal 组件代号, D166 分批范式 R54 批次). 撤销立法条, 落地迁移绑定 D168. Back-link: `08-risc-v-hal.md` § panic 多通道 + `06-boot-sequence.md` § D76 启动期可用 + `15-phase0-mvp.md` T1.7. |
 | D77 | 2 | ACTIVE | Primary Hart DTB release deferred (Phase B) |
 | D78 | 2 | ACTIVE | FILE_TABLE in .rodata (not NodePool) |
 | D79 | 1 | ACTIVE | 14B MAC DMA pool (not .bss) |
@@ -274,7 +274,7 @@ The full D1-D125 decision ledger with status column. Each row has class (1=evide
 | # | Class | Status | Decision |
 |---|-------|--------|----------|
 | D147 | 1 | ACTIVE | D66 立法明确化为 entry.S Step 0 顶部 `fence.i` 单条, 闸门改**链接期 W^X 校验** (page table/segment flags), `fence.i` 非特权指令表述纠错 (Q62 选项 A — **R44 裁定 RATIFIED**) |
-| D148 | 1 | ACTIVE | D116 fixup 嵌套路径泛化为 `S-Mode fault + SUM=0 ⇒ 致命`, `cosmo_do_user_fault_fixup` 增 SUM 状态机检测, 触发直接 panic, 与 D139 fail-safe 一致 (Q63 选项 A — **R44 裁定 RATIFIED**) |
+| D148 | 1 | ACTIVE | D116 fixup 嵌套路径泛化为 `S-Mode fault + SUM=0 ⇒ 致命`, `basal_do_user_fault_fixup` (R54 改名, cosmo_ → basal_ 绑 D168 panic 族) 增 SUM 状态机检测, 触发直接 panic, 与 D139 fail-safe 一致 (Q63 选项 A — **R44 裁定 RATIFIED**) |
 | D149 | 2 | ACTIVE | D36/CPIO `parse_cpio` 只计 regular file (mode bit `S_ISREG`), 目录/symlink 不计入 FILE_TABLE; 矩阵与文本矛盾以文本为准 (Q64 选项 A — **R44 裁定 RATIFIED**) |
 
 ## R45: 负向证据末轮 (3 GAP reopen) — RATIFIED
@@ -321,6 +321,15 @@ The full D1-D125 decision ledger with status column. Each row has class (1=evide
 | D165 | 1 | ACTIVE | **跨语言公共符号不加组件前缀** — D121 5 struct 白名单 (`sys_result_t` / `sys_result_payload_t` / `RpcUnit` / `rpc_unit_t` / `NetworkFrame` / `network_frame_t` / `block_t`) 在 `docs/` 任何位置出现时,均不得携带 `neura_` / `basal_` / `cortix_` / `synapse_` 任一前缀字面串。Linux 内核惯例 (无组件前缀跨语言公共类型),与 `syscall_*` / `task_*` / `file_*` 同款命名哲学;反向锚定禁词 4 条,见 `docs/ci/check-docs.sh` (R53 D165 收口)。syscall API 入口 (用户态 shell 可调用) 走 `neura_` 前缀 (D171),与本 D# 互不冲突 — 前者是"类型/常量",后者是"入口函数"。Back-link: `04-abi-contract.md` § D121 白名单段 + `14-syscall-api.md` § syscall FFI 段. forbidden-word: `neura_sys_result_t` / `basal_sys_result_t` / `cortix_sys_result_t` / `synapse_sys_result_t` (R53 D165 收口, 4 反向锚). spec_lab 计划: `R53-M2-no-prefix.{sh,_negative.sh}` (text-grep: 任一错误前缀组合出现即熔断). |
 | D166 | 1 | ACTIVE | **basal_ 分批迁移范式** — C 内部 `cosmo_*` 前缀向 `basal_*` 的迁移必须**分批进行**,每批独立 R## 收口全量门禁( check-docs / check-d-backlinks / spec_lab run_all+run_negative),单批变更不得跨多个 D# 撤销。批次划分(共 5 批): R54 panic 族(5 符号,撤销 D76 → D168)、R55 call_gate 族(2 符号,撤销 D129 → D169)、R56 hal_ 族(14 符号,新增无撤销)、R57 ABI 过滤前缀(1 符号 `__basal_abi_`)、R59 basal_node_id(1 符号)。每批收口前必查 `tools/spec_lab/assertions/*.sh` + `extracted/*.ext` 是否有硬编码旧符号名,若有必须同步更新。Back-link: `08-risc-v-hal.md` § panic/HAL 段 + `06-boot-sequence.md` § 启动期符号段. forbidden-word: 暂无 (本 D# 为范式立法,反向锚定在 R54-R59 各批禁词展开). spec_lab 计划: `R53-M3-batch-rule.{sh,_negative.sh}` (text-grep: 单批提交不得跨多 D# 撤销). |
 | D167 | 1 | ACTIVE | **命名变更纪律** — 任何代号 / 目录 / 前缀变更须经 5 步闭环: (1) **D## 立法** — `03-design-decisions.md` 追加新 D# 或撤销旧 D# 并标注 SUPERSEDED 链; (2) **1X 子系统文档回链** — 至少 1 个 `docs/1X-*.md` 子系统文档回链新 D# (back-link gate `check-d-backlinks.sh` 强制,0X 跨切面文档不算回链源); (3) **禁词 census 同步** — 新禁词加 `check-docs.sh` FORBIDDEN 数组 + `20-documentation-gate.md` census 表 (EXPECTED_TOTAL 一致); (4) **分批迁移** — D166 范式,每批 R## 收口独立全量门禁; (5) **spec_lab 断言脚本同步** — 每批 R## 收口前必查 `tools/spec_lab/assertions/*.sh` + `extracted/*.ext`。本 D# 与 D166 范式互为正交: D166 约束**怎么分批**(5 批),D167 约束**每批要做什么**(5 步)。Back-link: `13-build-pipeline.md` § SSOT 路径迁移段 + `04-abi-contract.md` § D121 白名单路径段. forbidden-word: 暂无 (本 D# 为纪律立法,反向锚定在 D166 范式展开). spec_lab 计划: `R53-M4-discipline.{sh,_negative.sh}` (text-grep: 任何 R## 收口 commit 须含 "D## + back-link + census + spec_lab" 四元组标记). |
+
+## R54: basal_panic_abort 族 + basal/ 目录 + D74 SSOT 路径替代 (3 锚 + 2 撤销) — RATIFIED
+
+> **立法动机**: R53 D166 分批范式首轮落地 — 5 个 panic 族 C HAL 函数 (`basal_panic_abort` / `basal_panic_abort_fmt` / `__basal_panic_in_progress` / `basal_oops_panic` / `basal_do_user_fault_fixup`) 从 `cosmo_*` 迁移至 `basal_*`, 绑 Basal 组件代号 (C HAL 层)。同步迁移目录结构 `kernel/hal/c/` → `basal/c/`、`kernel/include/sys/abi.zig` → `basal/include/sys/abi.zig`、`kernel/include/sys/abi.h` → `basal/include/sys/abi.h`, 三路径同步联动, 单 R## 收口闭环。撤销 D76 (cosmo_panic_abort) + D74 路径条款, 立法 D168 (panic 族) + D170 (SSOT 路径替代)。传染面 8 个文档 (08/06/05/09/10/13/04/14/15) + `check-docs.sh` 注释同步 + 全量门禁。
+
+| # | Class | Status | Decision |
+|---|-------|--------|----------|
+| D168 | 1 | ACTIVE | **`basal_panic_abort` C HAL panic 族** — 5 个 panic 路径 C HAL 函数名迁移至 `basal_` 前缀: `basal_panic_abort(file, line, msg)` (D76 SUPERSEDED) / `basal_panic_abort_fmt(file, line, fmt, ...)` (variadic, panic 多通道 D139/D163 复用) / `__basal_panic_in_progress` (静态递归 panic 防御标志, D127 load/store-only) / `basal_oops_panic` (汇编 trap 入口) / `basal_do_user_fault_fixup` (D116 异常修复 + D148 SUM=0 嵌套检测)。所有调用点 + 函数声明 + Backtrace 锚定同步迁移。Phase 0 fail-stop 路径唯一合法入口, R39/R41 多通道冗余 (UART0/SRST/stack_chk_fail) 仍由 D139 + D163 锚定, 不变。Back-link: `08-risc-v-hal.md` § panic 多通道段 (12 处替换) + `06-boot-sequence.md` § D76 启动期可用段 (6 处替换) + `09-memory-subsystem.md` § D140 BlockPool/MacDmaPool/IPC exhausted (5 处替换) + `10-error-handling.md` § D103/D76 cross-FFI (2 处替换) + `14-syscall-api.md` § syscall 编号表 (1 处替换) + `15-phase0-mvp.md` T1.7 C HAL task. forbidden-word: 暂无 (本 D# 为立法,反向锚定在 R54 收口后派生 — `cosmo_panic_abort` 字面禁词可由 R55+ 统一入册). spec_lab 计划: `R54-M1-panic-family.{sh,_negative.sh}` (text-grep: 5 个 panic 函数签名必须在源码注释/汇编/Rust stub 中全部出现 basal_ 前缀, 反例 grep cosmo_panic_abort 必须 0 命中). |
+| D170 | 1 | ACTIVE | **`basal/include/sys/abi.zig` SSOT 路径替代** — D74 SSOT 输入路径从 `kernel/include/sys/abi.zig` 迁至 `basal/include/sys/abi.zig` (D74 SUPERSEDED, 仅保留 `translate-abi` 编译期生成器语义)。同步迁移派生文件: `kernel/include/sys/abi.h` → `basal/include/sys/abi.h` (C 端自动生成) + `kernel/hal/c/` → `basal/c/` (C HAL 根目录)。`build.zig` 改 `--input basal/include/sys/abi.zig` + `--c-out basal/include/sys/abi.h` + C HAL include 路径 `-I basal/include`。`arch/riscv64/abi.rs` 不变 (Rust 端与目录无关)。Back-link: `13-build-pipeline.md` § SSOT 生成器段 (3 处路径替换) + `04-abi-contract.md` § D121 白名单 SSOT 路径段 (4 处替换) + `15-phase0-mvp.md` T1.3-T1.6 编译段 (2 处替换). forbidden-word: 暂无 (本 D# 为路径迁移,反向锚定在 R54 收口后派生 — `kernel/include/sys/abi.zig` 字面禁词可由 R55+ 统一入册). spec_lab 计划: `R54-M2-ssot-path.{sh,_negative.sh}` (text-grep: SSOT 生成器命令中 `--input` 必须指向 `basal/include/sys/abi.zig`, 反例 grep `kernel/include/sys/abi.zig` 在编译命令中必须 0 命中). |
 
 ## R47: P1-5 勘误增补挂靠
 

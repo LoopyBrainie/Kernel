@@ -181,7 +181,7 @@ typedef enum {
 
 ## D103: FFI ownership red line
 
-Cross-FFI error returns MUST include `owner_subsystem_id` so the receiving side can validate the source. A result without a valid subsystem_id is a protocol violation and triggers D76 `cosmo_panic_abort`.
+Cross-FFI error returns MUST include `owner_subsystem_id` so the receiving side can validate the source. A result without a valid subsystem_id is a protocol violation and triggers D168 `basal_panic_abort` (D76 DEPRECATED, SUPERSEDED by D168).
 
 ```zig
 // Error returns must include owner (D89 + D103)
@@ -207,7 +207,7 @@ D28/D40 define a 5-step fallback when BlockPool is exhausted:
 2. **Trigger file service GC** (close idle fd)
 3. **Drop in-flight RpcUnits** (only if `Pinned == false`)
 4. **IPC retry queue** (defer to next tick)
-5. **Hard failure**: return `SYS_ENOSPC` (Phase 1) / `cosmo_panic_abort` (Phase 0, D65 comptime assert)
+5. **Hard failure**: return `SYS_ENOSPC` (Phase 1) / `basal_panic_abort` (Phase 0, D65 comptime assert; D76 DEPRECATED, SUPERSEDED by D168)
 
 Phase 0 only runs steps 1-2 at compile time (D65), runtime branches removed.
 

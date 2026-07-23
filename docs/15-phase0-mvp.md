@@ -19,7 +19,7 @@ T1.1 build pipeline ──┬── T1.2 C abi.h
 
 T1.4 entry.S ──────────┬── T1.5 S-Mode Hart ID FFI
                       ├── T1.6 UKI Loader ELF scan
-                      └── T1.7 cosmo_panic_abort C HAL
+                      └── T1.7 basal_panic_abort C HAL (D168, D76 SUPERSEDED)
 
 T1.7 panic + T1.2 abi ┬── T1.8 early_console_init SBI Stub
                       ├── T1.9 Call Gate 5-file stub
@@ -44,9 +44,9 @@ T1.1 + T1.2 ──────────┬── T1.12 initrd ≤ 50 build.zi
 // build.zig: Stage 2 emit FFI bindings
 const translate_abi = b.addSystemCommand(&.{
     "python3", "tools/translate_abi.py",
-    "--input", "kernel/include/sys/abi.zig",
+    "--input", "basal/include/sys/abi.zig",
     "--rust-out", "arch/riscv64/abi.rs",
-    "--c-out", "kernel/include/sys/abi.h",
+    "--c-out", "basal/include/sys/abi.h",
 });
 ```
 
@@ -146,11 +146,11 @@ for (int i = 0; i < ehdr->e_phnum; i++) {
 
 **Verify**: UKI Loader locates `__boot_meta_start` for elastic `.text` size.
 
-### T1.7: cosmo_panic_abort C HAL (D76)
+### T1.7: basal_panic_abort C HAL (D168, D76 SUPERSEDED)
 
 ```c
-// kernel/hal/c/cosmo_panic.c
-__attribute__((noreturn)) void cosmo_panic_abort(const char *file, int line, const char *msg) {
+// basal/c/basal_panic.c
+__attribute__((noreturn)) void basal_panic_abort(const char *file, int line, const char *msg) {
     // D76: single panic entry
     early_console_puts("[PANIC] ");
     early_console_puts(file); early_console_puts(":");

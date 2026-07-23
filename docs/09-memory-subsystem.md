@@ -371,7 +371,7 @@ D28 + D40 + D65 累计提到"5-step degradation" 3 处, **从未列出 5 个具�
 | 2 | **COMPACT_DIRTY** | 迁移 dirty 块到低索引, 形成连续 free 区间 | step 1 失败 | ~50 行 (搬运 N 个 dirty 块) |
 | 3 | **SPILL_TO_NODE** | 把 dirty 数据写到 NodePool (D61 NOLOAD 占位), 释放 BlockPool | step 2 失败 | ~80 行 (Phase 1 才实现 NodePool) |
 | 4 | **REDUCE_FS_VS** | 强制所有 task FS=Off, 释放 `256B/task × N task` FPU 上下文 | step 3 失败 | ~30 行 (调度器配合) |
-| 5 | **PANIC_FALLBACK** | `cosmo_panic_abort_fmt("D140: BlockPool exhausted after 5-step")` | step 4 失败 | 0 (D139 panic 路径复用) |
+| 5 | **PANIC_FALLBACK** | `basal_panic_abort_fmt("D140: BlockPool exhausted after 5-step")` | step 4 失败 | 0 (D139 panic 路径复用) |
 
 **Per-pool 短路径 (不套用 5 步)**:
 
@@ -404,7 +404,7 @@ pub fn block_alloc_with_degrade() ?[*]RpcUnit {
                 if (block_alloc_scan()) |b| return b;  // 重试 step 1
             },
             .PANIC_FALLBACK => {
-                cosmo_panic_abort_fmt(@src(),
+                basal_panic_abort_fmt(@src(),
                     "D140: BlockPool exhausted after 5-step degradation");
                 unreachable;
             },
@@ -417,14 +417,14 @@ pub fn block_alloc_with_degrade() ?[*]RpcUnit {
 pub fn mac_alloc_with_degrade() ?*MacHeader {
     if (mac_alloc_scan()) |m| return m;
     if (block_alloc()) |b| return @ptrCast(b);  // 借用 BlockPool 前 14B
-    cosmo_panic_abort_fmt(@src(), "D140: MacDmaPool + BlockPool exhausted");
+    basal_panic_abort_fmt(@src(), "D140: MacDmaPool + BlockPool exhausted");
     unreachable;
 }
 
 // IPC 短路径
 pub fn ipc_alloc_with_degrade() ?IpcChannel {
     if (ipc_alloc_after_drop_oldest()) |c| return c;
-    cosmo_panic_abort_fmt(@src(), "D140: IPC channels exhausted");
+    basal_panic_abort_fmt(@src(), "D140: IPC channels exhausted");
     unreachable;
 }
 ```
@@ -488,7 +488,7 @@ pub fn nodepool_init() void {
     // D143: Phase 1+ 启动时预 commit 132 KB 物理连续页
     const nodepool_phys = mmio_alloc_physical(132 * 1024);
     if (nodepool_phys == null) {
-        cosmo_panic_abort_fmt(@src(),
+        basal_panic_abort_fmt(@src(),
             "D143: NodePool commit failed, Phase 1 degrade mode");
     }
     // 映射 nodepool_phys 到 NodePool VMA 范围

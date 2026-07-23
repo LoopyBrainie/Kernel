@@ -35,7 +35,7 @@ Firmware Jump (a0=hartid, a1=dtb_phys)
   │
   └── Step 2 (kmain+, application ready)
       ├── D88: early_console SBI Stub → dev://uart0 切换
-      ├── D76: cosmo_panic_abort available
+      ├── D76: basal_panic_abort available
       └── D100: UKI Loader writes Active Slot to .boot_meta
 ```
 
@@ -262,7 +262,7 @@ pub fn kmain(hart_id: u16) void {
 
 | Subsystem | Decision | When ready |
 |-----------|----------|------------|
-| `cosmo_panic_abort` | D76 | Immediately after D88 |
+| `basal_panic_abort` | D168 | Immediately after D88 |
 | `dev://uart0` | D25 | After D88 |
 | Scheme Router | D9.2 | After HLCB ready |
 | UKI Loader → boot_meta | D100 | Pre-kernel jump |
@@ -280,8 +280,8 @@ pub fn kmain(hart_id: u16) void {
 //! 注入 EFAULT (D89 错误码 -14, P2-2 错误码恒负立法) 至 a0/a1 (D86 16B 兼容).
 //! D148: 嵌套 fixup 路径泛化为 "S-Mode fault + SUM=0 ⇒ 致命" — 若进入修复桩时
 //! sstatus.SUM 已经是 0 (上一轮 fixup 已被强制清零却再次触发), 直接 panic.
-.global cosmo_do_user_fault_fixup
-cosmo_do_user_fault_fixup:
+.global basal_do_user_fault_fixup
+basal_do_user_fault_fixup:
     // a0 = current_task_context_ptr, a1 = target_fixup_address
     ld      t0, CONTEXT_SSTATUS_OFFSET(a0)
     li      t1, (1 << 18)                       // SSTATUS_SUM
@@ -302,7 +302,7 @@ cosmo_do_user_fault_fixup:
 .L_nested_fixup_fatal:
     // D148: SUM=0 二次 fixup, 触发 panic 路径 (D139)
     // 这是 fail-safe 防御: 任何 SUM=0 上 Page Fault 必非合规路径
-    j       cosmo_oops_panic
+    j       basal_oops_panic
 ```
 
 **R44 D148 立法注**: SUM-state-machine 单触发语义 — 每次 Page Fault 必须**先**触发 fixup,**fixup 内部**强制清 SUM;若再次 Page Fault 且 SUM=0, 表明 fixup 嵌套或 SUM 清零漏判, **直接 panic 不再尝试 fixup**。这是 fail-fast 防御, 避免死循环 drain 内存。
@@ -333,7 +333,7 @@ trap_handler:
     ld      t5, 8(t3)                           // D112: fixup (8B) 替代 lwu (4B 错位)
     mv      a0, sp                              // current_task_context_ptr
     mv      a1, t5                              // fixup address
-    call    cosmo_do_user_fault_fixup
+    call    basal_do_user_fault_fixup
     sret                                        // 返回修复点
 .L_extable_continue:
     bltu    t0, t4, .L_extable_low
@@ -569,7 +569,7 @@ trap_handler:
     csrc    sie, t0
     csrr    a0, scause
     csrr    a1, stval
-    cosmo_panic_abort_fmt(__FILE__, __LINE__,
+    basal_panic_abort_fmt(__FILE__, __LINE__,
         "D137 FAIL: PLIC IRQ pending (scause=%ld stval=0x%lx) but no driver. \
          Implement Phase 1 IMSIC (D32/D83).", a0, a1)
     j       .L_normal_trap
@@ -667,7 +667,7 @@ uint32_t cosmo_get_hart_id(uint32_t a0_hint) {
     // D141 正身: 运行时断言 a0 < num_harts(DTB)
     uint32_t num_harts = dtb_get_num_harts();
     if (a0_hint >= num_harts) {
-        cosmo_panic_abort_fmt(__FILE__, __LINE__,
+        basal_panic_abort_fmt(__FILE__, __LINE__,
             "D141 FAIL: Hart ID %u >= num_harts %u (DTB)", a0_hint, num_harts);
     }
     return a0_hint;

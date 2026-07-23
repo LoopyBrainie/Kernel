@@ -247,14 +247,14 @@ D119_ARG_SIZE_CHECK(((cosmo_pte_map_6arg_fn)0)(0,0,0,0,0,0));  // 类型检查
 | 7 | `cosmo_ping()` | D86 | ✗ | 无参 |
 | 8 | `cosmo_pte_map_6arg(vaddr, paddr, flags, pte_perm, cookie, reserved)` | D86/D90/D119 | ✗ | 全 u64 ≤ 8B |
 | 9 | `cosmo_ipc_send_6arg(scheme_id, node_id, msg_id, flags, *RpcUnit, timeout_ms)` | D86/D90/D103/D119 | ✗ | *RpcUnit 静态池 |
-| 10 | `cosmo_panic_abort(file, line, msg)` | D90 | ✗ | msg 来自 .rodata |
+| 10 | `basal_panic_abort(file, line, msg)` (D168, D76 SUPERSEDED) | D90 | ✗ | msg 来自 .rodata |
 | 11 | `cosmo_copy_from_user(kernel_dst, user_src, len)` | D90/D103 | ✗ | kernel_dst 必须 BlockPool |
 | 12 | `cosmo_copy_to_user(user_dst, kernel_src, len)` | D90/D103 | ✗ | kernel_src 必须 BlockPool |
 | 13 | `cosmo_atomic_cas_ptr(dest, old, new, peer_mask) -> bool` | D90/D117 | ✗ | dest 静态池 |
 | 14 | `cosmo_hal_set_next_timer(next_deadline)` | D90 | ✗ | u64 整数 |
 | 15 | `cosmo_hal_fs_is_dirty(sstatus) -> bool` | D90 | ✗ | u64 整数 |
 | 16 | `try_fs_lazy_init_with_dedup(sepc, scause, sstatus) -> bool` | D118/D90/D130 | ✗ | u64 + uintptr_t, D130 decoder 覆盖 0x07/0x27/0x43-0x4F 主码 |
-| 17 | `cosmo_do_user_fault_fixup(ctx_ptr, fixup_addr)` | D90/D112/D148 | ✗ | uintptr_t 整数, D148 SUM=0 嵌套触发 panic |
+| 17 | `basal_do_user_fault_fixup(ctx_ptr, fixup_addr)` (R54 改名, D148 锁) | D90/D112/D148 | ✗ | uintptr_t 整数, D148 SUM=0 嵌套触发 panic |
 
 ## D129: a7 syscall 号由 stub asm! 块写入 (Q44 R38)
 

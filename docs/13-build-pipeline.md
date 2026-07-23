@@ -31,9 +31,9 @@ build.zig
   │   └── RISC-V assembly (entry.S D92/D95/D99/D106)
   │
   ├── Stage 2: SSOT translate-abi (D74)
-  │   ├── Parse Zig extern struct from kernel/include/sys/abi.zig
+  │   ├── Parse Zig extern struct from basal/include/sys/abi.zig
   │   ├── Generate Rust (arch/riscv64/abi.rs)
-  │   ├── Generate C (kernel/include/sys/abi.h)
+  │   ├── Generate C (basal/include/sys/abi.h)
   │   └── Verify three-end offsetof (D85)
   │
   └── Stage 3: 3 Hard Gates (fail-closed)
@@ -46,15 +46,15 @@ build.zig
 
 ```zig
 // build.zig (sketch)
-const abi = @import("kernel/include/sys/abi.zig");
+const abi = @import("basal/include/sys/abi.zig");
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
     const translate_abi = b.addSystemCommand(&.{
         "python3", "tools/translate_abi.py",
-        "--input", "kernel/include/sys/abi.zig",
+        "--input", "basal/include/sys/abi.zig",
         "--rust-out", "arch/riscv64/abi.rs",
-        "--c-out", "kernel/include/sys/abi.h",
+        "--c-out", "basal/include/sys/abi.h",
     });
     b.getInstallStep().dependOn(&translate_abi.step);
 }

@@ -125,7 +125,7 @@ P1-2: 全库 sys_result_t 统一为 `{header: u32, reserved: u32, payload: union
 **旧形态** `{code:u32, status:u32, value:u64}` **列为禁词** (D86 + P1-2), 任何文档残留字面量必须在 R47 勘误增补中消除。`res.code` / `res.status` 字段名一律改为 `res.header` (bit 31 = is_error), `res.is_error` 不存在 (改 `res.header & (1<<31)` 判定)。
 
 ```c
-// kernel/include/sys/abi.h (D86 + D89 + P1-2 canonical)
+// basal/include/sys/abi.h (D86 + D89 + P1-2 canonical)
 #include <stdint.h>
 
 /* P2-1 D90 carve-out: error_pack 是 union 内单层 scalar-only struct, 唯一豁免 */
@@ -171,7 +171,7 @@ const _: () = {
 ```
 
 ```zig
-// kernel/include/sys/abi.zig (SSOT, R48 勘误增补: 与同文件 C/Rust frozen 形态一致)
+// basal/include/sys/abi.zig (SSOT, R48 勘误增补: 与同文件 C/Rust frozen 形态一致)
 //   旧三字段 (code/status/value) 形态已被 P1-2 废弃, 详见 04 § "Three-end assert templates"
 pub const sys_result_t = extern struct {
     header: u32,    // P1-2: bit 31 = is_error (D89), bits 0-30 = flags/subsystem_hint
@@ -212,11 +212,11 @@ D74 SSOT 白名单 Phase 0 冻结, 仅 5 struct 由 `translate-abi.py` 自动生
 
 | 白名单 struct | size | SSOT 文件 |
 |---------------|------|-----------|
-| `sys_result_t` | 16B | `kernel/include/sys/abi.zig` |
-| `sys_result_payload_t` | 8B | `kernel/include/sys/abi.zig` |
-| `RpcUnit` | 1536B | `kernel/include/sys/abi.zig` |
-| `NetworkFrame` | 1536B | `kernel/include/sys/abi.zig` |
-| `block_t` | 1536B | `kernel/include/sys/abi.zig` |
+| `sys_result_t` | 16B | `basal/include/sys/abi.zig` |
+| `sys_result_payload_t` | 8B | `basal/include/sys/abi.zig` |
+| `RpcUnit` | 1536B | `basal/include/sys/abi.zig` |
+| `NetworkFrame` | 1536B | `basal/include/sys/abi.zig` |
+| `block_t` | 1536B | `basal/include/sys/abi.zig` |
 
 **D121 落地约束 ② (R35 补强)**: 白名单外类型必须手写 + 内嵌三端编译期断言块 (size/align/offset)。手写 + 无断言 = 熔断。
 
