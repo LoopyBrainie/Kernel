@@ -355,6 +355,14 @@ The full D1-D125 decision ledger with status column. Each row has class (1=evide
 |---|-------|--------|----------|
 | D172 | 2 | ACTIVE | **30-open-questions.md 历史引用豁免策略** — 文档中"历史叙述" (R37-R45 审计档案段落, R30/R31 历史 bug 描述, R55-R59 命名迁移前的决策上下文) 与"当前有效代码示例"两类内容采取不同处理: (1) **历史叙述保留原样** (围栏外的 markdown 段落, 表格行, 引用块) — 描述"在 R30/R31 时 cosmo_call_gate 怎么怎么样"或"Q## 在 R47 时讨论 cosmo_kernel 的语义"等历史审计内容, 保留 `cosmo_*` 旧名引用以维持历史准确性; (2) **当前有效代码示例同步更新** (围栏内代码块, asm/rust/bash/c) — 当前仍编译运行的代码 (如 syscall stub 函数体, asm 全局符号定义, build 闸门 shell 命令) 必须按 R54-R59 命名迁移同步。D172 适用对象不仅是 30-open-questions.md, 而是泛化到所有 1X 子系统文档 (例如 10-error-handling.md:231 的 R30/R31 spec 引用)。Back-link: `15-phase0-mvp.md` § Phase 0 实现总览 (1 处历史策略注释) + `30-open-questions.md` 文件头部 D172 声明段 + `10-error-handling.md` § D110 历史 bug 段 (R30/R31 引用豁免) + `03-design-decisions.md` D168/D169/D170/D171 立法段 (历史动机描述豁免). forbidden-word: 14 条入册 (R60 收口): `cosmo_open` / `cosmo_read` / `cosmo_write` / `cosmo_close` / `cosmo_seek` / `cosmo_stat` / `cosmo_yield` / `cosmo_ping` / `cosmo_pte_map_6arg` / `cosmo_ipc_send_6arg` / `cosmo_open_stub` / `cosmo_pte_map_6arg_fn` / `cosmo_node_id` (13 条 D171 派生) + `30-open-questions.md 围栏外历史叙述同步` (D172 元规则反向锚). spec_lab 计划: 暂无需新增 (D172 是豁免策略, 由 AUDIT_LINE_FILTER 扩展 R30/R31|R59|R60 模式实现). |
 
+## R58 补执行: cortix_kernel crate 名 (D173 Q69 豁免) — RATIFIED
+
+> **立法动机**: R60 收口时 R58 因 Q69 (Rust crate 拓扑, Phase 1 立法) 阻塞跳过。R58 补执行论证: **crate 命名空间标识 (`cosmo_kernel` → `cortix_kernel`) 与运行时数据流拓扑 (Q69 fd 0/1/2 路由) 正交**, 两者无依赖关系——改 crate 名是编译期标识重命名, 不影响 fd 路由决策树。Q69 阻塞的是"crate 内部如何路由 fd", R58 改的是"crate 在 Rust 生态中叫什么名字", 二者解耦。撤销 D167 §3 "Q69 未关闭不得迁 crate 名" 的 R58 阻塞约束, 通过 D173 正式豁免。
+
+| # | Class | Status | Decision |
+|---|-------|--------|----------|
+| D173 | 1 | ACTIVE | **crate 名迁移豁免 Q69 阻塞** — `cosmo_kernel` → `cortix_kernel` 的 crate 命名空间迁移不受 Q69 (Rust crate 拓扑) 阻塞, 因 crate 命名与 fd 0/1/2 路由拓扑正交: Q69 讨论的是"运行时数据流怎么走 (Phase 1 立法)", R58 改的是"crate 在 Rust 生态中叫什么 (编译期标识)"。两者无依赖关系。撤销 D167 §3 "Q69 未关闭不得迁 crate 名" 的 R58 阻塞约束。R58 实际传染面仅 1 文件 1 行 (`07-shell-architecture.md:92` `use cosmo_kernel::{` → `use cortix_kernel::{`)。Back-link: `07-shell-architecture.md` § Rust Shell crate 段 (1 处 use 替换) + `00-naming-taxonomy.md` § 6 Rust 内部命名 (R58 ✅ 状态更新) + `01-system-overview.md` § 18-box 图 caption (R58 ✅ 标注). forbidden-word: `cosmo_kernel` (R58 后入册, EXPECTED_TOTAL 168→169). spec_lab 计划: `R58-M1-crate-name.{sh,_negative.sh}` (text-grep: `cortix_kernel` 必须出现在 07-shell-architecture.md Rust use 段, `cosmo_kernel` 在 1X 子系统文档中必须 0 命中; AUDIT_LINE_FILTER 扩展 R58|D173|crate 名|撤销 cosmo_kernel 模式豁免 SSOT 文档中的历史引用). |
+
 ## R47: P1-5 勘误增补挂靠
 
 | 挂靠 D# | 修正内容 |

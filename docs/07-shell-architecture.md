@@ -89,7 +89,7 @@ The user-facing API is **unchanged across phases** (D55). The implementation und
 #![no_main]
 
 // D97: 0 unsafe (除必要的 FFI 桥接)
-use cosmo_kernel::{
+use cortix_kernel::{
     abi::{sys_result_t, sys_call},
     scheme::{open, read, write, close},
 };
