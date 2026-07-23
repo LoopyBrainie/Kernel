@@ -258,9 +258,9 @@ D119_ARG_SIZE_CHECK(((cosmo_pte_map_6arg_fn)0)(0,0,0,0,0,0));  // 类型检查
 
 ## D129: a7 syscall 号由 stub asm! 块写入 (Q44 R38)
 
-D119 立法 a7 = syscall number, a0..a5 = up to 6 args。但 D119 没说 a7 必须**在 stub 内部**写入; 当前默认 `call cosmo_call_gate` 由编译器生成, 编译器可在 prologue 自由分配 a7 给临时变量, dispatcher 收到错的 syscall #。
+D119 立法 a7 = syscall number, a0..a5 = up to 6 args。但 D119 没说 a7 必须**在 stub 内部**写入; 当前默认 `call basal_call_gate` 由编译器生成, 编译器可在 prologue 自由分配 a7 给临时变量, dispatcher 收到错的 syscall #。
 
-D129 机制: stub 函数由 **纯汇编全局符号** (不导出 C/Rust 原型) 实现, asm! 块在同一函数内 `mv a7, <syscall_id>` 后 `call cosmo_call_gate`。这样编译器无法重排, a7 写入发生在 `call` 之前。
+D129 机制: stub 函数由 **纯汇编全局符号** (不导出 C/Rust 原型) 实现, asm! 块在同一函数内 `mv a7, <syscall_id>` 后 `call basal_call_gate`。这样编译器无法重排, a7 写入发生在 `call` 之前。
 
 ```rust
 // D129 example: stub for cosmo_open (syscall 0x00)
@@ -279,7 +279,7 @@ pub extern "C" fn cosmo_open_stub(path: *const u8, flags: u32) -> sys_result_t {
             syscall_id = const 0x00,
             path = in(reg) path,
             flags = in(reg) flags,
-            dispatcher = sym cosmo_call_gate,
+            dispatcher = sym basal_call_gate,
             res = out(reg) res,
             clobber_abi("C"),
         );
@@ -295,7 +295,7 @@ pub extern "C" fn cosmo_open_stub(path: *const u8, flags: u32) -> sys_result_t {
 
 **编译期闸门** (R38 D129):
 - `nm build/kernel.elf | awk '$3=="cosmo_open_stub" {print $2}' | grep -q '^T$'` (符号表属性必须 T)
-- `objdump -d build/kernel.elf | grep -B1 'call.*cosmo_call_gate'` 必须前一指令为 `mv a7, ...`
+- `objdump -d build/kernel.elf | grep -B1 'call.*basal_call_gate'` 必须前一指令为 `mv a7, ...`
 
 **D103 binding**: 所有 17 个签名满足"参数仅 `u8/u16/u32/u64 + [u8; N]` 或 `*const T` 指向静态池", **无任何签名泄漏 caller stack 指针**。
 

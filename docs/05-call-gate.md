@@ -53,10 +53,10 @@ kernel/arch/riscv64/call_gate/
 # Use `call` to dispatcher via global function pointer
 
 .section .text
-.global cosmo_call_gate
-cosmo_call_gate:
+.global basal_call_gate
+basal_call_gate:
     # D82: HLCB.in_kernel_space.store(true) — see C wrapper
-    la      t0, __cosmo_dispatcher_ptr
+    la      t0, __basal_dispatcher_ptr
     ld      t0, 0(t0)
     jr      t0                     # R49-F1 勘误: 改回 jr t0 尾调用, 删 P3-4 错误归因
                                    #   - Phase 0 单 Hart 无上下文切换, ra 全程 = Rust 调用点

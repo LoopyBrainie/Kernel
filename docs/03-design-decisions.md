@@ -225,7 +225,7 @@ The full D1-D125 decision ledger with status column. Each row has class (1=evide
 
 | # | Class | Status | Decision |
 |---|-------|--------|----------|
-| D129 | 1 | ACTIVE | D119 syscall 号 a7 由 stub 的同一 asm! 块写入, 防 clobber; cosmo_call_gate 全局符号 nm 属性必须 T, 编译期 objdump 校验 a7 写入 (Q44 选项 A — **R38 裁定 RATIFIED**) |
+| D129 | 1 | **DEPRECATED** | D119 syscall 号 a7 由 stub 的同一 asm! 块写入, 防 clobber; `basal_call_gate` (R55 改名, D169 SUPERSEDED) 全局符号 nm 属性必须 T, 编译期 objdump 校验 a7 写入 (Q44 选项 A — **R38 裁定 RATIFIED**). 撤销立法条, 落地迁移绑定 D169. Back-link: `05-call-gate.md` § entry_call_gate.S 汇编段 + `14-syscall-api.md` § D129 机制段. |
 | D130 | 1 | ACTIVE | D118 三条件闸条件 ③ `is_fp_or_vv_opcode` 解码器补全 (主码全集 0x07/0x27/0x43-0x4F), 主码判定即充分, godbolt 实测 ~5 指令无 libcall 无 RMW (Q45 选项 A — **R38 裁定 RATIFIED**) |
 | D131 | 2 | ACTIVE | D108 SHIM_PAYLOAD_MAX 扩展为 per-(L3,L4) 二维查表, 5 种常见组合 IPv4×{UDP,TCP,ICMP} + IPv6×{UDP,TCP} 预定义, network_frame_t 增 `l4_proto: u8 @ offset 9` 冻结字段 (Q46 选项 A — **R38 裁定 RATIFIED**) |
 
@@ -330,6 +330,14 @@ The full D1-D125 decision ledger with status column. Each row has class (1=evide
 |---|-------|--------|----------|
 | D168 | 1 | ACTIVE | **`basal_panic_abort` C HAL panic 族** — 5 个 panic 路径 C HAL 函数名迁移至 `basal_` 前缀: `basal_panic_abort(file, line, msg)` (D76 SUPERSEDED) / `basal_panic_abort_fmt(file, line, fmt, ...)` (variadic, panic 多通道 D139/D163 复用) / `__basal_panic_in_progress` (静态递归 panic 防御标志, D127 load/store-only) / `basal_oops_panic` (汇编 trap 入口) / `basal_do_user_fault_fixup` (D116 异常修复 + D148 SUM=0 嵌套检测)。所有调用点 + 函数声明 + Backtrace 锚定同步迁移。Phase 0 fail-stop 路径唯一合法入口, R39/R41 多通道冗余 (UART0/SRST/stack_chk_fail) 仍由 D139 + D163 锚定, 不变。Back-link: `08-risc-v-hal.md` § panic 多通道段 (12 处替换) + `06-boot-sequence.md` § D76 启动期可用段 (6 处替换) + `09-memory-subsystem.md` § D140 BlockPool/MacDmaPool/IPC exhausted (5 处替换) + `10-error-handling.md` § D103/D76 cross-FFI (2 处替换) + `14-syscall-api.md` § syscall 编号表 (1 处替换) + `15-phase0-mvp.md` T1.7 C HAL task. forbidden-word: 暂无 (本 D# 为立法,反向锚定在 R54 收口后派生 — `cosmo_panic_abort` 字面禁词可由 R55+ 统一入册). spec_lab 计划: `R54-M1-panic-family.{sh,_negative.sh}` (text-grep: 5 个 panic 函数签名必须在源码注释/汇编/Rust stub 中全部出现 basal_ 前缀, 反例 grep cosmo_panic_abort 必须 0 命中). |
 | D170 | 1 | ACTIVE | **`basal/include/sys/abi.zig` SSOT 路径替代** — D74 SSOT 输入路径从 `kernel/include/sys/abi.zig` 迁至 `basal/include/sys/abi.zig` (D74 SUPERSEDED, 仅保留 `translate-abi` 编译期生成器语义)。同步迁移派生文件: `kernel/include/sys/abi.h` → `basal/include/sys/abi.h` (C 端自动生成) + `kernel/hal/c/` → `basal/c/` (C HAL 根目录)。`build.zig` 改 `--input basal/include/sys/abi.zig` + `--c-out basal/include/sys/abi.h` + C HAL include 路径 `-I basal/include`。`arch/riscv64/abi.rs` 不变 (Rust 端与目录无关)。Back-link: `13-build-pipeline.md` § SSOT 生成器段 (3 处路径替换) + `04-abi-contract.md` § D121 白名单 SSOT 路径段 (4 处替换) + `15-phase0-mvp.md` T1.3-T1.6 编译段 (2 处替换). forbidden-word: 暂无 (本 D# 为路径迁移,反向锚定在 R54 收口后派生 — `kernel/include/sys/abi.zig` 字面禁词可由 R55+ 统一入册). spec_lab 计划: `R54-M2-ssot-path.{sh,_negative.sh}` (text-grep: SSOT 生成器命令中 `--input` 必须指向 `basal/include/sys/abi.zig`, 反例 grep `kernel/include/sys/abi.zig` 在编译命令中必须 0 命中). |
+
+## R55: basal_call_gate 族 + synapse/ 目录 (2 锚 + 1 撤销) — RATIFIED
+
+> **立法动机**: R54 D168 落地 panic 族后, R55 推进 call_gate 族 (全局汇编符号 `cosmo_call_gate` + 全局指针 `__cosmo_dispatcher_ptr`) 迁移至 `basal_` 前缀, 绑 Basal 组件代号 (C HAL 层入口)。同步锚定 Zig 端 dispatcher 目录 `kernel/dispatcher/` → `synapse/` (D153 锁定 `syscall_dispatch.zig` 文件名不动)。撤销 D129 (a7 clobber 防护锚定, 移至 D169 SUPERSEDED 链)。传染面 3 个文档 (05/14/03) + `tools/spec_lab/extracted/R49-F1-jr.ext` 重抽同步 (spec_lab R49-F1 断言基于 docs/05-call-gate.md 动态抽取, 无需改 assertion 脚本) + 全量门禁。
+
+| # | Class | Status | Decision |
+|---|-------|--------|----------|
+| D169 | 1 | ACTIVE | **`basal_call_gate` C HAL call gate 入口** — 2 个全局符号迁移至 `basal_` 前缀: `basal_call_gate` (RISC-V 汇编 `.global` 全局符号, D56 Call Gate 唯一入口, 通过 `__basal_dispatcher_ptr` 函数指针间接跳转 dispatcher, R49-F1 勘误 `jr t0` 尾调用) + `__basal_dispatcher_ptr` (`.data`/`.bss` 锚点变量, 指向 Zig 端 `syscallDispatch()` 函数指针)。所有调用点 (`call basal_call_gate` 来自 syscall stub asm! 块, D129 锚定) + objdump 校验 (nm 属性必须 T, 二道闸门) + spec_lab R49-F1-jr 双轨断言 同步迁移。D153 锁定 Zig 端 `synapse/syscall_dispatch.zig` 文件名不动, 仅迁移父目录。D129 SUPERSEDED, a7 clobber 防护语义保留在新 D169 行内。Back-link: `05-call-gate.md` § entry_call_gate.S 汇编段 (3 处替换) + `14-syscall-api.md` § D129 机制段 (4 处替换) + `tools/spec_lab/extracted/R49-F1-jr.ext` (重抽同步 4 处硬编码). forbidden-word: 暂无 (本 D# 为立法,反向锚定在 R55 收口后派生 — `cosmo_call_gate` 字面禁词可由 R56+ 统一入册). spec_lab 计划: `R55-M1-call-gate.{sh,_negative.sh}` (text-grep: `basal_call_gate` 必须出现在 `05-call-gate.md` 全局符号段, `__basal_dispatcher_ptr` 必须出现在汇编 la 指令; 反例 grep `cosmo_call_gate` 在汇编定义段必须 0 命中). |
 
 ## R47: P1-5 勘误增补挂靠
 
