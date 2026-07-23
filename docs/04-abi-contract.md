@@ -228,7 +228,7 @@ D74 SSOT 白名单 Phase 0 冻结, 仅 5 struct 由 `translate-abi.py` 自动生
 - 旧 L1: "SSOT auto-generation" — 有 L1 漏检风险 (手写文件未覆盖)
 - 新 L1: "SSOT diff (白名单 5 struct) ∪ compile-time assert (全体跨三端类型)" — 双道防御网, 消除「L1 有洞」模糊表述
 
-**Handwritten 头文件 marker** (D121 落地约束 ②): call_gate.h / `cosmo_atomic_cas_ptr.h` 等手写文件头部加 `/* HANDWRITTEN: tri-end asserts embedded */`, doc-gate `make audit-marker-assert-cooccur` 机检 marker 与三端 assert 块共现。
+**Handwritten 头文件 marker** (D121 落地约束 ②): call_gate.h / `basal_atomic_cas_ptr.h` 等手写文件头部加 `/* HANDWRITTEN: tri-end asserts embedded */`, doc-gate `make audit-marker-assert-cooccur` 机检 marker 与三端 assert 块共现。
 
 ## Build pipeline integration
 

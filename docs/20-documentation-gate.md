@@ -200,7 +200,7 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | `csrr menvcfg` | R47 | P1-4 S-Mode illegal, 改 DTB/trap-probe (menvcfg 仅 M-Mode 合法) |
 | `jr t0                  # jump` | R47 | P3-4 syscall 必须 jalr ra, t0 (jr 丢 ra) |
 | `task_table\[next\].active` | R47 | P3-5 rr_pick_next 终止条件修复 |
-| `& 0x3  // FS == 0b11` | R47 | P3-6 cosmo_hal_fs_is_dirty 名实一致 (改 ==0x3) |
+| `& 0x3  // FS == 0b11` | R47 | P3-6 basal_hal_fs_is_dirty 名实一致 (改 ==0x3) |
 | `.\[\]\?\.[]\?` | R47 | P3-7 jq 3-level 路径修补 |
 | `SSTATUS_MXR & (1 << 19)` | R47 | P3-8 恒假断言 (改 ALLOWED_MASK) |
 | `csrs/csrc 接受立即数, csrrs/csrrc 接受寄存器` | R47 | P3-9 D119 立法颠倒 (csrs/csrc 立即数 vs csrrs/csrrc 寄存器) |

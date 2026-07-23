@@ -55,7 +55,7 @@ _Static_assert(sizeof(((sys_result_payload_t*)0)->error_pack) == 8,
 ### 传染面清单
 - 4-abi-contract.md: 5-Layer Defense L1 描述改写 (SSOT diff whitelist ∪ compile-time assert all)
 - 5-call-gate.md: HLCB 64B 编译期断言
-- 8-risc-v-hal.md: cosmo_atomic_cas_ptr / try_fs_lazy_init 类型签名
+- 8-risc-v-hal.md: basal_atomic_cas_ptr / try_fs_lazy_init 类型签名
 - 14-syscall-api.md: 17 个跨 FFI 签名 + per-syscall arity 表
 - call_gate.h 等手写文件: 头部加 `/* HANDWRITTEN: tri-end asserts embedded */` marker
 

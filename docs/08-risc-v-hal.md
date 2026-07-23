@@ -29,7 +29,7 @@ The RISC-V HAL provides a uniform interface to hardware features that vary acros
 
 ```c
 // Read time without SBI ecall (50-100 cycle tax)
-static inline uint64_t cosmo_read_time(void) {
+static inline uint64_t basal_read_time(void) {
     uint64_t t;
     asm volatile ("csrr %0, time" : "=r"(t));
     return t;
@@ -48,30 +48,30 @@ Used for: scheduler tick, timestamp fields in RpcUnit, performance counters. Alw
 // Probe Sstc extension at boot (P1-4: 禁 menvcfg 读)
 static bool has_sstc = false;
 
-void cosmo_hal_clock_init(void) {
+void basal_hal_clock_init(void) {
     // 路径 1: DTB 解析 (M-Mode OpenSBI 通常已写 riscv,isa-extensions 节点)
     has_sstc = dtb_has_isa_extension(dtb, "sstc");
 
     // 路径 2 (fallback): trap-and-probe 写 stimecmp — 写入成功 = Sstc 可用
     if (!has_sstc) {
-        uint64_t probe_deadline = cosmo_read_time() + 1;  // 1 tick 触发未来中断
+        uint64_t probe_deadline = basal_read_time() + 1;  // 1 tick 触发未来中断
         sbi_set_timer(probe_deadline);  // 先 SBI 写入防丢失
-        uint64_t before = cosmo_read_time();
+        uint64_t before = basal_read_time();
         asm volatile ("csrw stimecmp, %0" : : "r"(probe_deadline));   // 如 trap 走 D118/三条件
         // 若未 trap, Sstc 可用, has_sstc = true
         // 注: OpenSBI 默认 medeleg 不会拦截 illegal instruction (拦截需显式设 bit)
         //     写 stimecmp 在 S-Mode 下 Sstc 可用时是合法的
-        if (cosmo_read_time() >= probe_deadline || /* 写未 trap */ 1) {
+        if (basal_read_time() >= probe_deadline || /* 写未 trap */ 1) {
             has_sstc = true;
         }
     }
 
     if (!has_sstc) {
-        sbi_set_timer(cosmo_read_time() + TICK_INTERVAL);  // SBI 降级
+        sbi_set_timer(basal_read_time() + TICK_INTERVAL);  // SBI 降级
     }
 }
 
-void cosmo_hal_set_next_timer(uint64_t next_deadline) {
+void basal_hal_set_next_timer(uint64_t next_deadline) {
     if (has_sstc) {
         asm volatile ("csrw stimecmp, %0" : : "r"(next_deadline));
     } else {
@@ -92,7 +92,7 @@ void cosmo_hal_set_next_timer(uint64_t next_deadline) {
 // D9.2 + D94: Tier 1 (server, has A + cross-Hart Coherence)
 // D94 + D108 R31 fix: Tier 2 (has A but no cross-Hart Coherence) MUST use SBI IPI
 // D87 Tier 3: no A extension → soft fallback
-static inline bool cosmo_atomic_cas_ptr(
+static inline bool basal_atomic_cas_ptr(
     void **dest, void *old_val, void *new_val, hart_mask_t peer_mask)
 {
     if (has_a_extension && has_global_coherence) {
@@ -143,23 +143,23 @@ typedef enum {
     FS_OFF = 0, FS_INITIAL = 1, FS_CLEAN = 2, FS_DIRTY = 3
 } fs_state_t;
 
-static inline bool cosmo_hal_fs_is_dirty(uint64_t sstatus) {
+static inline bool basal_hal_fs_is_dirty(uint64_t sstatus) {
     // P3-6 (R47 勘误): &0x3 是位掩码 (取值 0/1/2/3), 真值表对齐 FS_* 枚举, 但
     // INITIAL/CLEAN(=1,=2) 也命中 true — 与注释 "FS==0b11" 不符。
     // D118 状态机对齐: 仅 FS_DIRTY==3 是真脏, 改 ==0b3 (与 D118 三状态语义一致)。
     return ((sstatus >> 13) & 0x3) == 0x3;  // FS == 0b11 (FS_DIRTY only)
 }
 
-static inline bool cosmo_hal_vs_is_dirty(uint64_t sstatus) {
+static inline bool basal_hal_vs_is_dirty(uint64_t sstatus) {
     // P3-6 同款: VS_DIRTY (0b11) only
     return ((sstatus >> 9) & 0x3) == 0x3;   // VS == 0b11 (VS_DIRTY only)
 }
 
 // In scheduler context_switch:
-if (cosmo_hal_fs_is_dirty(prev_sstatus)) {
+if (basal_hal_fs_is_dirty(prev_sstatus)) {
     save_f0_f31(prev_task);  // 32 × 64-bit = 256B
 }
-if (cosmo_hal_vs_is_dirty(prev_sstatus)) {
+if (basal_hal_vs_is_dirty(prev_sstatus)) {
     save_v0_v31(prev_task);  // 32 × vlenb = 1024B-4096B
 }
 // Embedded: FS=VS=Off → zero save tax
@@ -181,11 +181,11 @@ D94 Tier 2 atomic CAS 的 `while (!ipi_acked(peer_mask)) { }` 是**无超时忙�
 static uint64_t d94_tier2_timeout_ticks = 0;  // 初始化时由 DTB timebase-frequency 派生
 
 // D117 binding: DTB timebase-frequency → ticks-per-ms 转换
-void cosmo_d94_init_timeout(uint64_t timebase_freq_hz) {
+void basal_d94_init_timeout(uint64_t timebase_freq_hz) {
     d94_tier2_timeout_ticks = (timebase_freq_hz / 1000);  // 1ms
 }
 
-static inline bool cosmo_atomic_cas_ptr(
+static inline bool basal_atomic_cas_ptr(
     void **dest, void *old_val, void *new_val, hart_mask_t peer_mask)
 {
     if (has_a_extension && has_global_coherence) {
@@ -350,7 +350,7 @@ void plic_disable(int irq) { /* no-op */ }
 _Static_assert((SSTATUS_ALLOWED_MASK & SSTATUS_MXR) == 0,
                "D115: ALLOWED_MASK must NOT contain MXR (XOM 最高安全生态, MXR 永久冻结)");
 
-static inline void cosmo_user_access_enable(void) {
+static inline void basal_user_access_enable(void) {
     // D119: csrrs 寄存器版本, 而非 csrs (立即数)
     register uint32_t val = SSTATUS_SUM;
     asm volatile (
@@ -359,7 +359,7 @@ static inline void cosmo_user_access_enable(void) {
     );
 }
 
-static inline void cosmo_user_access_disable(void) {
+static inline void basal_user_access_disable(void) {
     register uint32_t val = SSTATUS_SUM;
     asm volatile (
         "csrrc zero, sstatus, %0"   // D119: 正确语法
@@ -381,7 +381,7 @@ static inline void cosmo_user_access_disable(void) {
 ```c
 // §八 HAL U-Mode 用户态数据流转 (D116 落锤)
 //!
-//! D116: cosmo_copy_from_user / cosmo_copy_to_user 访存指令必须注册到
+//! D116: basal_copy_from_user / basal_copy_to_user 访存指令必须注册到
 //! __ex_table 段. 异常时强制清零 SUM=0 (D115 协同), 注入 EFAULT 至 a0/a1 (D86).
 
 struct exception_table_entry {
@@ -389,9 +389,9 @@ struct exception_table_entry {
     uintptr_t fixup;    // 修复跳转目标
 };
 
-sys_result_t cosmo_copy_from_user(void *kernel_dst, const void *user_src, size_t len) {
+sys_result_t basal_copy_from_user(void *kernel_dst, const void *user_src, size_t len) {
     sys_result_t res = {0, 0, 0};
-    cosmo_user_access_enable();  // D115: SUM=1
+    basal_user_access_enable();  // D115: SUM=1
 
     __asm__ volatile (
         "1:  lb      t0, 0(%2)\n"           // 临界访存, 注册到 __ex_table
@@ -414,7 +414,7 @@ sys_result_t cosmo_copy_from_user(void *kernel_dst, const void *user_src, size_t
         : "t0", "memory"
     );
 
-    cosmo_user_access_disable();  // 正常路径手动关闭; 异常路径 D116 汇编已清零
+    basal_user_access_disable();  // 正常路径手动关闭; 异常路径 D116 汇编已清零
     res.payload.error_pack.error_code = (int32_t)len;  // P1-2: payload.error_pack, P2-2: -14 EFAULT, 0 = OK
     return res;                   // D86: 16B 经 a0/a1 返回
 }
@@ -658,7 +658,7 @@ D99 `_start: mv tp, a0` 在 `-bios none` 直启模式下契约仍受 a0 完整�
 
 ```c
 // D141 R46 勘误后实现 (R42 版 sbi_hart_get_id fallback 删除)
-static uint32_t cosmo_get_hart_id(uint32_t a0_hint, const void *dtb) {
+static uint32_t basal_get_hart_id(uint32_t a0_hint, const void *dtb) {
     uint32_t dtb_harts = dtb_count_cpu_nodes(dtb);  // DT 节点扫描
     if (a0_hint >= dtb_harts) {
         // D141: a0 越界 DTB 声明的 hart 数, 直接 SRST

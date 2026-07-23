@@ -610,13 +610,13 @@ D99 `_start: mv tp, a0` 假设 OpenSBI 标准引导, a0 = Hart ID。但在 `-bio
 
 ### D141 立法
 
-D99 拆为两路: (1) `_start: mv tp, a0` 保留快速路径; (2) `cosmo_get_hart_id(a0_hint)` 探测 SBI HSM 扩展, 支持则 `sbi_hart_get_id`, 否则信任 a0。
+D99 拆为两路: (1) `_start: mv tp, a0` 保留快速路径; (2) `basal_get_hart_id(a0_hint)` 探测 SBI HSM 扩展, 支持则 `sbi_hart_get_id`, 否则信任 a0。
 
 ```c
 // kernel/hal/riscv/hart_id.c (D141 完整实现)
 #include <sbi.h>
 
-uint32_t cosmo_get_hart_id(uint32_t a0_hint) {
+uint32_t basal_get_hart_id(uint32_t a0_hint) {
     if (sbi_probe_extension(SBI_EXT_HSM) > 0) {  // 0x48534D = 'HSM'
         register uintptr_t hart_id asm("a0");
         register uintptr_t err asm("a1");
@@ -662,7 +662,7 @@ done
 // kernel/hal/riscv/hart_id.c (D141 R46 勘误后)
 #include <sbi.h>
 
-uint32_t cosmo_get_hart_id(uint32_t a0_hint) {
+uint32_t basal_get_hart_id(uint32_t a0_hint) {
     // R46: a0 是权威来源, 不探测 SBI HSM (HSM 无 get_id)
     // D141 正身: 运行时断言 a0 < num_harts(DTB)
     uint32_t num_harts = dtb_get_num_harts();
@@ -674,7 +674,7 @@ uint32_t cosmo_get_hart_id(uint32_t a0_hint) {
 }
 
 // D141 -bios none 多 Hart 同启: 非 boot Hart 路由 park 循环
-void cosmo_park_until_hart0_done(uint32_t my_hart_id) {
+void basal_park_until_hart0_done(uint32_t my_hart_id) {
     if (my_hart_id == 0) return;  // Hart 0 不 park
     while (!hlcb_table[0].sscratch_initialized.load(SeqCst)) {
         wfi();  // 等 Hart 0 完成 Step 0–1

@@ -247,14 +247,14 @@ typedef struct {
 
 static inline void save_context(int task_id, uint64_t prev_sstatus) {
     // D104: only save if dirty
-    if (cosmo_hal_fs_is_dirty(prev_sstatus)) {
+    if (basal_hal_fs_is_dirty(prev_sstatus)) {
         fp_context_t *fp = &task_table[task_id].fp_ctx;
         asm volatile ("fsd f0,  0(%0); fsd f1,  8(%0); ..." ::
                          "r"(fp) : "memory");
         // 32 × 8B = 256B save
         // After save: set FS = Clean (0b10)
     }
-    if (cosmo_hal_vs_is_dirty(prev_sstatus)) {
+    if (basal_hal_vs_is_dirty(prev_sstatus)) {
         vector_context_t *v = &task_table[task_id].vec_ctx;
         // 32 × vlenb save (1KB - 128KB depending on VLEN)
         // After save: set VS = Clean (0b10)
@@ -293,7 +293,7 @@ static inline void context_switch(int next_task_id) {
 ## Cross-references
 
 - **Memory Subsystem** (09): task contexts stored in HLCB/task_table
-- **HAL** (08): provides `cosmo_hal_fs_is_dirty` / `cosmo_hal_vs_is_dirty`
+- **HAL** (08): provides `basal_hal_fs_is_dirty` / `basal_hal_vs_is_dirty`
 - **Build Pipeline** (13): `-Dsched=rr|worksteal` selection
 - **Documentation Gate** §二十.7: see gate catalog for forbidden phrases (R30 D104)
 

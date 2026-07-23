@@ -192,7 +192,7 @@ FORBIDDEN=(
   "stimecmp 无条件直写"                  # R23 D80 (Sstc 探测 + SBI 降级) — R47 P1-4 保留原条目
   "jr t0                  # jump"        # R47 P3-4 (syscall 必须 jalr ra, t0)
   "task_table\[next\].active"             # R47 P3-5 (rr_pick_next 终止条件修复)
-  "& 0x3  // FS == 0b11"                 # R47 P3-6 (cosmo_hal_fs_is_dirty 名实一致)
+  "& 0x3  // FS == 0b11"                 # R47 P3-6 (basal_hal_fs_is_dirty 名实一致)
   ".\\[\\]\\?\\.\\[\\]\\?"              # R47 P3-7 (jq 3-level 路径修补)
   "SSTATUS_MXR & (1 << 19)"              # R47 P3-8 (恒假断言, 改 ALLOWED_MASK)
   "csrs/csrc 接受立即数, csrrs/csrrc 接受寄存器" # R47 P3-9 (D119 立法颠倒)
