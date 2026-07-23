@@ -22,9 +22,13 @@ if [[ ! -f "$SRC" ]]; then
   exit 2
 fi
 
-# 1. 找 anchor 行号
-ANCHOR_LINE=$(grep -n -F "$ANCHOR" "$SRC" | head -1 | cut -d: -f1)
-if [[ -z "$ANCHOR_LINE" ]]; then
+# 1. 找 anchor 行号 (if/then/else 消除 pipefail 静默死亡 — 对齐 check-d-backlinks:50)
+#    旧写法 $(grep ... | head | cut) 在 set -euo pipefail 下, grep 零命中 (exit 1)
+#    经 pipefail 传播 → set -e 在本行即暴毙, 下方 exit 3 友好分支永不可达 (死代码).
+if match=$(grep -n -F "$ANCHOR" "$SRC"); then
+  first_line=${match%%$'\n'*}       # 取首个命中行
+  ANCHOR_LINE=${first_line%%:*}     # 剥 grep -n 的行号前缀
+else
   echo "ERR: anchor not found in $SRC: $ANCHOR" >&2
   exit 3
 fi
@@ -44,6 +48,11 @@ if [[ -z "$FENCE_CLOSE" ]]; then
 fi
 
 # 3. 抽取围栏内容 (不含 ``` 标记本身)
+#    先建 OUT 目录: extracted/ 是 gitignored, clean clone 上不存在,
+#    否则 sed 重定向 "> $OUT" 在新克隆首跑即 "No such file or directory".
+if [[ "$OUT" != "/dev/stdout" ]]; then
+  mkdir -p "$(dirname "$OUT")"
+fi
 sed -n "$((FENCE_OPEN + 1)),$((FENCE_CLOSE - 1))p" "$SRC" > "$OUT"
 
 if [[ "$OUT" != "/dev/stdout" ]]; then

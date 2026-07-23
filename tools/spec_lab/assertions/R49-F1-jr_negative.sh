@@ -2,40 +2,37 @@
 # =============================================================================
 # R49-F1-jr_negative.sh — 反向断言: 故意制造 jalr ra, t0 草图, 期望 runner 抓到
 # =============================================================================
-# 反例机制: 临时把 05-call-gate.md 的 jr t0 行替换为 jalr ra, t0 (R47 错误形态),
-#           跑正向断言, 期望 FAIL. 然后复原.
-# 通过条件: 反例修改后正向断言确实 FAIL (exit 非 0)
-# 这是 "frozen = 编译过的" 的反向防御 — 验证 runner 真能抓烂草图.
+# 反例机制: 把 05 § entry_call_gate.S 的 jr t0 行替换为 jalr ra, t0 (R47 错误形态),
+#           跑正向断言, 期望 FAIL. 这是 "frozen = 编译过的" 的反向防御.
+# GOV (R49-GOV.6): 变异只发生在 mktemp 副本上, 真 spec 恒不可变 — 无原地 sed -i, 无备份复原.
 # =============================================================================
-set -uo pipefail
+set -euo pipefail
 
 LAB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SRC="docs/05-call-gate.md"
-BACKUP="$LAB_DIR/extracted/R49-F1-jr_negative.bak"
+SRC_REL="docs/05-call-gate.md"          # CWD-relative — 正向断言按此相对路径读
+POSITIVE="$LAB_DIR/assertions/R49-F1-jr.sh"
 
-# 1. 备份当前行号 + 原内容
-LINE=$(grep -n -F "jr      t0" "$SRC" | head -1 | cut -d: -f1)
-echo "$LINE" > "$BACKUP.line"
-sed -n "${LINE}p" "$SRC" > "$BACKUP.original"
+# 临时沙箱: 只改副本; trap 保证退出(含中断)即清理, 真 spec 永不触碰
+WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK"' EXIT
+mkdir -p "$WORK/docs"
+cp "$SRC_REL" "$WORK/$SRC_REL"
 
-# 2. 临时替换为 jalr ra, t0 (R47 错误形态)
-sed -i "${LINE}s|jr[[:space:]]*t0.*\$|jalr    ra, t0                 # NEGATIVE TEST: R47 错误形态|" "$SRC"
+# 反例: jr t0 → jalr ra, t0 (R47 错误形态)
+LINE=$(grep -n -F "jr      t0" "$WORK/$SRC_REL" | head -1 | cut -d: -f1)
+sed -i "${LINE}s|jr[[:space:]]*t0.*\$|jalr    ra, t0                 # NEGATIVE TEST: R47 错误形态|" "$WORK/$SRC_REL"
 
-# 3. 跑正向断言, 期望失败
-set +e
-bash "$LAB_DIR/assertions/R49-F1-jr.sh" >/dev/null 2>&1
-RC=$?
-set -e
+# 跑正向断言 (CWD=副本沙箱), 期望 FAIL
+if ( cd "$WORK" && bash "$POSITIVE" >/dev/null 2>&1 ); then
+  RC=0
+else
+  RC=$?
+fi
 
-# 4. 立即复原
-sed -i "${LINE}c\\
-$(cat "$BACKUP.original")" "$SRC"
-
-# 5. 断言反向验证成功: 正向断言必须失败 (RC != 0)
-if [[ "$RC" -eq 0 ]]; then
+if [ "$RC" -ne 0 ]; then
+  echo "PASS: R49-F1-jr_negative (反例 jalr ra, t0 确实被正向断言抓到, RC=$RC)"
+  exit 0
+else
   echo "FAIL: R49-F1-jr_negative — 反例未被抓到, jalr ra, t0 通过了正向断言" >&2
   exit 1
 fi
-
-echo "PASS: R49-F1-jr_negative (反例 jalr ra, t0 确实被正向断言抓到)"
-exit 0

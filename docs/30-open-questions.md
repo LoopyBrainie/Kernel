@@ -3165,12 +3165,31 @@ bash docs/ci/check_goal_manifest.sh
 - `bash docs/ci/check-docs.sh`
 - `bash docs/ci/check-d-backlinks.sh`
 - `bash docs/ci/check_goal_manifest.sh`
+- `bash docs/ci/check-toolchain.sh`   （本轮新增第 6 门 — toolchain.lock 区间锁格式门, R49-GOV.6 配套）
 - `bash tools/spec_lab/run_all.sh`
 - `bash tools/spec_lab/run_negative.sh`
 
 **起源 (R51 教训)**: R51 收口 D# 悬空 (D156/D157/D159) 的直接成因, 是 AGENDA commit 后仅中段跑了"passed (34)" 检, 终态 34/37 FAIL 被掩盖. 本条立法把"收官前全量重跑"写成**硬性签发前提**, 任何 R## closed 签发前若不重跑全部 5 门, R## 即视为未签发.
 
 **enforcement**: 签发时 check-d-backlinks.sh 与 check_goal_manifest.sh 必然 (因 D# 与 GOAL 同步) 抓到回归; check-docs.sh 的 EXPECTED_TOTAL 自校 (R48 立法) 必抓 census 漂移. 三重独立验证保证.
+
+---
+
+### R49-GOV.6 spec_lab / 门禁反向测试禁止原地变异 spec (捕兽夹隔离)
+
+**核心**: 任何 spec_lab 反向断言 (`*_negative.sh`) 与门禁自检 (canary) **不得原地 `sed -i` / `awk` 改写 `docs/*.md`**。变异必须发生在 `mktemp -d` 临时目录的副本上, 真 spec 在测试全程恒不可变。
+
+**凶器复盘 (立法动机)**: 旧 `*_negative.sh` 与 `check-d-backlinks.sh` 金丝雀均 (a) 原地改真 spec, (b) 备份进 gitignored `extracted/` 或行变量, (c) F1/F2/F3 无 `set -e` / 全体无 `trap`, (d) 复原路径一旦读空备份即抽空 spec。四项叠加 = 中断留污 / 空备份抽空 / clean clone 复原源缺失。P5 疣子 #1 (本文件) 已点名 backlinks 金丝雀同款 (mktemp 建了没用)。
+
+**落地形态 (强制模板)**:
+- `set -euo pipefail` + `WORK=$(mktemp -d); trap 'rm -rf "$WORK"' EXIT`
+- `cp` 真 spec 进 `$WORK/docs/`; 只改副本
+- 正向断言 / 门禁逻辑以 `CWD=$WORK` 跑 (相对路径 `docs/XX.md` 落副本); `LAB_DIR` / 抽取产物路径保持绝对 (真树, gitignored)
+- 无备份、无复原 — 真 spec 不可变即无可复原, 无可抽空
+
+**捕兽夹自指判据 (硬性签发前提)**: `bash tools/spec_lab/run_negative.sh` 与 `bash docs/ci/check-d-backlinks.sh` 跑完, `git status` 必须 clean (`docs/` 零改动)。任何测试跑完留下 `docs/` diff = 本条违规 = 未签发。
+
+**本轮落地**: 11 个 `*_negative.sh` (R49-F1/F2/F3 + R51-F5/M1..M7) 全部改 mktemp 副本; `check-d-backlinks.sh` 金丝雀 (P5 #1) 改 `docs/` 副本; `extract.sh` 补 `mkdir -p`（extracted/ gitignored, clean clone 缺目录首跑即挂）+ anchor `if/then/else`（复活 exit 3, 消 pipefail 死代码）。extract.sh 与 11 脚本注释挂 `R49-GOV.6` 锚。
 
 ---
 
@@ -3468,6 +3487,7 @@ R50 准签, P1-P4 闭环. 5 门 0 退出码 (含 3 双向 canary) 落盘. R50 �
 **Phase 1 第一项交付**: 触发条件 = Phase 1 启动.
 - 交付清单: R51-M2-bss-anchor / R51-M4-ledger-cap / R51-M5-hlcb-bss / R51-M7-strip-mode 四条 `zig build-obj` 编译断言
 - 完成判据: `bash tools/spec_lab/run_all.sh` → 11/11 (其中 4 条新增 compile-gate 通过)
+- **D157 量测口径钉死 (本轮)**: `bss ≤ 8192B` 等四段上限的测量口径 = 链接脚本符号 (`.bss_size` 等, 链接后), **不是** `llvm-size` 的段列 — 后者把 NOLOAD 的 Hart-Local 栈 (D107, 约 20 KB) 计入 bss 必然误报越界。分层立法: 池维度 (BlockPool / NodePool `@compileError`) 属编译期熔断; 四段实测属链接后 `verify-elf` 判据 (Q77 compile-gate 交付时一并落 verify-elf)。M4-ledger-cap 现 text-grep 只锁"上限数字 + `@compileError` 字面", 不越权测实测段; 口径分层由本条固定 (D157 总账行同步)。
 - 若 zig 环境仍不可用: 必须在 RUN_LOG.md 记录 `NO_ZIG=1` 环境标记 + 明确预计可用时间
 
 **禁止漂移自查**:
@@ -3499,6 +3519,18 @@ R50 准签, P1-P4 闭环. 5 门 0 退出码 (含 3 双向 canary) 落盘. R50 �
 - 不写 "endpoint_compact 256B 已立法 / ACTIVE" (本轮 PROVISIONAL, 不激活)
 - 不写 "rpc_unit_t = 256 B 是 Phase 0 现状" (frozen 门反例, 必熔断)
 - 必须写 "endpoint_compact = 256 B (PROVISIONAL 候选, D160, Q78 挂账 Phase 1 第一项立法)"
+
+---
+
+### build.zig `.ReleaseSmall` 违反 D159 — 裁决 ReleaseSafe (本轮挂账, 侧分支 phase0-final-windows)
+
+**触发**: `mvp/phase0-final-windows-20260722/build.zig:25` 用 `const optimize = .ReleaseSmall`, 违反 D159 (要求显式 `-Dstrip=false -Doptimize=ReleaseSafe`)。该偏差 **未** 记入本分支 `DIVERGENCE.md` (D-ENV / D-IMPL 均无此条)。
+
+**裁决 (本轮定, 用户拍板 "回退 ReleaseSafe + strip=false")**:
+- build.zig optimize 模式 **回退 ReleaseSafe**, 并显式 `-Dstrip=false`。理由: D159 立法正因 ReleaseSmall 默认剥符号让 nm/readobj 输空表, P1-P2 的 ELF 尺寸/符号闸门 (D101 / D113 / D157) 空真过 — 回退即消除这一潜伏闸门失效, 且合规、最小。
+- **不** 走 "挂 R 号勘误追认 ReleaseSmall" 一路。
+
+**落地挂账 (本轮 dev 不改 build.zig)**: build.zig 属 gitignored `mvp/` 子树, dev 分支不追踪它。故本条只在 dev 记裁决; **代码回退落在下一次合法进入 `phase0-final-windows-20260722` 侧分支时执行**, 且必须同步补记 `DIVERGENCE.md` (归因: 实施决议 D-IMPL, 非 spec 缺陷)。签发前提: build.zig diff 必须有人评审 (不许第三次无人过 diff 放行)。
 
 ---
 

@@ -65,35 +65,32 @@ if [[ ${#MISSING[@]} -gt 0 ]]; then
   exit 1
 fi
 
-# 3. Canary self-test (R51-FIX): 用单次命中 D156 做金丝雀 (D126 有 17 hits, 无法单行删除).
-#    删掉 D156 回链 → 必须触发 MISSING → 否则门禁机制失效.
-CANARY_TMP=$(mktemp -d)
-CANARY_D="D156"
-CANARY_DOC="docs/10-error-handling.md"
-HIT_LINE=$(grep -nE "(^|[^0-9])D156([^0-9]|$)" "$CANARY_DOC" | head -1 | cut -d: -f1)
-if [[ -z "$HIT_LINE" ]]; then
-  echo "[FATAL] Canary pre-check failed: D156 not found in $CANARY_DOC (gate mechanism broken)"
-  rm -rf "$CANARY_TMP"
+# 3. Canary self-test (R49-GOV.6: 副本上做, 真 docs/ 恒不可变):
+#    在 mktemp docs/ 副本里抹 D156 回链 → 必须触发 0 命中 → 否则门禁机制失效.
+#    旧版原地 sed -i 改真 10 号文再恢复 (P5 疣子 #1: 中断留污 + mktemp 建了没用);
+#    现改副本, 真 spec 零触碰 (捕兽夹自指判据: 本门跑完 git status 必 clean).
+CANARY_DOC_REL="docs/10-error-handling.md"
+if ! grep -qE "(^|[^0-9])D156([^0-9]|$)" "$CANARY_DOC_REL"; then
+  echo "[FATAL] Canary pre-check failed: D156 not found in $CANARY_DOC_REL (gate mechanism broken)"
   exit 2
 fi
-CANARY_ORIG=$(sed -n "${HIT_LINE}p" "$CANARY_DOC")
-# 临时删除 D156 令牌: D156 → CANARY_DELETED
-sed -i "${HIT_LINE}s/D156/CANARY_DELETED/g" "$CANARY_DOC"
 
-# 用主循环同逻辑检查
-if canary_result=$(grep -rnE "(^|[^0-9])D156([^0-9]|$)" $EXCLUDE_GREP docs/ 2>/dev/null); then
+CANARY_TMP=$(mktemp -d)
+trap 'rm -rf "$CANARY_TMP"' EXIT
+cp -r docs "$CANARY_TMP/docs"
+# 在副本里抹掉 D156 令牌 (真 docs/ 不动)
+sed -i "s/D156/CANARY_DELETED/g" "$CANARY_TMP/$CANARY_DOC_REL"
+
+# 用主循环同逻辑, 但扫副本 docs/
+if canary_result=$(grep -rnE "(^|[^0-9])D156([^0-9]|$)" $EXCLUDE_GREP "$CANARY_TMP/docs/" 2>/dev/null); then
   canary_hits=$(echo "$canary_result" | wc -l)
 else
   canary_hits=0
 fi
 
-# 恢复
-sed -i "${HIT_LINE}c\\${CANARY_ORIG}" "$CANARY_DOC"
-rm -rf "$CANARY_TMP"
-
 if [[ "$canary_hits" -ne 0 ]]; then
   echo "[FATAL] Canary FAILED: D156 still found after deletion — gate mechanism broken"
-  echo "        (grep matched $canary_hits lines after canary removal)"
+  echo "        (grep matched $canary_hits lines after canary removal in copy)"
   exit 2
 fi
 
