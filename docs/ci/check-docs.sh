@@ -256,7 +256,7 @@ EXIT=0
 #                R51 新加反向锁必须挂 [OBSOLETED-by-...] 才能豁免 (双轨防线).
 AUDIT_LINE_FILTER='grep -vE "\[OBSOLETED|rename from|审计档案|审计动机|应为|应改|诚实性|命名诚实性|was: PTE|migration|原文|R4[0-6] 勘误|R4[0-6] 修正|R36 错算|R36 D80 原案|R37 勘误|R37 修正|R37 D128|R38 勘误|R39 勘误|R40 勘误|R41 勘误|R42 勘误|R43 勘误|R44 勘误|R45 勘误|R45 默认|R45 裁定|R45 原案|D151 R46|R46 勘误|R46 修正|R46 落地|R46 同款|R46 反杜撰|R46 自然布局|R46 ledger|R46 双结构|R46 同步|R46 临时|R46 版|R46 关键|R46 形式|R46 错判|R46 臆想|R46 勘误后|R47 勘误|R47 修正|R47 落地|R47 反杜撰|R47 增补|R47 撤销|R47 立法|R47 立法注|R47 ctypes|R47 后回到|R47 默认|R48 勘误|R49 勘误|R51 note|R51 注|R51 修订|R51 自校|R51 命名锚|R51 D153|R51-F1|R51-F2|R51-F3|R51-F4|R51-F5|R51-M1|R51-M2|R51-M3|R51-M4|R51-M5|R51-M6|R51-M7|R51-AGENDA|P[1-3]-[0-9]+ 修复|P[1-3]-[0-9]+ 勘误|P[1-3]-[0-9]+ 同款|P[1-3]-[0-9]+ \(R47|Step 0 trap 防御|不分配 Vec|原 char buf|原 cosmo_do_user_fault_fixup|勘误后|勘误前|D153 决策|Dispatcher 命名锚定|重命名裁决|新增禁词|传染面清单|D160 (配套|矩阵)|16 号文.*rpc_unit_t.*(配套|未立法|禁用依据|R50 立法)"'
 for word in "${FORBIDDEN[@]}"; do
-  if grep -rnF --exclude=check-docs.sh --exclude=check-d-backlinks.sh --exclude=check_goal_manifest.sh --exclude=20-documentation-gate.md --exclude=30-open-questions.md -- "$word" docs/ 2>/dev/null | eval "$AUDIT_LINE_FILTER"; then
+  if grep -rnF --exclude=check-docs.sh --exclude=check-d-backlinks.sh --exclude=check_goal_manifest.sh --exclude=check-toolchain.sh --exclude=20-documentation-gate.md --exclude=30-open-questions.md -- "$word" docs/ 2>/dev/null | eval "$AUDIT_LINE_FILTER"; then
     echo "[ERROR] Forbidden word found: $word"
     EXIT=1
   fi
