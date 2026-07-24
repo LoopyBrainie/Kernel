@@ -3,7 +3,7 @@
 **Status**: Frozen (R53 收口); 命名法 SSOT,非实现细节。
 **Authority**: 唯一权威命名条款源;子系统文档中复述命名规则必须回链本文件锚点,无回链视为私自立法(熔断)。
 **Supersedes**: R51 D153 (Dispatcher 命名锚,本文件 § 5 收口)、R47 散落命名约定。
-**Rounds**: R53-R60 命名迁移立法总账;R62 收官补 D174 (mmap 后缀命名漏网 + GOV.5 三件套纪律,D174 立法于 R62)。
+**Rounds**: R53-R62 命名迁移立法总账 (R53-R60 命名迁移 + R61 syscall 11-15 增补 + R62 收官 D174 mmap 后缀漏网 + GOV.5 三件套纪律)。R63 同步 SPEC.md 扫描面 + boot banner SSOT (D175 立法)。
 
 ---
 

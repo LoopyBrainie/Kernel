@@ -1,4 +1,4 @@
-# Wriggly-Octopus 🐙
+# Neur-Aegis 🐙
 
 > A triple-language-verifiable RISC-V S-Mode microkernel — specified, not yet implemented.
 
@@ -86,7 +86,7 @@ Single source of truth: `docs/00-ffi-pillars.md` (D125).
 | How errors propagate across languages | `docs/10-error-handling.md` |
 | The scheduler (RR vs Work-Stealing) | `docs/12-scheduler.md` |
 | Network driver and Shim Layer | `docs/11-network-driver.md` |
-| Every design decision ever made (D1–D160) | `docs/03-design-decisions.md` |
+| Every design decision ever made (D1–D174) | `docs/03-design-decisions.md` |
 | ISA/ABI profile matrix (D160) | `docs/16-profile-matrix.md` |
 | What "frozen" means and how it's verified | `tools/spec_lab/README.md` |
 | Phase 0 MVP task list (T1.1–T1.28) | `docs/15-phase0-mvp.md` |
@@ -132,6 +132,6 @@ bash docs/ci/check-docs.sh && bash docs/ci/check-d-backlinks.sh && \
 
 ## Adjacent work
 
-- **Phase 1** (Sv39 PTE isolation, Work-Stealing scheduler, Page-Aggregation compact storage) — fully scoped, deferred
+- **Phase 1** (Sv39 PTE alignment, Work-Stealing scheduler, Page-Aggregation compact storage) — fully scoped, deferred
 - **External master plan**: `C:\Users\LamKo\.claude\plans\specification-writing-risc-v-ultimate-wiggly-octopus.md` (~5500 lines, R1–R47 audit rounds)
 - **Implementation sandboxes**: under `mvp/` (QEMU logs, kernel ELF builds, shell binaries)

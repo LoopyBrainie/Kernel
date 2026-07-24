@@ -119,7 +119,7 @@ pub const IsolationMechanism = union(enum) {
 | Phase 1+ Embedded | 1 block request | **D84 SATP VMA** (PTE + VMA 双重映射) |
 | Phase 1+ Server | 1 block request | **D84 SATP VMA** + **D31 PMP** (纵深防御) |
 
-**U-Mode mmap 路径** (D109 协同):
+**U-Mode mmap 路径** (D109 协同, D174 后缀命名漏网补漏):
 
 ```rust
 // D109: U-Mode 申请 1 个 block 时, 由 D31/D84 提供二级隔离

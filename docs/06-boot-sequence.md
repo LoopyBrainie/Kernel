@@ -39,6 +39,23 @@ Firmware Jump (a0=hartid, a1=dtb_phys)
       └── D100: UKI Loader writes Active Slot to .boot_meta
 ```
 
+## Boot Banner SSOT (D175)
+
+**单一证据源 (D175)**: Phase 0 boot 成功 marker — U-Mode shell 在 Hart-Local 初始化完成 + .bss 清零 + 控制权移交 shell 后, 必须通过 dev://uart0 打印以下 ASCII 字符串:
+
+```
+NEURA BOOT OK
+```
+
+**字符级约束** (用于 qemu 冒烟断言与 harness verdict 校验):
+- 15 字节 ASCII, 末尾 `\n`
+- 大小写敏感: `NEURA` 全大写, `BOOT`/`OK` 全大写
+- 字节序列: `4E 45 55 52 41 20 42 4F 4F 54 20 4F 4B 0A`
+
+**反例 (R63 D175 入册禁词 `COSMO BOOT OK`)**: R50 时代 brand marker `COSMO BOOT OK` 不得再出现于任何代码 / spec / harness / qemu log. 旧文本若需保留历史叙述, 必须按 D172 围栏外豁免规则处理 (30-open-questions.md 等审计档案豁免; 代码/spec 一律强制迁移).
+
+**回链**: `15-phase0-mvp.md` § R49-C7 证据补丁段 (1 处 marker 引用) + `tools/spec_lab/` Phase 0 冒烟断言 (实现期落地).
+
 **P3-2 唯一顺序 (R47 增补, supersede R40 D136 fragment)**: Step 0 内禁止重排的 5 条硬序:
 
 1. **D95 Anti-Trampling** (重叠检测 + 失败则 SBI SRST) — 必须在一切内存写入之前

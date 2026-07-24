@@ -360,7 +360,7 @@ Wave 4: Defer Phase 1 (D26/D31/D43/D83/D91/D102/D104)
 - [ ] `make test-dtb-corruption` halts via SBI SRST
 - [ ] `make test-jumbo-on` 1500B MTU roundtrip byte-identical
 - [ ] Documentation gate `bash docs/ci/check-docs.sh` 0/N forbidden words (N = `${#FORBIDDEN[@]}` 派生; D115 R33, R37-R46 入册, R47 D151 撤销)
-- [ ] **R49-C7 证据补丁: harness verdict 必须落盘 artifacts/** — 任何 Exit criteria 触发的 smoke / shutdown / boot 检查, 必须把 `verdict=PASS|FAIL` 与关键 marker (如 `shutting down` / `COSMO BOOT OK` / `error: code=`) 写到 `artifacts/<test>.verdict` 与 `artifacts/<test>.log` 双文件. 沙箱二 C7 缺口 (verdict 仅 echo, 未落盘) 起, 证据从此受规矩管. 验收: `tools/check_artifacts_on_disk.sh` 扫描所有 `artifacts/*.verdict`, 缺失 → gate 熔断
+- [ ] **R49-C7 证据补丁: harness verdict 必须落盘 artifacts/** — 任何 Exit criteria 触发的 smoke / shutdown / boot 检查, 必须把 `verdict=PASS|FAIL` 与关键 marker (如 `shutting down` / `NEURA BOOT OK` (D175 boot banner SSOT, 见 `06-boot-sequence.md` § Banner SSOT) / `error: code=`) 写到 `artifacts/<test>.verdict` 与 `artifacts/<test>.log` 双文件. 沙箱二 C7 缺口 (verdict 仅 echo, 未落盘) 起, 证据从此受规矩管. 验收: `tools/check_artifacts_on_disk.sh` 扫描所有 `artifacts/*.verdict`, 缺失 → gate 熔断
 
 ---
 

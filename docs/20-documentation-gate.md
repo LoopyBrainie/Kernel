@@ -81,7 +81,8 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | R58 补执行 (D173 Q69 豁免) — cortix_kernel crate 名迁移 | 1 | **169** | cosmo_kernel (D173 派生禁词; Q69 Rust crate 拓扑阻塞由 D173 正交论证豁免: crate 命名空间标识 vs 运行时数据流 fd 0/1/2 路由; R58 补执行在 R60 之后追加, EXPECTED_TOTAL 168→169; 实际传染面 1 文件 1 行 `07-shell-architecture.md:92 use cosmo_kernel` → `use cortix_kernel`) |
 | R61 D171 增补 — syscall 编号表 11-15 (HAL-暴露型 syscall 入口) | 5 | **174** | cosmo_copy_from_user / cosmo_copy_to_user / cosmo_atomic_cas_ptr / cosmo_hal_set_next_timer / cosmo_hal_fs_is_dirty (R59 计划文件 §1.2 漏列的 5 个 syscall 入口; R61 在 R58 补之后追加, EXPECTED_TOTAL 169→174; syscall 0x0B-0x0F 编号表 5 行 `cosmo_*` → `neura_*`; 接口层剥离 HAL 限定符 `hal_` (例 `neura_set_next_timer` 非 `neura_hal_set_next_timer`); 30-open-questions.md line 2400/2404 stale cross-ref 同步) |
 | R62 D174 — mmap 后缀命名补漏 + GOV.5 收官同步状态头纪律 | 1 | **175** | mmap_cosmo (R62 收口后缀形态 `_cosmo` 漏网修补: 18 条现有禁词仅前缀 `cosmo_*` 字面匹配, 不覆盖后缀 `*_cosmo`; R62 入册 `mmap_cosmo` 同名符号, 改名 `neura_mmap` 同 D171 syscall API 命名法; 同步 D174 立 GOV.5 收官同步状态头纪律, 传染面 09:126 + 30:1144 rename, 03/SPEC/00 状态头三件套自身示范同步; EXPECTED_TOTAL 174→175) |
-| **Total** | — | **175** | `${#FORBIDDEN[@]}` 派生 (R62 自校: N 必须 == 175) |
+| R63 D175 — 门禁盲区补漏 + SPEC.md 扫描面立法 + boot banner SSOT | 1 | **176** | COSMO BOOT OK (R63 三目标收口: (a) check-d-backlinks 正则扩 D170-D199, floor 35→49, 文案三处同步; (b) SPEC.md 纳入禁词门扫描面, 触发 4 处实质改名 (SPEC.md:68/307 PTE isolation→PTE alignment, SPEC.md:147/179 cosmo_panic_abort→basal_panic_abort) + 09:122 D174 标签新增; (c) boot banner SSOT 立 `NEURA BOOT OK` 于 06-boot-sequence.md § Banner SSOT 段, 15:363 回链. GOV.5 三件套→四件套 (+README.md); EXPECTED_TOTAL 175→176) |
+| **Total** | — | **176** | `${#FORBIDDEN[@]}` 派生 (R63 自校: N 必须 == 176) |
 
 (*Cumulative counts in this table are best-effort documentation; the canonical count is `${#FORBIDDEN[@]}` in the script.*)
 
@@ -97,7 +98,9 @@ where `N` is derived live from the array length. The script enforces a **lower f
 
 > **R62 自身示范**: D174 立法 + 三件套同步已写入本批次 commit。R50 era README 断档 (R50 后 03 标题停在 D1-D160) + R60 era SPEC.md 断档 (R60 后 SPEC.md 状态头停在 D1-D167 R31-R53) + R60 era 03 status 行止于 R50 — 三断档 R62 一次性补齐。
 >
-> **下次收口 R## 必须**: commit message 显式列出三件套同步 (例 `R63-FINAL: ... + 03/SPEC/00 状态头同步`)。
+> **R63 升级三件套→四件套**: D175 立法后, GOV.5 检查单扩展为四件套 — ① `03-design-decisions.md` 标题 + 状态行, ② `SPEC.md` status 头 (R63 起纳入禁词门扫描面, 不能再用 README 替代), ③ `00-naming-taxonomy.md` status 头, ④ `README.md` + `docs/README.md` 标题/范围 (`Wriggly-Octopus` → `Neur-Aegis`, `D1-D160` → `D1-D174`)。理由: R62 三件套恰好漏掉 README 这条 R50 断档的老伤口; D174(b) 立法的"自身示范"commit message 自称同步, 但实际漏改 `00-naming-taxonomy.md` — 该遗漏由 R62-HOTFIX 立即补齐, 并促使 R63 立 D175 显式把 README 列入四件套。
+>
+> **下次收口 R## 必须**: commit message 显式列出四件套同步 (例 `R64-FINAL: ... + 03/SPEC/00/README 状态头同步`)。README 双陈旧已由 R63-HOTFIX 手动 sync, 但仍须 R##-FINAL 持续盯守 (R63 起纳入 GOV.5 检查单硬约束)。
 
 ## What each forbidden word defends against
 

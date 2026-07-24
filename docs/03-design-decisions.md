@@ -1,7 +1,7 @@
-# 03 · Design Decisions (D1-D174 Full Table)
+# 03 · Design Decisions (D1-D175 Full Table)
 
 **Plan section**: §一 (R1-R50 audit rounds)
-**Status**: 45 GAPs RATIFIED (R31-R45) + 1 R50 立法 (D160, profile matrix) + 7 R51 锚定 (D153-D159) + 14 R52-R62 立法 (D161-D174, naming migration D164-D167/D168-D173 + boot hardening D161-D163 + mmap 命名补漏 D174); 0 open questions
+**Status**: 45 GAPs RATIFIED (R31-R45) + 1 R50 立法 (D160, profile matrix) + 7 R51 锚定 (D153-D159) + 14 R52-R62 立法 (D161-D174, naming migration D164-D167/D168-D173 + boot hardening D161-D163 + mmap 命名补漏 D174) + 1 R63 立法 (D175, 门禁盲区 + SPEC.md 扫描面 + boot banner SSOT); 0 open questions
 **Column legend**: `Status` = ACTIVE / DEPRECATED / SUPERSEDED; `Superseded by` 显式登记 supersede 链
 
 ---
@@ -370,6 +370,14 @@ The full D1-D125 decision ledger with status column. Each row has class (1=evide
 | # | Class | Status | Decision |
 |---|-------|--------|----------|
 | D174 | 1 | ACTIVE | **`mmap_cosmo` 后缀命名漏网补漏 + 收官同步状态头纪律 (GOV.5)** — R62 双目标立法: (a) 按 D171 syscall API 命名法, 后缀 `\`_cosmo\`` 形态的 U-Mode mmap syscall API 改名 `neura_mmap` (传染面: `09-memory-subsystem.md` § U-Mode mmap 路径段 1 行 + `30-open-questions.md` § D135 提案表格 label 1 行), 同步入册禁词 `mmap_cosmo` (EXPECTED_TOTAL 174→175), 修补 18 条现有禁词仅前缀 `cosmo_*` 字面匹配的盲区 (本批次揭露的 `\`_cosmo\`` 后缀形态疏漏适用于任何 `*_cosmo` 命名残留); (b) **收官同步状态头纪律 (GOV.5 检查单)** — 任何 R## 收口批次 (R##-FINAL commit) 必须同时满足以下三件套闭环, 不闭环即视为状态头断档, 与 R50 时代 README 断档同类: ① `docs/03-design-decisions.md` 标题 + 状态行同步至当前 D# 终值 (R62 自身: D1-D160 → D1-D174 + 状态行扩展 R52-R62); ② `SPEC.md` 状态头同步 (R62 自身: D1-D167 R31-R53 → D1-D174 R31-R62); ③ `00-naming-taxonomy.md` status 头同步至当前 R## (R62 自身已示范执行)。R##-FINAL commit message 须显式列出三件套同步完成 (例 `R63-FINAL: ... + 03/SPEC/00 状态头同步`)。Back-link: `09-memory-subsystem.md` § U-Mode mmap 路径段 (1 处 rename) + `30-open-questions.md` § D135 提案表格 (1 处 rename) + `docs/03-design-decisions.md` § D174 立法段 + `SPEC.md` status 头 + `docs/20-documentation-gate.md` § R62 GOV.5 检查单子节。forbidden-word: `mmap_cosmo` (1 条 R62 D174 派生, EXPECTED_TOTAL 174→175)。spec_lab 计划: `R62-M1-mmap-rename.{sh,_negative.sh}` (text-grep: `neura_mmap` 必须出现于 `09-memory-subsystem.md` § U-Mode mmap 路径段, `mmap_cosmo` 在 1X 子系统文档必须 0 命中)。|
+
+## R63: 门禁盲区补漏 + 扫描面立法 + boot banner SSOT (D175, 3 锚) — RATIFIED
+
+R62 终验报告发现: BLOCKER-1 `check-d-backlinks` 扫描面停在 D169 (D170-D174 跌出); BLOCKER-2 `SPEC.md` 在所有禁词门扫描面之外 (含 2 处 `cosmo_panic_abort` 现名错用 + 2 处 `PTE isolation` 历史错名); 登记-1 README 双陈旧 (`Wriggly-Octopus` 标题 + `D1-D160` 范围); 登记-2 boot banner 无 SSOT (`COSMO BOOT OK` 是唯一引用, 无文档定义)。R63 三目标立法:
+
+| D# | Class | Status | Decision |
+|---|-------|--------|----------|
+| D175 | 1 | ACTIVE | **门禁盲区补漏 + SPEC.md 扫描面立法 + boot banner SSOT (NEURA BOOT OK)** — R63 三目标立法: (a) **`check-d-backlinks` 扫描面扩展** — 正则 `D(12[6-9]|1[3-5][0-9]|16[0-9])` (D126-D169) 扩 `D(12[6-9]|1[3-9][0-9])` (D126-D199 前瞻), floor 35→49 (D126-D174 实际计数), 文案 `D126-D160` → `D126-D174` 三处同步。**关键触发**: R62 后 ledger 有 D170-D174 共 5 个新立法 (D170/D171/D172/D173/D174) 全部跌出门禁, R62 D174 立法文本自指"传染面 09:126" 但 `09-memory-subsystem.md` 实际无 D174 标签 → 若门禁扩 D174 当前必 FAIL. (b) **`SPEC.md` 纳入禁词门扫描面** — `grep -rnF ... docs/` 改 `grep -rnF ... docs/ SPEC.md`, `README.md` 暂留 R63 手动同步 (R64+ 视情况纳入). 修法触发 2 处历史错名暴露: SPEC.md:68/307 `PTE isolation` (D109 正确 `PTE alignment`) + SPEC.md:147/179 `cosmo_panic_abort` (R54 迁 `basal_panic_abort` 族) → 4 处实质改名. (c) **boot banner SSOT** — `06-boot-sequence.md` § Boot Banner SSOT 段定义 `NEURA BOOT OK` (15 字节 ASCII, 末尾 `\n`, 大小写敏感), R63 同步入册禁词 `COSMO BOOT OK` (EXPECTED_TOTAL 175→176), `15-phase0-mvp.md:363` 回链至 06 § Banner SSOT. GOV.5 三件套 → **四件套**: ① `03-design-decisions.md` 标题 + 状态行, ② `SPEC.md` status 头, ③ `00-naming-taxonomy.md` status 头, ④ README.md (新, R63 起纳入 — `README.md` + `docs/README.md` 标题 `Wriggly-Octopus` → `Neur-Aegis`, 范围 `D1-D160` → `D1-D174`). 登记-1 README 自身 sync 已在 R63 手动执行 (硬同步); 登记-2 banner SSOT 在 06 立. Back-link: `09-memory-subsystem.md` § U-Mode mmap 路径段 (D174 标签新增) + `06-boot-sequence.md` § Boot Banner SSOT 段 + `15-phase0-mvp.md` § R49-C7 证据补丁段 (banner 引用) + `SPEC.md` 状态头 + `README.md` + `docs/README.md`. forbidden-word: `COSMO BOOT OK` (1 条 R63 D175 派生, EXPECTED_TOTAL 175→176). spec_lab 计划: `R63-M1-banner-ssot.{sh,_negative.sh}` (text-grep: `NEURA BOOT OK` 必须出现于 `06-boot-sequence.md` § Boot Banner SSOT 段, `COSMO BOOT OK` 在 `docs/` + `SPEC.md` 必须 0 命中). |
 
 ## R47: P1-5 勘误增补挂靠
 
