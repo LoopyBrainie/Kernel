@@ -403,6 +403,11 @@ R63 终验发现 AUDIT_LINE_FILTER (`docs/ci/check-docs.sh:296`) 已膨胀到不
    - 反引号包裹: `` `<!-- gate-exempt: D### -->` `` (代码引用)
    - 括号 / 斜杠后接: `<!-- gate-exempt: D### --> (单 D)` 或 `... -->` 等
    - 中间单元格: `| col <!-- gate-exempt: D### --> | col |` (F4 规约违反, marker 不被抽出)
+5. **一行一 marker (F5 修复, R65-γ 立)** — 每个物理行**最多一个** marker
+   - GNU grep -E 的 `.*?` 实际是贪婪的 (ERE 不支持 PCRE 真非贪婪), 多 marker 同行会触发 "marker blob + 中间 D 号误纳入" false-fail (失败方向, 安全但污染审计)
+   - 解析 (D-ref 抽取 §2b): 当前 regex 贪婪吃整行到末 `-->`; 若一行有两 marker, 中间 D 号被算入 GATE_EXEMPT_REFS, 误触发 §2b 校验
+   - 修法选 (a) (R65-γ 选): §1.1 明文 "一行一 marker" 硬约束, 写 marker 时人工确保; 选 (b) 改 grep -oP (PCRE true non-greedy) — 留 R66 退役时一并考虑
+   - **零代码, 仅硬约束**
 
 **正则演化** (与 §2b / 抽取器同款):
 - R64-FINAL: `<!-- gate-exempt(-file)?:.*-->[[:space:]]*$`
