@@ -85,7 +85,20 @@ fi
 # =============================================================================
 
 GATE_EXEMPT_REFS=()
-MARKERS=$(grep -rnE $EXCLUDE_GREP '<!-- gate-exempt(-file)?:' docs/ 2>/dev/null || true)
+# R64-HOTFIX F1: §2b 必须独立排除集 (不复用 §1 EXCLUDE_GREP).
+#   §1 排除 03/20/30 因其是 ledger 数据载体 (D-table / census / 审计档案).
+#   §2b 管辖 marker 落盘文件 (R65 起 49 行 marker 落 03 + 1 文件级 frontmatter 落 30),
+#       这些必须纳入校验 — 否则 "R65 起任何不存在的 D### 立即 fail" 立法承诺
+#       对 98% 的 marker 不成立 (实证: docs/99-tmp.md 伪造 D999 → fail; 同一伪造落 03 → exit 0).
+# 仅排除 ci/ 脚本 (其中 marker 形式是叙述性提及, 非真实落盘).
+# F2: 同步 SPEC.md (与抽取器扫描面一致, 防止"抽出但永不校验" 脱钩).
+# EOL $ 锚 + 与抽取器同款 ([[:space:]]*$) 防止 markdown 反引号 / 括号 / 斜杠 narrative 提及误报
+# (例 03:388 立法行含 `R51-D1722` 字面, 无 $ 锚会立刻误报 → 反伪规则自伤合法叙述).
+MARKERS=$(grep -rnE \
+  --exclude=check-docs.sh --exclude=check-d-backlinks.sh \
+  --exclude=check_goal_manifest.sh --exclude=check-toolchain.sh \
+  '<!-- gate-exempt(-file)?:.*-->[[:space:]]*$' \
+  docs/ SPEC.md 2>/dev/null || true)
 if [[ -n "$MARKERS" ]]; then
   while IFS= read -r marker_line; do
     [[ -z "$marker_line" ]] && continue

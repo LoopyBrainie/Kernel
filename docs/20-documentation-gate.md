@@ -262,15 +262,20 @@ $ bash docs/ci/check-d-backlinks.sh
 - 失败模式：熔断并打印缺失 D# 列表
 - 自验证：`${#D_TAGS[@]} ≥ 35`（D126-D160 全集 = R37-R45 27 + R51 7 + R50 1），不足即 FATAL exit 2
 
-### §2b: 行内豁免标记 D-ref 校验 (R64-D176, R64 即生效)
+### §2b: 行内豁免标记 D-ref 校验 (R64-D176, R64 即生效; R64-HOTFIX 独立排除集 + EOL $ 锚 + SPEC.md)
 
-D176 §1.4 行内豁免标记机制配套反伪: `docs/**/*.md` 中所有 `<!-- gate-exempt[: -file]: ... -->` 标记的 D### ref 必须**在 03-design-decisions.md D-table 中存在** (**不限状态**, ACTIVE / DEPRECATED / SUPERSEDED 均合法).
+D176 §1.4 行内豁免标记机制配套反伪: `docs/**/*.md` + `SPEC.md` 中所有 `<!-- gate-exempt[: -file]: ... -->` 标记的 D### ref 必须**在 03-design-decisions.md D-table 中存在** (**不限状态**, ACTIVE / DEPRECATED / SUPERSEDED 均合法).
 
 - **三种 marker 形态都校验**: 单 D (`D175`) / R##-D### (`R63-D175`, R## 前缀不校验) / 多 D 逗号分隔 (`D172,D175`) / 文件级 `<!-- gate-exempt-file: desc (D121,D153) -->`
 - **存在性规则**: D999 没立过法 → 必假 → fail. 活性 (status=ACTIVE) 会误伤合法 DEPRECATED 历史叙述豁免 (R47 撤销行 / R48 旧 sys_result_t 形态叙述 / R51-F5 asm rv64imac 注释 都标 DEPRECATED)
 - **R64 行为**: 作用于空集 (R64 无 marker) 必过 (fail-closed skeleton); **R65 起防伪洞实时生效**, 任何不存在的 D### 立即 fail, `R51-D1722` 类手写拼写错误不过夜
-- **解析实现**: 同主 D-tag 漏斗: `grep -rnE $EXCLUDE_GREP '<!-- gate-exempt(-file)?:' docs/` → 每行 `grep -oE '\bD[0-9]+\b'` → `grep -qE "\| $ref \|" $LEDGER`
+- **R64-HOTFIX F1 修复**: §2b **不复用** §1 EXCLUDE_GREP (后者排除 03/20/30 是 ledger 数据载体合理, §2b 排除则 49 个 marker + 文件级声明全成校验盲区). §2b 改用**独立排除集** (仅排 ci/ 脚本: `check-docs.sh / check-d-backlinks.sh / check_goal_manifest.sh / check-toolchain.sh`, 其中 marker 形式是叙述性提及非真实落盘). 实证: `docs/03-design-decisions.md` 伪造 `<!-- gate-exempt: D999 -->` 必须被 §2b 抓到 (修复前 exit 0 静默通过漏洞, 修复后 exit 1).
+- **R64-HOTFIX F1 EOL $ 锚 + SPEC.md**: 与抽取器同款正则 `<!-- gate-exempt(-file)?:.*-->[[:space:]]*$` (强制 `-->` 收尾当前行), 排除 markdown 反引号包裹 / 括号后接 / 斜杠后接 narrative 提及. 同步扫描 `SPEC.md` (与抽取器一致, 防"抽出但永不校验" 脱钩).
+- **解析实现**: `grep -rnE --exclude=ci/...'<!-- gate-exempt(-file)?:.*-->[[:space:]]*$' docs/ SPEC.md` → 每行 `grep -oE '\bD[0-9]+\b'` → `grep -qE "\| $ref \|" $LEDGER`
 - **失败模式**: 熔断并打印 `[ERROR] gate-exempt D-ref 不存在: <ref>` + 修复指引 (1) 修笔误; (2) 若真需新 D#, 在 03-design-decisions.md D-table 添加 (可标 DEPRECATED)
+- **R64-HOTFIX 金丝雀实证**:
+    - `R64-gate-exempt-d999-in-03_negative.sh` — 副本 03 追加 D999 marker → check-d-backlinks 必须 exit 1 (F1 漏洞复发即 RC=0 → 断言 FAIL)
+    - `R64-gate-exempt-narrative-canary.sh` — 副本注入三种 narrative 形式 → check-d-backlinks 必须 exit 0 (EOL $ 锚失效即 RC=1 → 断言 FAIL)
 
 ```bash
 $ bash docs/ci/check-d-backlinks.sh
