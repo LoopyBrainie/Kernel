@@ -1,39 +1,44 @@
 #!/usr/bin/env bash
 # =============================================================================
-# R64-gate-exempt-count.sh — 正向断言: gate-exempt marker sidecar 存在 + R64 baseline (0 行)
+# R64-gate-exempt-count.sh — 双阶段 sidecar count 自检 (R64 baseline 0 / R65-γ 推进 ≥ 17)
 # =============================================================================
 # 抽取源: docs/ci/check-docs.sh § extract_gate_exempt_markers() (R64 D176 立法)
-# 输出:   tools/spec_lab/extracted/gate-exempt-markers.txt (gitignored, clean clone 首跑必创建)
-# R64 期望: sidecar 存在 + count = 0 (fail-closed skeleton, 0 行为变更; 主门禁不读 marker)
-# R65+ 升级: 新建 R65-gate-exempt-count.sh, 期望 count ≥ 50 (50 行 marker 注入 + 30 文件级展开)
-# R66 末态: 期望 count ≥ 50 (行为等价切换不丢覆盖)
+# 输出:   tools/spec_lab/extracted/gate-exempt-markers.txt (gitignored)
+# R64 期望: sidecar 存在 + count = 0 (fail-closed skeleton, 0 行为变更)
+# R65-γ 期望: count >= 17 (γ(b) 注入 + γ(c)/(d) 累积)
+# 设计: 严格判据 (= 0) 在 R65 起失效, 改 OR 逻辑 (count = 0 或 count >= 17)
+#       这样:
+#         - R64 baseline (count = 0): PASS
+#         - R65-γ 推进 (count >= 17): PASS
+#         - 中间漂移 (count = 1..16): FAIL (R65-γ 起不应有该区间, 是脏状态)
+#         - R65 末态: 严格阶段值由 R65-gate-exempt-count.sh 校 (floor dynamic bump)
+# R66 终态: 行为等价切换 (sidecar ⊇ filter 行集 ∧ diff 为空), 集合相等判据
 # 验证:
-#   1. sidecar 文件存在 (extract_gate_exempt_markers 已注入 check-docs.sh 入口调用)
-#   2. R64 baseline — count = 0 (空集合通过 fail-closed; 多出 marker 视为漂移)
-# 路径解析:
-#   - $PWD 锚定 CWD, 允许 mktemp 副本内跑 (run_negative.sh 模式)
-#   - 真 repo 跑时 $PWD = repo root, $SIDECAR = repo/tools/spec_lab/extracted/gate-exempt-markers.txt
-# 失败模式: sidecar 缺失 (extract 未跑) / count ≠ 0 (R64 不应有 marker)
+#   1. sidecar 文件存在
+#   2. count = 0 (R64 baseline) → PASS
+#   3. count >= 17 (R65-γ 推进中) → PASS, 否则 FAIL
 # =============================================================================
 set -euo pipefail
 
 SIDECAR="$PWD/tools/spec_lab/extracted/gate-exempt-markers.txt"
+R65_GAMMA_FLOOR=17  # R65-γ (b) 注入后实测; γ(c)/(d) 推进时不动此处, R65-gate-exempt-count.sh 接管 dynamic floor
 
 # 验证 1: sidecar 存在
 if [[ ! -f "$SIDECAR" ]]; then
   echo "FAIL: sidecar 不存在: $SIDECAR" >&2
   echo "      check-docs.sh § extract_gate_exempt_markers() 应在脚本入口写 sidecar" >&2
-  echo "      (clean clone 必挂路径: 干净克隆首跑若缺 sidecar, 须先调本断言的 'bash docs/ci/check-docs.sh' 触发 mkdir -p + 抽取)" >&2
   exit 1
 fi
 
-# 验证 2: R64 baseline = 0 行
+# 验证 2: 双阶段判据 (count = 0 OR count >= floor)
 COUNT=$(awk 'END{print NR+0}' "$SIDECAR")
-if [[ "$COUNT" -ne 0 ]]; then
-  echo "FAIL: R64 期望 sidecar count = 0 (fail-closed skeleton, 0 行为变更), 实测 $COUNT" >&2
-  echo "      R64 不应有 marker; R65+ 升级为 R65-gate-exempt-count.sh 期望 ≥ 50" >&2
+if [[ "$COUNT" -eq 0 ]]; then
+  echo "PASS: R64-gate-exempt-count (sidecar 存在, count = 0, R64 baseline)"
+  exit 0
+elif [[ "$COUNT" -ge "$R65_GAMMA_FLOOR" ]]; then
+  echo "PASS: R64-gate-exempt-count (sidecar 存在, count = $COUNT >= R65-γ floor $R65_GAMMA_FLOOR)"
+  exit 0
+else
+  echo "FAIL: R64-gate-exempt-count (sidecar count = $COUNT, 漂移区间 1..$((R65_GAMMA_FLOOR-1)), 既非 R64 baseline 0 也未达 R65-γ 推进 floor)" >&2
   exit 1
 fi
-
-echo "PASS: R64-gate-exempt-count (sidecar 存在, count = 0, D176 §1.3 R64 立法骨架状态)"
-exit 0
