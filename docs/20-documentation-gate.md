@@ -262,7 +262,7 @@ $ bash docs/ci/check-d-backlinks.sh
 - 失败模式：熔断并打印缺失 D# 列表
 - 自验证：`${#D_TAGS[@]} ≥ 35`（D126-D160 全集 = R37-R45 27 + R51 7 + R50 1），不足即 FATAL exit 2
 
-### §2b: 行内豁免标记 D-ref 校验 (R64-D176, R64 即生效; R64-HOTFIX 独立排除集 + EOL $ 锚 + SPEC.md)
+### §2b: 行内豁免标记 D-ref 校验 (R64-D176, R64 即生效; R64-HOTFIX 独立排除集 + EOL $ 锚 + SPEC.md; R65-α F4 表格行支持 + F3 注释跨度收紧)
 
 D176 §1.4 行内豁免标记机制配套反伪: `docs/**/*.md` + `SPEC.md` 中所有 `<!-- gate-exempt[: -file]: ... -->` 标记的 D### ref 必须**在 03-design-decisions.md D-table 中存在** (**不限状态**, ACTIVE / DEPRECATED / SUPERSEDED 均合法).
 
@@ -271,11 +271,15 @@ D176 §1.4 行内豁免标记机制配套反伪: `docs/**/*.md` + `SPEC.md` 中�
 - **R64 行为**: 作用于空集 (R64 无 marker) 必过 (fail-closed skeleton); **R65 起防伪洞实时生效**, 任何不存在的 D### 立即 fail, `R51-D1722` 类手写拼写错误不过夜
 - **R64-HOTFIX F1 修复**: §2b **不复用** §1 EXCLUDE_GREP (后者排除 03/20/30 是 ledger 数据载体合理, §2b 排除则 49 个 marker + 文件级声明全成校验盲区). §2b 改用**独立排除集** (仅排 ci/ 脚本: `check-docs.sh / check-d-backlinks.sh / check_goal_manifest.sh / check-toolchain.sh`, 其中 marker 形式是叙述性提及非真实落盘). 实证: `docs/03-design-decisions.md` 伪造 `<!-- gate-exempt: D999 -->` 必须被 §2b 抓到 (修复前 exit 0 静默通过漏洞, 修复后 exit 1).
 - **R64-HOTFIX F1 EOL $ 锚 + SPEC.md**: 与抽取器同款正则 `<!-- gate-exempt(-file)?:.*-->[[:space:]]*$` (强制 `-->` 收尾当前行), 排除 markdown 反引号包裹 / 括号后接 / 斜杠后接 narrative 提及. 同步扫描 `SPEC.md` (与抽取器一致, 防"抽出但永不校验" 脱钩).
-- **解析实现**: `grep -rnE --exclude=ci/...'<!-- gate-exempt(-file)?:.*-->[[:space:]]*$' docs/ SPEC.md` → 每行 `grep -oE '\bD[0-9]+\b'` → `grep -qE "\| $ref \|" $LEDGER`
+- **R65-α F4 修复 (表格行末单元格)**: 正则扩为 `<!-- gate-exempt(-file)?:.*-->[[:space:]]*\|?[[:space:]]*$` (单字符 `\|?` 允许 `-->` 后接 ` |`). R65 计划 49 marker 落 03 立法表 D-table 行末单元格, F4 修复后形貌合规. narrative 形式 (反引号 / 括号 / 斜杠 等非空白非 `|` 字符) 仍被 `$` 锚点排除.
+- **R65-α F3 修复 (D-ref 注释跨度收紧)**: 提取 D### 时**先**用 `<!-- gate-exempt(-file)?:.*?-->` 非贪婪抽出 marker 体, **再**用 `\bD[0-9]+\b` 取 D 号. 防 narrative 行同句出现未立法 D 号 (如 "D97 草案撤回") 误报.
+- **R65-α 演示前缀规约**: 文档示例使用 `<!-- gate-exempt-DEMO: ... -->` / `<!-- gate-exempt-file-DEMO: ... -->` (regex `<!-- gate-exempt(-file)?:` 不匹配 `-DEMO:` / `-file-DEMO:` 后缀). 真 marker 必须严格使用 `<!-- gate-exempt: ... -->` / `<!-- gate-exempt-file: ... -->`, 不可用 `-DEMO` 后缀逃避防伪.
+- **解析实现**: `grep -rnE --exclude=ci/...'<!-- gate-exempt(-file)?:.*-->[[:space:]]*\|?[[:space:]]*$' docs/ SPEC.md` → 每行 `grep -oE '<!-- gate-exempt(-file)?:.*?-->' | grep -oE '\bD[0-9]+\b'` → `grep -qE "\| $ref \|" $LEDGER`
 - **失败模式**: 熔断并打印 `[ERROR] gate-exempt D-ref 不存在: <ref>` + 修复指引 (1) 修笔误; (2) 若真需新 D#, 在 03-design-decisions.md D-table 添加 (可标 DEPRECATED)
-- **R64-HOTFIX 金丝雀实证**:
-    - `R64-gate-exempt-d999-in-03_negative.sh` — 副本 03 追加 D999 marker → check-d-backlinks 必须 exit 1 (F1 漏洞复发即 RC=0 → 断言 FAIL)
+- **金丝雀实证**:
+    - `R64-gate-exempt-d999-in-03_negative.sh` — 副本 03 末行追加 `<!-- gate-exempt: D999 -->` → check-d-backlinks 必须 exit 1 (F1 漏洞复发即 RC=0 → 断言 FAIL)
     - `R64-gate-exempt-narrative-canary.sh` — 副本注入三种 narrative 形式 → check-d-backlinks 必须 exit 0 (EOL $ 锚失效即 RC=1 → 断言 FAIL)
+    - **`R64-gate-exempt-table-row-canary_negative.sh` (R65-α 立)** — 副本 03 D-table 行末单元格追加 `... <!-- gate-exempt: D999 --> |` → check-d-backlinks 必须 exit 1 (F4 漏洞复发即 RC=0 → 断言 FAIL)
 
 ```bash
 $ bash docs/ci/check-d-backlinks.sh

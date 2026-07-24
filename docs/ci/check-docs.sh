@@ -311,12 +311,15 @@ extract_gate_exempt_markers() {
   #   narrative 提及 (`<!-- gate-exempt: ... -->` 在 markdown 叙述中, 后跟反引号/括号/斜杠等) 被 `$` 锚点排除,
   #   例如 03:388 (`-->` 后接反引号 ` `` `)、20:85 (`-->` 后接 `); D-ref ...`)、20:269 (`-->` 后接反引号 ` `` `)、
   #   ci/check-d-backlinks.sh:75-78 (`-->` 后接空格 + `(单 D)` 注释).
-  # 双侧 not-greedy 匹配 `.*?` 与 end-of-line 锚 `$` 共同确保不跨行捕获.
+  #
+  # R65-α F4 扩展: regex 末段扩为 `-->[[:space:]]*\|?[[:space:]]*$`, 允许 markdown 表格行
+  #   末单元格 marker (`-->` 后仅余 ` |`); narrative 形式 (反引号/括号/斜杠等非空白非
+  #   `|` 字符) 仍被 `$` 锚点排除. 与 §2b check-d-backlinks.sh 同步.
   #
   # 第二道过滤: 排除 ci/ 脚本自身 (与 main loop 同集), 防止本函数注释块 (299-300) 的多 marker 同行示例
   # (如 `<!-- gate-exempt: D### -->` / `<!-- gate-exempt: R##-D### -->` / `<!-- gate-exempt: D###,D### -->` 在同一注释行)
   # 因末段 marker 恰落在 EOL 前被 `$` 锚点错误命中.
-  if grep -rnE '<!-- gate-exempt(-file)?:.*-->[[:space:]]*$' \
+  if grep -rnE '<!-- gate-exempt(-file)?:.*-->[[:space:]]*\|?[[:space:]]*$' \
        --exclude=check-docs.sh --exclude=check-d-backlinks.sh \
        --exclude=check_goal_manifest.sh --exclude=check-toolchain.sh \
        docs/ SPEC.md > "$sidecar" 2>/dev/null; then

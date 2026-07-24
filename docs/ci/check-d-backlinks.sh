@@ -92,17 +92,24 @@ GATE_EXEMPT_REFS=()
 #       对 98% 的 marker 不成立 (实证: docs/99-tmp.md 伪造 D999 → fail; 同一伪造落 03 → exit 0).
 # 仅排除 ci/ 脚本 (其中 marker 形式是叙述性提及, 非真实落盘).
 # F2: 同步 SPEC.md (与抽取器扫描面一致, 防止"抽出但永不校验" 脱钩).
-# EOL $ 锚 + 与抽取器同款 ([[:space:]]*$) 防止 markdown 反引号 / 括号 / 斜杠 narrative 提及误报
-# (例 03:388 立法行含 `R51-D1722` 字面, 无 $ 锚会立刻误报 → 反伪规则自伤合法叙述).
+# R65-α F4: regex 扩为 `-->[[:space:]]*\|?[[:space:]]*$` (与抽取器同款),
+#   允许 markdown 表格行末单元格 marker (`-->` 后仅余 ` |`), 同时 narrative 提及
+#   (反引号 / 括号 / 斜杠 等非空白非 `|` 字符) 仍被 $ 锚点排除.
+# R65-α F3: D-ref 提取收窄到 `<!-- ... -->` 跨度内 (用 `<!-- gate-exempt(-file)?:.*?-->`
+#   非贪婪先抽出 marker 体, 再 `\bD[0-9]+\b` 取 D 号) — 防 narrative 行同句出现
+#   未立法 D 号 (如 "D97 草案撤回") 误报. 规约见 D176 §1.1 放置规则.
 MARKERS=$(grep -rnE \
   --exclude=check-docs.sh --exclude=check-d-backlinks.sh \
   --exclude=check_goal_manifest.sh --exclude=check-toolchain.sh \
-  '<!-- gate-exempt(-file)?:.*-->[[:space:]]*$' \
+  '<!-- gate-exempt(-file)?:.*-->[[:space:]]*\|?[[:space:]]*$' \
   docs/ SPEC.md 2>/dev/null || true)
 if [[ -n "$MARKERS" ]]; then
   while IFS= read -r marker_line; do
     [[ -z "$marker_line" ]] && continue
-    D_REFS=$(echo "$marker_line" | grep -oE '\bD[0-9]+\b' || true)
+    # F3: 先抽 marker 体 (`<!-- gate-exempt(-file)?:.*?-->` 非贪婪), 再从体中提 D 号
+    #   例 `text <!-- gate-exempt: D175 --> |` → marker 体 `<!-- gate-exempt: D175 -->` → D175
+    #   例 `describes <!-- gate-exempt: D175 --> D97 reference` → marker 体 → 仅 D175 (D97 不在体中)
+    D_REFS=$(echo "$marker_line" | grep -oE '<!-- gate-exempt(-file)?:.*?-->' | grep -oE '\bD[0-9]+\b' || true)
     for d in $D_REFS; do
       GATE_EXEMPT_REFS+=("$d")
     done

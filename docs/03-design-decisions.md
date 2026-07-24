@@ -387,6 +387,44 @@ R63 终验发现 AUDIT_LINE_FILTER (`docs/ci/check-docs.sh:296`) 已膨胀到不
 |---|-------|--------|----------|
 | D176 | 2 | ACTIVE | **行内豁免标记机制 + AUDIT_LINE_FILTER 行内化迁移** — R64 立法: (a) **机制** — 替换 `docs/ci/check-docs.sh:296` 的巨型 `grep -vE` alternation 为行内显式豁免标记 `<!-- gate-exempt: <R##-?D###>[,<D###>...] -->` (三种形态: 单 D / R##-D## 前缀 / 多 D 逗号分隔, plus 文件级 `<!-- gate-exempt-file: ... -->`), HTML 注释格式避开 markdown / pandoc 渲染. (b) **作用域分类 (实测基线 R65 锁, 50 命中 / 96 总 / 55 活跃 / 184 死码 / 围栏内 2 处)** — Type A 围栏内 2 处 (`06-boot-sequence.md:122` + `01-system-overview.md:21`), Type B 围栏外 49+ 行 (`03-design-decisions.md` 立法表 49 + `05-call-gate.md:38` + `15-phase0-mvp.md:180` 双文件同名 R51 D153 锚), Type C 整文件 frontmatter 1 文件 (`30-open-questions.md` 审计档案段), Type D `--exclude=` 已涵盖 1 文件 (`20-documentation-gate.md` census 不动). (c) **兼容策略 (3-Round 双轨 → 切换)** — R64 立法同时 0 行为变更 (AUDIT_LINE_FILTER 一字不改, marker 提取仅写入 `tools/spec_lab/extracted/gate-exempt-markers.txt` sidecar, 门禁不读 marker), R65 删 184 死码 (paren-aware awk 拆解, **必须显式豁免删除 `[OBSOLETED` alternation** — R51 双轨防线承重半, "新反向锁必须挂 [OBSOLETED-by-...] 才能豁免") + 50 行 marker 注入 (marker 与 AUDIT_LINE_FILTER OR 逻辑双轨覆盖窗口), R66 行为等价判据满足后 (`sidecar 行集 ⊇ AUDIT_LINE_FILTER 行集` ∧ 切换前后 gate 输出 diff 为空) 切换门禁读 marker sidecar, 删除 `AUDIT_LINE_FILTER=` 与 `| eval "$AUDIT_LINE_FILTER"`. (d) **D-ref 校验 (R64 即生效)** — 在 `docs/ci/check-d-backlinks.sh` (顺势扩展, 非新开 scope, 已扫 D-tag + 已维护 EXCLUDE_FILES + 已有 R51-FIX if/then/else 模式) 新增: 提取 docs/**/*.md 中 `<!-- gate-exempt[: -file]:` 标记的所有 D###, 必须**在 03-design-decisions.md D-table 中存在** (**不限状态**, ACTIVE / DEPRECATED / SUPERSEDED 均合法). **反伪充要条件是存在性不是活性** — 存在性抓 D999 必假, 活性会误伤合法 DEPRECATED 历史叙述豁免 (R47 撤销行 / R48 旧 sys_result_t 形态叙述都需要 DEPRECATED 仍可豁免). 解析三种 marker 形态时只取 D### 部分做 ledger 查表, R## 前缀不校验 (commit 可回溯性靠人审). R64 时 marker 数量为 0, 校验作用于空集必然通过 (fail-closed skeleton); R65 起防伪洞实时生效, 任何不存在的 D### 立即 fail, `R51-D1722` 类手写拼写错误不过夜. **R66 末态期望**: `AUDIT_LINE_FILTER` 变量完全删除, `grep -c 'AUDIT_LINE_FILTER' docs/ci/check-docs.sh` ≤ 1 (仅注释引用), marker sidecar 覆盖行集 == AUDIT_LINE_FILTER 当前过滤行集 == 50 行. **陷阱** (R64 必须就位): `set -e` 致 `extract_gate_exempt_markers()` 内 `grep` 零命中自杀 (必须 `if grep ... ; then` 守卫或 `|| true`); `tools/spec_lab/extracted/` gitignored 导致干净克隆必挂 (新断言必须先调抽取器再断言). Back-link: `docs/ci/check-docs.sh` § extract_gate_exempt_markers() 函数 (新, R64 创建) + `docs/ci/check-d-backlinks.sh` § D-ref 校验段 (新, R64 即生效) + `tools/spec_lab/assertions/gate-exempt-count.sh` (新断言, R64 期望 ≥ 0, R66 末态期望 ≥ 50) + `tools/spec_lab/extracted/gate-exempt-markers.txt` (新 sidecar, gitignored, R64 创建后逐 round 增长) + `docs/03-design-decisions.md` § R64 D176 段 (本行) + `docs/20-documentation-gate.md` § R64 marker census 段 (新, R64 创建). forbidden-word: **无新增禁词** (D176 是治理立法, 不引入新禁词; R65 删 184 死码不改 EXPECTED_TOTAL=176, 但实质是撤销预授权豁免政策 [应为/应改/原文/migration 等宽词], 不读成纯清理). spec_lab 计划: `gate-exempt-count.{sh,_negative.sh}` (text-grep: 期望 marker count ≥ 0 R64 / ≥ 50 R66; 反例: 清空 sidecar 期望正向 fail, 或伪造 D999 marker 触发 D-ref 校验 fail). |
 
+### D176 §1.1 放置规约 (R65-α 立, F4 修复)
+
+**F4 触发背景**: R65 计划 50 行 marker 中 49 行落在 `docs/03-design-decisions.md` 立法表 D-table 行, 表格行以 `|` 收尾. R64-HOTFIX 后的正则 `<!-- gate-exempt(-file)?:.*-->[[:space:]]*$` 要求 `-->` 紧随行尾, 表格行内 marker (`-->` 后接 ` |`) 永远匹配不上 — 等同于 49/50 marker "白写".
+
+**规约 (硬约束, R65 起 marker 注入前定死)**:
+
+1. **行内尾部追加 (常规)** — `text text <!-- gate-exempt: D### -->`
+   - `-->` 必须紧跟当前行末 (允许尾部空白)
+2. **表格行末单元格 (F4 修复后)** — `| col | col | text <!-- gate-exempt: D### --> |`
+   - `-->` 后仅允许 ` ` (空格) + `|` + 行尾, 即 `-->[[:space:]]*\|?[[:space:]]*$`
+   - marker 必须放在 D-table 行的**末单元格内** (即最后一对 `|...|` 之中), 不允许放中间单元格
+3. **独立行 (frontmatter)** — `<!-- gate-exempt-file: <desc> [(D###,...)] -->` 整行
+4. **禁止形貌 (narrative / 不会作为豁免)**:
+   - 反引号包裹: `` `<!-- gate-exempt: D### -->` `` (代码引用)
+   - 括号 / 斜杠后接: `<!-- gate-exempt: D### --> (单 D)` 或 `... -->` 等
+   - 中间单元格: `| col <!-- gate-exempt: D### --> | col |` (F4 规约违反, marker 不被抽出)
+
+**正则演化** (与 §2b / 抽取器同款):
+- R64-FINAL: `<!-- gate-exempt(-file)?:.*-->[[:space:]]*$`
+- R64-HOTFIX: 同上 (narrative 加固)
+- **R65-α (F4 修复)**: `<!-- gate-exempt(-file)?:.*-->[[:space:]]*\|?[[:space:]]*$` — 单字符扩展允许表格行末 ` |`
+
+**实证金丝雀**:
+- `R64-gate-exempt-narrative-canary.sh` — narrative 三种形式 (反引号 / 括号 / 斜杠) 不误报 (R64-HOTFIX 立)
+- `R64-gate-exempt-d999-in-03_negative.sh` — 副本 03 末行追加 `<!-- gate-exempt: D999 -->` 必须 exit 1 (R64-HOTFIX 立)
+- **`R64-gate-exempt-table-row-canary_negative.sh` (R65-α 立)** — 副本 03 D-table 行末单元格追加 `... <!-- gate-exempt: D999 --> |` 必须 exit 1
+
+**D-ref 提取 (F3 收紧)**: §2b 提取 D### 时**先**用 `<!-- gate-exempt(-file)?:.*?-->` 非贪婪抽出 marker 体, **再**用 `\bD[0-9]+\b` 取 D 号. 防止 narrative 行同句出现未立法 D 号 (如 "D97 草案撤回") 误报. R65-α 立.
+
+**回链示例** (R65 γ 注入时应严格遵守):
+```markdown
+| D62 | 1 | ACTIVE | mmap 后缀命名漏网补漏 <!-- gate-exempt-DEMO: D174 --> |
+| D65 | 1 | ACTIVE | Phase 0 = comptime assert only <!-- gate-exempt-DEMO: D174 --> |
+<!-- gate-exempt-file-DEMO: 30-open-questions.md 审计档案段 (D121,D153-D157) -->
+```
+
+> **演示用 (regex 排除)**: 上述示例仅展示合法 marker 形貌, 不应被抽取器当真 marker 抽出. R65-α 立演示前缀 `gate-exempt-DEMO:` 与 `gate-exempt-file-DEMO:` 用于本节及任何文档示例 (regex `<!-- gate-exempt(-file)?:` 不匹配 `-DEMO:` / `-file-DEMO:` 后缀, 自然排除).
+
 ## R47: P1-5 勘误增补挂靠
 
 | 挂靠 D# | 修正内容 |
