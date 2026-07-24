@@ -287,6 +287,45 @@ if [ "${FORBIDDEN_COUNT}" -ne "${EXPECTED_TOTAL}" ]; then
   exit 2
 fi
 
+# =============================================================================
+# R64 D176 (行内豁免标记机制): extract_gate_exempt_markers() 函数
+# 行为:
+#   - R64: 抽取空集, sidecar 写入空文件 (0 行为变更; 既有 AUDIT_LINE_FILTER 一字不改)
+#   - R65+: 抽取 docs/**/*.md + SPEC.md 中所有 <!-- gate-exempt[: -file]: 标记
+#   - 双轨期 (R64-R65): 门禁只读 AUDIT_LINE_FILTER, sidecar 仅作审计轨迹
+#   - R66 末态 (D176 收官): 行为等价判据满足后, 主循环改读 sidecar (R66 commit 切换)
+# 输出: tools/spec_lab/extracted/gate-exempt-markers.txt (gitignored, 干净克隆首跑必创建)
+# 标记格式 (D176 §1.1):
+#   - 行内: <!-- gate-exempt: D### --> / <!-- gate-exempt: R##-D### --> / <!-- gate-exempt: D###,D### -->
+#   - 文件级 (frontmatter): <!-- gate-exempt-file: <desc> [(D###,...)] -->
+# 兜底:
+#   - mkdir -p 处理 gitignored sidecar dir 不存在 (R49-GOV.6 实证, 干净克隆首跑)
+#   - if/then/else 包裹 grep, 零命中 return 1 不会触发 set -e 自杀 (R51-FIX 母版模式)
+# =============================================================================
+extract_gate_exempt_markers() {
+  local sidecar="tools/spec_lab/extracted/gate-exempt-markers.txt"
+  mkdir -p "$(dirname "$sidecar")"
+
+  # 严格 end-of-line 收紧 (D176 §1.1 marker 形式):
+  #   真实 marker 必须以 `-->` 收尾当前行 (行内尾部追加 / 独立行 frontmatter).
+  #   narrative 提及 (`<!-- gate-exempt: ... -->` 在 markdown 叙述中, 后跟反引号/括号/斜杠等) 被 `$` 锚点排除,
+  #   例如 03:388 (`-->` 后接反引号 ` `` `)、20:85 (`-->` 后接 `); D-ref ...`)、20:269 (`-->` 后接反引号 ` `` `)、
+  #   ci/check-d-backlinks.sh:75-78 (`-->` 后接空格 + `(单 D)` 注释).
+  # 双侧 not-greedy 匹配 `.*?` 与 end-of-line 锚 `$` 共同确保不跨行捕获.
+  #
+  # 第二道过滤: 排除 ci/ 脚本自身 (与 main loop 同集), 防止本函数注释块 (299-300) 的多 marker 同行示例
+  # (如 `<!-- gate-exempt: D### -->` / `<!-- gate-exempt: R##-D### -->` / `<!-- gate-exempt: D###,D### -->` 在同一注释行)
+  # 因末段 marker 恰落在 EOL 前被 `$` 锚点错误命中.
+  if grep -rnE '<!-- gate-exempt(-file)?:.*-->[[:space:]]*$' \
+       --exclude=check-docs.sh --exclude=check-d-backlinks.sh \
+       --exclude=check_goal_manifest.sh --exclude=check-toolchain.sh \
+       docs/ SPEC.md > "$sidecar" 2>/dev/null; then
+    : # 命中, 已写入 sidecar
+  else
+    : > "$sidecar" # 零命中, 写空文件保证 sidecar 存在
+  fi
+}
+
 EXIT=0
 # Exclude this script + the gate catalog doc + the audit history file from path-level exclude.
 # Line-pattern exclude: R51-FIX (F-1 过滤器真洞修补).
@@ -294,6 +333,11 @@ EXIT=0
 # R51 新规则: R37-R45 描述行通过 "R4[0-9]+ 勘误" 等锚定模式豁免 (历史反向锁描述).
 #                R51 新加反向锁必须挂 [OBSOLETED-by-...] 才能豁免 (双轨防线).
 AUDIT_LINE_FILTER='grep -vE "\[OBSOLETED|rename from|审计档案|审计动机|应为|应改|诚实性|命名诚实性|was: PTE|migration|原文|R4[0-6] 勘误|R4[0-6] 修正|R36 错算|R36 D80 原案|R37 勘误|R37 修正|R37 D128|R38 勘误|R39 勘误|R40 勘误|R41 勘误|R42 勘误|R43 勘误|R44 勘误|R45 勘误|R45 默认|R45 裁定|R45 原案|D151 R46|R46 勘误|R46 修正|R46 落地|R46 同款|R46 反杜撰|R46 自然布局|R46 ledger|R46 双结构|R46 同步|R46 临时|R46 版|R46 关键|R46 形式|R46 错判|R46 臆想|R46 勘误后|R47 勘误|R47 修正|R47 落地|R47 反杜撰|R47 增补|R47 撤销|R47 立法|R47 立法注|R47 ctypes|R47 后回到|R47 默认|R48 勘误|R49 勘误|R51 note|R51 注|R51 修订|R51 自校|R51 命名锚|R51 D153|R51-F1|R51-F2|R51-F3|R51-F4|R51-F5|R51-M1|R51-M2|R51-M3|R51-M4|R51-M5|R51-M6|R51-M7|R51-AGENDA|R52 D16[123]|R52 立法|R52 收口|R52 第四节|R53 D16[4567]|R53 命名|R53 立法|R53 收口|R53 Naming Taxonomy|D165 反向锚|D165 立法|R30/R31|R30 历史|R31 历史|R31 spec|R30 spec|R55 立法|R55 收口|R55 残留|R55 D169|R56 立法|R56 收口|R56 D166|R56 范式扩展|R57 立法|R57 收口|R57 D166|R58 跳过|R58 阻塞|R58 Q69|R59 D171|R59 立法|R59 收口|R59 命名|R59 neura_|R59 符号|R59 围栏内|R59 传染面|R59 12|R59 13|R59 syscall API|R59 \+ basal_node_id|D171 反向锚|D171 立法|D172 历史|D172 围栏|D172 元规则|D172 R30|D172 R31|D172 R55|D172 R59|R60 D172|R60 立法|R60 收口|R60 禁词|R60 14 条|R60 派生|R60 最终封口|R58 D173|R58 立法|R58 收口|R58 补执行|R58 ✅|R58 cosmo_kernel|cosmo_kernel 撤销|撤销 cosmo_kernel|crate 名|crate 命名空间|Q69 豁免|正交论证|R61 D171 增补|R61 syscall 11-15|R61 HAL-暴露|R61 增补|接口层剥离|R61 收口|R61 R59 遗漏|R61 stale cross-ref|R61 fence-external|P[1-3]-[0-9]+ 修复|P[1-3]-[0-9]+ 勘误|P[1-3]-[0-9]+ 同款|P[1-3]-[0-9]+ \(R47|Step 0 trap 防御|不分配 Vec|原 char buf|原 basal_do_user_fault_fixup|勘误后|勘误前|D153 决策|Dispatcher 命名锚定|重命名裁决|新增禁词|传染面清单|D160 (配套|矩阵)|16 号文.*rpc_unit_t.*(配套|未立法|禁用依据|R50 立法)|R62 D174|R62 立法|R62 收官|R62 命名补漏|R62 后缀|R62 GOV.5|R62 mmap_命名补漏|R62 状态头|D174 mmap 命名|D174 GOV.5|D174 双目标|D174 后缀|收官同步状态头|状态头断档|状态头同步|GOV.5 检查单|R62 自身示范|R62 传染面|R62 后缀形态|R62 双目标|命名法第 19|19 条禁词|R62 立法 D174|R62-D174|D174 后缀命名漏网补漏|R63 D175|R63 立法|R63 收官|R63 收口|R63 自身示范|R63 补执行|R63-FINAL|R63 SPEC|R63 banner|R63 扫描面|R63 自身示范|R63 三件套→四件套|R63 四件套|R63 boot banner|R63 COSMO|D175 SPEC|D175 banner|D175 boot banner|D175 四件套|D175 GOV.5|D175 自身示范|D175 扫描面|D175 收官|D175 收口|D175 自身示范|D175 立法|D175 boot banner SSOT|COSMO BOOT OK|NEURA BOOT OK|boot banner SSOT|GOV.5 四件套|GOV.5 自身示范|GOV.5 扫描面|四件套|状态头四件套|扫描面立法|SPEC.md 扫描面|SPEC 扫描面|R63 收官同步状态头|R63 收官同步)"'
+
+# R64 D176: 行内豁免标记抽取 (R64 期望 0 行 sidecar, R65+ 期望 ≥ 50 行).
+# 0 行为变更: 主门禁仅读 AUDIT_LINE_FILTER, sidecar 仅作审计轨迹.
+extract_gate_exempt_markers
+
 for word in "${FORBIDDEN[@]}"; do
   if grep -rnF --exclude=check-docs.sh --exclude=check-d-backlinks.sh --exclude=check_goal_manifest.sh --exclude=check-toolchain.sh --exclude=20-documentation-gate.md --exclude=30-open-questions.md -- "$word" docs/ SPEC.md 2>/dev/null | eval "$AUDIT_LINE_FILTER"; then
     echo "[ERROR] Forbidden word found: $word"

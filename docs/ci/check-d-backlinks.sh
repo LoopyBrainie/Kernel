@@ -66,6 +66,60 @@ if [[ ${#MISSING[@]} -gt 0 ]]; then
   exit 1
 fi
 
+# =============================================================================
+# Section 2b: gate-exempt D-ref 校验 (D176 §1.4, R64 即生效)
+# =============================================================================
+# 校验 docs/**/*.md 中所有 <!-- gate-exempt[: -file]: 标记的 D### ref
+# 必须**在 03-design-decisions.md D-table 中存在** (不限状态, ACTIVE / DEPRECATED / SUPERSEDED 均合法).
+# 三种 marker 形态都校验, 但只取 D### 部分做 ledger 查表:
+#   - <!-- gate-exempt: D175 -->                       (单 D)
+#   - <!-- gate-exempt: R63-D175 -->                   (R##-D### 形态; R## 前缀不校验, commit 可回溯性靠人审)
+#   - <!-- gate-exempt: D172,D175 -->                  (多 D 逗号分隔)
+#   - <!-- gate-exempt-file: desc (D121,D153) -->      (文件级 frontmatter 可附 D 列表)
+#
+# 反伪充要条件是存在性不是活性 (D176 §1.4):
+#   - 存在性: D999 没立过法 → 必假 → fail (反伪目标)
+#   - 活性会误伤合法 DEPRECATED 历史叙述豁免
+#     (R47 撤销行 / R48 旧 sys_result_t 形态叙述 / R51-F5 asm rv64imac 注释 等都需要 DEPRECATED 仍可豁免)
+# R64 时无 marker (空集通过 fail-closed); R65+ 起防伪洞实时生效, R51-D1722 类手写拼写错误不过夜.
+# =============================================================================
+
+GATE_EXEMPT_REFS=()
+MARKERS=$(grep -rnE $EXCLUDE_GREP '<!-- gate-exempt(-file)?:' docs/ 2>/dev/null || true)
+if [[ -n "$MARKERS" ]]; then
+  while IFS= read -r marker_line; do
+    [[ -z "$marker_line" ]] && continue
+    D_REFS=$(echo "$marker_line" | grep -oE '\bD[0-9]+\b' || true)
+    for d in $D_REFS; do
+      GATE_EXEMPT_REFS+=("$d")
+    done
+  done <<< "$MARKERS"
+fi
+
+# 去重 (sort -u)
+if [[ ${#GATE_EXEMPT_REFS[@]} -gt 0 ]]; then
+  GATE_EXEMPT_REFS=($(printf '%s\n' "${GATE_EXEMPT_REFS[@]}" | sort -u))
+fi
+
+# 校验每个 D-ref 在 $LEDGER 中存在 (状态不限)
+BAD_REFS=()
+if [[ ${#GATE_EXEMPT_REFS[@]} -gt 0 ]]; then
+  for ref in "${GATE_EXEMPT_REFS[@]}"; do
+    if ! grep -qE "\| $ref \|" "$LEDGER"; then
+      BAD_REFS+=("$ref")
+      echo "[ERROR] gate-exempt D-ref 不存在: $ref (must exist in $LEDGER regardless of status)"
+    fi
+  done
+fi
+
+if [[ ${#BAD_REFS[@]} -gt 0 ]]; then
+  echo ""
+  echo "[FAIL] $GATE_NAME: ${#BAD_REFS[@]} 个伪造/手写错 D-ref: ${BAD_REFS[*]}"
+  echo "       D176 §1.4 反伪规则: 存在性不限状态 (标 DEPRECATED 也合法, 历史叙述豁免常引)"
+  echo "       Fix: 1) 修 marker 引用的 D### 笔误; 2) 若真需新 D#, 在 03-design-decisions.md D-table 添加"
+  exit 1
+fi
+
 # 3. Canary self-test (R49-GOV.6: 副本上做, 真 docs/ 恒不可变):
 #    在 mktemp docs/ 副本里抹 D156 回链 → 必须触发 0 命中 → 否则门禁机制失效.
 #    旧版原地 sed -i 改真 10 号文再恢复 (P5 疣子 #1: 中断留污 + mktemp 建了没用);

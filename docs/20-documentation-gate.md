@@ -82,7 +82,8 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | R61 D171 增补 — syscall 编号表 11-15 (HAL-暴露型 syscall 入口) | 5 | **174** | cosmo_copy_from_user / cosmo_copy_to_user / cosmo_atomic_cas_ptr / cosmo_hal_set_next_timer / cosmo_hal_fs_is_dirty (R59 计划文件 §1.2 漏列的 5 个 syscall 入口; R61 在 R58 补之后追加, EXPECTED_TOTAL 169→174; syscall 0x0B-0x0F 编号表 5 行 `cosmo_*` → `neura_*`; 接口层剥离 HAL 限定符 `hal_` (例 `neura_set_next_timer` 非 `neura_hal_set_next_timer`); 30-open-questions.md line 2400/2404 stale cross-ref 同步) |
 | R62 D174 — mmap 后缀命名补漏 + GOV.5 收官同步状态头纪律 | 1 | **175** | mmap_cosmo (R62 收口后缀形态 `_cosmo` 漏网修补: 18 条现有禁词仅前缀 `cosmo_*` 字面匹配, 不覆盖后缀 `*_cosmo`; R62 入册 `mmap_cosmo` 同名符号, 改名 `neura_mmap` 同 D171 syscall API 命名法; 同步 D174 立 GOV.5 收官同步状态头纪律, 传染面 09:126 + 30:1144 rename, 03/SPEC/00 状态头三件套自身示范同步; EXPECTED_TOTAL 174→175) |
 | R63 D175 — 门禁盲区补漏 + SPEC.md 扫描面立法 + boot banner SSOT | 1 | **176** | COSMO BOOT OK (R63 三目标收口: (a) check-d-backlinks 正则扩 D170-D199, floor 35→49, 文案三处同步; (b) SPEC.md 纳入禁词门扫描面, 触发 4 处实质改名 (SPEC.md:68/307 PTE isolation→PTE alignment, SPEC.md:147/179 cosmo_panic_abort→basal_panic_abort) + 09:122 D174 标签新增; (c) boot banner SSOT 立 `NEURA BOOT OK` 于 06-boot-sequence.md § Banner SSOT 段, 15:363 回链. GOV.5 三件套→四件套 (+README.md); EXPECTED_TOTAL 175→176) |
-| **Total** | — | **176** | `${#FORBIDDEN[@]}` 派生 (R63 自校: N 必须 == 176) |
+| R64 D176 — AUDIT_LINE_FILTER 行内化立法 (0 新增禁词, GOV class 2) | 0 | **176** | AUDIT_LINE_FILTER (`docs/ci/check-docs.sh:296`) → 行内豁免标记机制 (D176 §1.1 marker `<!-- gate-exempt: R##-?D###[,D###...] -->`); D-ref 校验挂入 check-d-backlinks.sh §2b (R64 即生效, 存在性规则不限状态, 解析三种 marker 形态仅取 D### 部分, R## 前缀不校验); 主门禁 R64 行为不变 (extract_gate_exempt_markers() 仅抽 sidecar 到 `tools/spec_lab/extracted/gate-exempt-markers.txt`); 新断言 R64-gate-exempt-count (R64=0 fail-closed, R65≥50 marker 注入, R66 末态保留); 3-Round 迁移路径: R64 立法+骨架 / R65 删 184 死码+全量 50 行 marker+30 文件级 frontmatter / R66 行为等价切换 + AUDIT_LINE_FILTER 退役; EXPECTED_TOTAL 不变 176 |
+| **Total** | — | **176** | `${#FORBIDDEN[@]}` 派生 (R63 自校: N 必须 == 176; R64 立法 0 新增禁词, 不变) |
 
 (*Cumulative counts in this table are best-effort documentation; the canonical count is `${#FORBIDDEN[@]}` in the script.*)
 
@@ -260,6 +261,22 @@ $ bash docs/ci/check-d-backlinks.sh
 - 词边界匹配：`(^|[^0-9])D###([^0-9]|$)` 防 D1260 等子串假阳
 - 失败模式：熔断并打印缺失 D# 列表
 - 自验证：`${#D_TAGS[@]} ≥ 35`（D126-D160 全集 = R37-R45 27 + R51 7 + R50 1），不足即 FATAL exit 2
+
+### §2b: 行内豁免标记 D-ref 校验 (R64-D176, R64 即生效)
+
+D176 §1.4 行内豁免标记机制配套反伪: `docs/**/*.md` 中所有 `<!-- gate-exempt[: -file]: ... -->` 标记的 D### ref 必须**在 03-design-decisions.md D-table 中存在** (**不限状态**, ACTIVE / DEPRECATED / SUPERSEDED 均合法).
+
+- **三种 marker 形态都校验**: 单 D (`D175`) / R##-D### (`R63-D175`, R## 前缀不校验) / 多 D 逗号分隔 (`D172,D175`) / 文件级 `<!-- gate-exempt-file: desc (D121,D153) -->`
+- **存在性规则**: D999 没立过法 → 必假 → fail. 活性 (status=ACTIVE) 会误伤合法 DEPRECATED 历史叙述豁免 (R47 撤销行 / R48 旧 sys_result_t 形态叙述 / R51-F5 asm rv64imac 注释 都标 DEPRECATED)
+- **R64 行为**: 作用于空集 (R64 无 marker) 必过 (fail-closed skeleton); **R65 起防伪洞实时生效**, 任何不存在的 D### 立即 fail, `R51-D1722` 类手写拼写错误不过夜
+- **解析实现**: 同主 D-tag 漏斗: `grep -rnE $EXCLUDE_GREP '<!-- gate-exempt(-file)?:' docs/` → 每行 `grep -oE '\bD[0-9]+\b'` → `grep -qE "\| $ref \|" $LEDGER`
+- **失败模式**: 熔断并打印 `[ERROR] gate-exempt D-ref 不存在: <ref>` + 修复指引 (1) 修笔误; (2) 若真需新 D#, 在 03-design-decisions.md D-table 添加 (可标 DEPRECATED)
+
+```bash
+$ bash docs/ci/check-d-backlinks.sh
+✓ check-d-backlinks passed (50 D126-D175 tags, all back-linked, canary self-test OK)
+# (R64 起 D126-D175 = 50: R37-R50 [35] + R52-R62 命名迁移 [14] + R63 扫描面 [1])
+```
 
 ## Cross-references
 
