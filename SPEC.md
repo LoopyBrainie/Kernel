@@ -1,7 +1,7 @@
 # Neur-Aegis: RISC-V Tri-Lingual Microkernel (R53 顶层改名)
 
 **Date**: 2026-07-23
-**Status**: D1-D167 frozen (R31-R53 RATIFIED); 0 open questions
+**Status**: D1-D174 frozen (R31-R62 RATIFIED); 0 open questions
 **Owner**: Brra1n0
 **Branch**: dev
 **Supersedes**: —

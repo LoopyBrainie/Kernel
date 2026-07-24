@@ -1141,7 +1141,7 @@ readelf -l build/kernel.elf | awk '/PT_LOAD/{print NR, $0}'
 | 场景 | 修复前 (D102 Auto 现状) | 修复后 (D135 提案) |
 |------|---------------------------|---------------------|
 | Server Profile, kernel 内部分配 (block_alloc) | ❌ "mixed" 与 "Yes" PTE alignment 同时存在, 不知是 Compact 0% padding 还是 Sparse 25% padding | ✓ D135: Auto 在 boot 期 per-region 决定, BlockPool = Compact, U-Mode comm = Sparse |
-| Server Profile, U-Mode mmap (mmap_cosmo) | ❌ 同上, "mixed" 含糊 | ✓ D135: U-Mode comm region 始终走 Sparse, 走 D31/D84 二级隔离 |
+| Server Profile, U-Mode mmap (neura_mmap) | ❌ 同上, "mixed" 含糊 | ✓ D135: U-Mode comm region 始终走 Sparse, 走 D31/D84 二级隔离 |
 | Embedded Profile, kernel 内部分配 | ❌ Auto 默认 "Server: Compact", 但 Embedded 不是 Server, 行为未定义 | ✓ D135: Embedded Profile 默认走 Sparse (无论 Auto 还是显式), 与 D45 一致 |
 | Phase 1+ server, BlockPool 与 U-Mode comm 共存 | ❌ "mixed padding" 物理不可能: 一块 1536B 不能既在 4KB 页又 1536B-strided | ✓ D135: BlockPool 与 U-Mode comm 是两个独立 region, 各走各的 layout, 不共享 layout |
 | doc-gate 编译期闸门 | ❌ "mixed" 无法单点定义, 闸门失锚 | ✓ D135: `is_auto_mode_consistent(build_options)` 编译期函数验证 per-region 决定 |

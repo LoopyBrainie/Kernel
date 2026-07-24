@@ -80,9 +80,24 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | R59 neura_ syscall API 立法 (D171) + R60 命名迁移最终封口 (D172) | 14 | **168** | cosmo_open / cosmo_read / cosmo_write / cosmo_close / cosmo_seek / cosmo_stat / cosmo_yield / cosmo_ping / cosmo_rpc_send / cosmo_pte_map_6arg / cosmo_ipc_send_6arg / cosmo_open_stub / cosmo_pte_map_6arg_fn / cosmo_node_id (13 条 D171 派生禁词 + 1 条 D172 元规则: 历史引用豁免策略; R60 收口统一入册, EXPECTED_TOTAL 154→168; R58 因 Q69 阻塞跳过, Phase 1 待启) |
 | R58 补执行 (D173 Q69 豁免) — cortix_kernel crate 名迁移 | 1 | **169** | cosmo_kernel (D173 派生禁词; Q69 Rust crate 拓扑阻塞由 D173 正交论证豁免: crate 命名空间标识 vs 运行时数据流 fd 0/1/2 路由; R58 补执行在 R60 之后追加, EXPECTED_TOTAL 168→169; 实际传染面 1 文件 1 行 `07-shell-architecture.md:92 use cosmo_kernel` → `use cortix_kernel`) |
 | R61 D171 增补 — syscall 编号表 11-15 (HAL-暴露型 syscall 入口) | 5 | **174** | cosmo_copy_from_user / cosmo_copy_to_user / cosmo_atomic_cas_ptr / cosmo_hal_set_next_timer / cosmo_hal_fs_is_dirty (R59 计划文件 §1.2 漏列的 5 个 syscall 入口; R61 在 R58 补之后追加, EXPECTED_TOTAL 169→174; syscall 0x0B-0x0F 编号表 5 行 `cosmo_*` → `neura_*`; 接口层剥离 HAL 限定符 `hal_` (例 `neura_set_next_timer` 非 `neura_hal_set_next_timer`); 30-open-questions.md line 2400/2404 stale cross-ref 同步) |
-| **Total** | — | **174** | `${#FORBIDDEN[@]}` 派生 (R61 自校: N 必须 == 174) |
+| R62 D174 — mmap 后缀命名补漏 + GOV.5 收官同步状态头纪律 | 1 | **175** | mmap_cosmo (R62 收口后缀形态 `_cosmo` 漏网修补: 18 条现有禁词仅前缀 `cosmo_*` 字面匹配, 不覆盖后缀 `*_cosmo`; R62 入册 `mmap_cosmo` 同名符号, 改名 `neura_mmap` 同 D171 syscall API 命名法; 同步 D174 立 GOV.5 收官同步状态头纪律, 传染面 09:126 + 30:1144 rename, 03/SPEC/00 状态头三件套自身示范同步; EXPECTED_TOTAL 174→175) |
+| **Total** | — | **175** | `${#FORBIDDEN[@]}` 派生 (R62 自校: N 必须 == 175) |
 
 (*Cumulative counts in this table are best-effort documentation; the canonical count is `${#FORBIDDEN[@]}` in the script.*)
+
+## GOV.5 收官同步状态头检查单 (R62-D174 派生, 硬性签发前提)
+
+> **触发场景**: 每个 R##-FINAL commit 收口时 (硬性签发前提, R51 迭代协议扩展)。任何 R## 收口批次自身须同时满足以下"收官同步"三件套; 不闭环即视为状态头断档 (与 R50/R60 时代 README/索引断档同类), 不应标 closed。
+
+| 子项 | 权威源 (grep 必须命中) | 触发条件 |
+|------|------------------------|----------|
+| ① `docs/03-design-decisions.md` 标题 + 状态行 | `^# 03 · Design Decisions \(D1-D<上限> Full Table\)` + `^\*\*Status\*\*:` 状态行 (含 R52-R<当前 R##>) | 标题 D# 上限 + 状态行 R## 终值 |
+| ② `SPEC.md` 状态头 | `^\*\*Status\*\*: D1-D<上限> frozen \(R31-R<当前 R##> RATIFIED\); 0 open questions$` | D# 上限 + R## 终值 |
+| ③ `docs/00-naming-taxonomy.md` status 头 | `^\*\*Status\*\*: Frozen.*R<最近 R##>` | status 头 R## 最近值 |
+
+> **R62 自身示范**: D174 立法 + 三件套同步已写入本批次 commit。R50 era README 断档 (R50 后 03 标题停在 D1-D160) + R60 era SPEC.md 断档 (R60 后 SPEC.md 状态头停在 D1-D167 R31-R53) + R60 era 03 status 行止于 R50 — 三断档 R62 一次性补齐。
+>
+> **下次收口 R## 必须**: commit message 显式列出三件套同步 (例 `R63-FINAL: ... + 03/SPEC/00 状态头同步`)。
 
 ## What each forbidden word defends against
 

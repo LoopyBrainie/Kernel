@@ -123,7 +123,7 @@ pub const IsolationMechanism = union(enum) {
 
 ```rust
 // D109: U-Mode 申请 1 个 block 时, 由 D31/D84 提供二级隔离
-pub fn mmap_cosmo(fd: u32, offset: u64, len: usize) -> MmapResult {
+pub fn neura_mmap(fd: u32, offset: u64, len: usize) -> MmapResult {
     let block_count = (len + 1535) / 1536;  // D57 1536B ceil
     let page_count = (block_count + 1) / 2;  // D45 2 blocks/page
 

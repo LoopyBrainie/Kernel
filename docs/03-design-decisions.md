@@ -1,7 +1,7 @@
-# 03 · Design Decisions (D1-D160 Full Table)
+# 03 · Design Decisions (D1-D174 Full Table)
 
 **Plan section**: §一 (R1-R50 audit rounds)
-**Status**: 45 GAPs RATIFIED (R31-R45) + 7 R51 锚定 (D153-D159) + 1 R50 立法 (D160, profile matrix); 0 open questions
+**Status**: 45 GAPs RATIFIED (R31-R45) + 1 R50 立法 (D160, profile matrix) + 7 R51 锚定 (D153-D159) + 14 R52-R62 立法 (D161-D174, naming migration D164-D167/D168-D173 + boot hardening D161-D163 + mmap 命名补漏 D174); 0 open questions
 **Column legend**: `Status` = ACTIVE / DEPRECATED / SUPERSEDED; `Superseded by` 显式登记 supersede 链
 
 ---
@@ -363,6 +363,14 @@ The full D1-D125 decision ledger with status column. Each row has class (1=evide
 |---|-------|--------|----------|
 | D173 | 1 | ACTIVE | **crate 名迁移豁免 Q69 阻塞** — `cosmo_kernel` → `cortix_kernel` 的 crate 命名空间迁移不受 Q69 (Rust crate 拓扑) 阻塞, 因 crate 命名与 fd 0/1/2 路由拓扑正交: Q69 讨论的是"运行时数据流怎么走 (Phase 1 立法)", R58 改的是"crate 在 Rust 生态中叫什么 (编译期标识)"。两者无依赖关系。撤销 D167 §3 "Q69 未关闭不得迁 crate 名" 的 R58 阻塞约束。R58 实际传染面仅 1 文件 1 行 (`07-shell-architecture.md:92` `use cosmo_kernel::{` → `use cortix_kernel::{`)。Back-link: `07-shell-architecture.md` § Rust Shell crate 段 (1 处 use 替换) + `00-naming-taxonomy.md` § 6 Rust 内部命名 (R58 ✅ 状态更新) + `01-system-overview.md` § 18-box 图 caption (R58 ✅ 标注). forbidden-word: `cosmo_kernel` (R58 后入册, EXPECTED_TOTAL 168→169). spec_lab 计划: `R58-M1-crate-name.{sh,_negative.sh}` (text-grep: `cortix_kernel` 必须出现在 07-shell-architecture.md Rust use 段, `cosmo_kernel` 在 1X 子系统文档中必须 0 命中; AUDIT_LINE_FILTER 扩展 R58|D173|crate 名|撤销 cosmo_kernel 模式豁免 SSOT 文档中的历史引用). |
 
+## R62: mmap syscall API 命名补漏 + 收官同步状态头纪律 (D174, 1 锚) — RATIFIED
+
+> **立法动机**: R61 收口后全量门禁过的 R## 批次 (R62 复检发现) 暴露两类系统性漏洞: (a) `mmap_cosmo` (后缀形态 `_cosmo` 而非前缀 `cosmo_*`) 在 18 条现有禁词的字面匹配盲区外成功漏网,现身于 `09-memory-subsystem.md:126` (Rust 代码示例 `pub fn`) 与 `30-open-questions.md:1144` (D135 表格 label); (b) `03-design-decisions.md` 标题+状态行 + `SPEC.md` 状态头自 R50/R60 各自收口后未同步推进 (R52-R60 共 9 个 D# 立法未写入 03 status 行; SPEC.md 停在 D1-D167 R31-R53) — 与 R50 时代 README 断档同类,索引漂移会复利。R62 双目标立法 D174,一次性补齐: 命名法第 19 条禁词入册 + GOV.5 收官同步状态头纪律。
+
+| # | Class | Status | Decision |
+|---|-------|--------|----------|
+| D174 | 1 | ACTIVE | **`mmap_cosmo` 后缀命名漏网补漏 + 收官同步状态头纪律 (GOV.5)** — R62 双目标立法: (a) 按 D171 syscall API 命名法, 后缀 `\`_cosmo\`` 形态的 U-Mode mmap syscall API 改名 `neura_mmap` (传染面: `09-memory-subsystem.md` § U-Mode mmap 路径段 1 行 + `30-open-questions.md` § D135 提案表格 label 1 行), 同步入册禁词 `mmap_cosmo` (EXPECTED_TOTAL 174→175), 修补 18 条现有禁词仅前缀 `cosmo_*` 字面匹配的盲区 (本批次揭露的 `\`_cosmo\`` 后缀形态疏漏适用于任何 `*_cosmo` 命名残留); (b) **收官同步状态头纪律 (GOV.5 检查单)** — 任何 R## 收口批次 (R##-FINAL commit) 必须同时满足以下三件套闭环, 不闭环即视为状态头断档, 与 R50 时代 README 断档同类: ① `docs/03-design-decisions.md` 标题 + 状态行同步至当前 D# 终值 (R62 自身: D1-D160 → D1-D174 + 状态行扩展 R52-R62); ② `SPEC.md` 状态头同步 (R62 自身: D1-D167 R31-R53 → D1-D174 R31-R62); ③ `00-naming-taxonomy.md` status 头同步至当前 R## (R62 自身已示范执行)。R##-FINAL commit message 须显式列出三件套同步完成 (例 `R63-FINAL: ... + 03/SPEC/00 状态头同步`)。Back-link: `09-memory-subsystem.md` § U-Mode mmap 路径段 (1 处 rename) + `30-open-questions.md` § D135 提案表格 (1 处 rename) + `docs/03-design-decisions.md` § D174 立法段 + `SPEC.md` status 头 + `docs/20-documentation-gate.md` § R62 GOV.5 检查单子节。forbidden-word: `mmap_cosmo` (1 条 R62 D174 派生, EXPECTED_TOTAL 174→175)。spec_lab 计划: `R62-M1-mmap-rename.{sh,_negative.sh}` (text-grep: `neura_mmap` 必须出现于 `09-memory-subsystem.md` § U-Mode mmap 路径段, `mmap_cosmo` 在 1X 子系统文档必须 0 命中)。|
+
 ## R47: P1-5 勘误增补挂靠
 
 | 挂靠 D# | 修正内容 |
@@ -386,8 +394,8 @@ R31-R33 九问揭示两类失效模式:
 | 1 evidence | ~80 | Verified with RISC-V spec, git, or version check |
 | 2 coherence | ~30 | Follows spec thesis (16KB stack, 1536B, zero-heap) |
 | 3 taste | ~6 | See Decisions Log in SPEC.md |
-| DEPRECATED | 1 | D62 superseded by D73 |
-| SUPERSEDED | 6 | D91→D110, D96→D108, D101→D113, D104→D118, D106→D107, D116→D112 |
+| DEPRECATED | 4 | D62→D73, D74→D170 (R54 改 SSOT 路径), D76→D168 (R54 panic 族), D129→D169 (R55 call gate 族) |
+| SUPERSEDED | 6 | D91→D110 (Bit 30 重定位), D96→D108 (-Dip_family 派生), D101→D113 (jq + --json), D104→D118 (FS=Off 纠正), D106→D107 (per-Hart HLCB), D116→D112 (ld 8B 二分查找) |
 
 ## Cross-references
 
