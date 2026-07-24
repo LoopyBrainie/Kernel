@@ -84,3 +84,12 @@ Profiles           —  ⑰ Static (RR, 16KB Hart-Local stack)
 4. Audit history: mark `DEPRECATED` / `SUPERSEDED` in the ledger, do not delete; cite the supersede chain.
 5. New forbidden word = update **both** the script array AND `20-documentation-gate.md` census (the `EXPECTED_TOTAL` mismatch causes exit 2).
 6. New D# = append to `03-design-decisions.md` with class (1/2/3) and status; `check-d-backlinks.sh` then enforces a subsystem-doc hit.
+
+## Naming Migration Discipline (R53-R61 lessons)
+
+- **Reverse-grep before batch closure** — plan § enumeration often misses symbols; `grep -rn "old_prefix" docs/` to verify completeness (R59 missed 5 HAL-exposed syscall 编号表 11-15 entries that were not in plan §1.2).
+- **`Edit replace_all=true` catches prefix substrings** — `cosmo_open` → `neura_open` auto-catches `cosmo_open_stub` and `cosmo_pte_map_6arg_fn`. Use for naming migrations when new prefix is unambiguous.
+- **30-open-questions.md is dual-mode** — fence-internal code (三连反引号 围栏内) MUST sync to current naming; fence-external narrative is D172-exempt. Stale cross-references pointing to migrated symbols are NOT D172-exempt — cross-refs must reflect current state.
+- **AUDIT_LINE_FILTER must be extended per R##** — historical-reference exemption patterns (`R55|R60|D171|D172`) added alongside new forbidden words in `check-docs.sh`. Without this extension, every R## finalization breaks the gate on its own D-tag entries.
+- **Naming layer interface abstraction** — syscall interface strips internal layer qualifier: `basal_hal_set_next_timer` (HAL backend) → `neura_set_next_timer` (syscall interface). Apply at every cross-layer syscall addition; the interface is the abstraction boundary.
+- **spec_lab reverse-grep before R## commit** — `grep -rln "old_symbol" tools/spec_lab/assertions/ tools/spec_lab/extracted/` to sync hardcoded names in assertion scripts and extracted code fences before commit. Skipping this breaks `run_all.sh`.
