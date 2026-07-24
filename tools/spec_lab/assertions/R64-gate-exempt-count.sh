@@ -21,7 +21,7 @@
 set -euo pipefail
 
 SIDECAR="$PWD/tools/spec_lab/extracted/gate-exempt-markers.txt"
-R65_GAMMA_FLOOR=17  # R65-γ (b) 注入后实测; γ(c)/(d) 推进时不动此处, R65-gate-exempt-count.sh 接管 dynamic floor
+R65_GAMMA_FLOOR=13  # γ(c-0) 撤 4 行装饰性 marker 后实测 (17-4); γ(c) 跨文件推进时不动此处, R65-gate-exempt-count.sh 接管 dynamic floor
 
 # 验证 1: sidecar 存在
 if [[ ! -f "$SIDECAR" ]]; then
