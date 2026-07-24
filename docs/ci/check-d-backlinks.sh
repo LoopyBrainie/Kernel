@@ -29,15 +29,15 @@ EXCLUDE_FILES=(
 
 EXIT=0
 
-# 1. Collect D126-D174 from the status table rows in 03.
+# 1. Collect D126-D175 from the status table rows in 03.
 # R50: extended to D160 (profile matrix legislation).
 # R62: D164-D174 (命名迁移立法 R53-R62).
-# R63: regex 扩 1[3-9][0-9] 覆盖 D130-D199 (前瞻 D175+ 至 D199), floor 同步 35→49 (D126-D174 实际计数).
+# R63: regex 扩 1[3-9][0-9] 覆盖 D130-D199 (前瞻 D175+ 至 D199), floor 同步 35→50 (D126-D175 实际计数).
 mapfile -t D_TAGS < <(grep -oE '\| D(12[6-9]|1[3-9][0-9]) \|' "$LEDGER" | sed -E 's/\| D([0-9]+) \|/\1/' | sort -u)
 
-# R63 floor: D126-D174 = 49 (D126-D160 R37-R50 [35] + D161-D174 R52-R62 命名迁移 [14])
-if [[ ${#D_TAGS[@]} -lt 49 ]]; then
-  echo "[FATAL] $GATE_NAME expected >=49 D126-D174 tags in $LEDGER, got ${#D_TAGS[@]}"
+# R63 floor: D126-D175 = 50 (D126-D160 R37-R50 [35] + D161-D174 R52-R62 命名迁移 [14] + D175 R63 扫描面立法 [1])
+if [[ ${#D_TAGS[@]} -lt 50 ]]; then
+  echo "[FATAL] $GATE_NAME expected >=50 D126-D175 tags in $LEDGER, got ${#D_TAGS[@]}"
   exit 2
 fi
 
@@ -95,4 +95,4 @@ if [[ "$canary_hits" -ne 0 ]]; then
   exit 2
 fi
 
-echo "✓ $GATE_NAME passed (${#D_TAGS[@]} D126-D174 tags, all back-linked, canary self-test OK)"
+echo "✓ $GATE_NAME passed (${#D_TAGS[@]} D126-D175 tags, all back-linked, canary self-test OK)"

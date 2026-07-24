@@ -86,7 +86,7 @@ Single source of truth: `docs/00-ffi-pillars.md` (D125).
 | How errors propagate across languages | `docs/10-error-handling.md` |
 | The scheduler (RR vs Work-Stealing) | `docs/12-scheduler.md` |
 | Network driver and Shim Layer | `docs/11-network-driver.md` |
-| Every design decision ever made (D1–D174) | `docs/03-design-decisions.md` |
+| Every design decision ever made (D1–D175) | `docs/03-design-decisions.md` |
 | ISA/ABI profile matrix (D160) | `docs/16-profile-matrix.md` |
 | What "frozen" means and how it's verified | `tools/spec_lab/README.md` |
 | Phase 0 MVP task list (T1.1–T1.28) | `docs/15-phase0-mvp.md` |

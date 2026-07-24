@@ -11,7 +11,7 @@ This directory contains per-subsystem specs extracted from the master plan.
 |---|-----|----------------|--------|
 | 01 | system-overview.md | §二 (18-box architecture) | R48 ACTIVE (subsystem doc locked) |
 | 02 | memory-topology.md | §九 (V2.2 644KB ceiling) | R48 ACTIVE; D49 双行制 (R48 F5 勘误增补: 预算上限 = 已命名子段 + 未分配余量) |
-| 03 | design-decisions.md | §一 (D1–D174 full table, R47 ledger closed + R51 R#-anchored + R50 D160 profile matrix + R53-R62 命名迁移立法) | R62 ACTIVE |
+| 03 | design-decisions.md | §一 (D1–D175 full table, R47 ledger closed + R51 R#-anchored + R50 D160 profile matrix + R53-R62 命名迁移立法 + R63 D175 扫描面立法) | R63 ACTIVE |
 | 04 | abi-contract.md | §四 + D74/D85/D86/D89/D90/D101/D121 | R48 ACTIVE; sys_result_t 形态四形归一 (R48 F3) |
 | 05 | call-gate.md | §五 + D56/D62/D73/D82/D92/D106/D107/D136 | R48 ACTIVE; HLCB extern struct 命名常量同源派生 (R48 F2) |
 | 06 | boot-sequence.md | §六 + D92/D95/D99/D100/D107/D132/D136 | R48 ACTIVE; D136 trap_entry asm 命名常量 (R48 F2) |
