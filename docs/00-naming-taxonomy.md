@@ -49,7 +49,7 @@ D121 5 struct 白名单 — **不加任何组件前缀**:
 | `NetworkFrame` / `network_frame_t` | 1536B 网络帧 (external 1536B + internal 14B MAC) | D121 |
 | `block_t` | 1536B 物理块 | D121 |
 
-> **D165 反向锚定**: 禁止 `neura_sys_result_t` / `basal_sys_result_t` / `cortix_sys_result_t` / `synapse_sys_result_t` 任意一种字面串出现于 `docs/`。Linux 内核惯例(无组件前缀跨语言公共类型),与 `syscall_*` / `task_*` / `file_*` 同款命名哲学。
+> **D165 反向锚定**: 禁止 `neura_sys_result_t` / `basal_sys_result_t` / `cortix_sys_result_t` / `synapse_sys_result_t` 任意一种字面串出现于 `docs/`。Linux 内核惯例(无组件前缀跨语言公共类型),与 `syscall_*` / `task_*` / `file_*` 同款命名哲学。 <!-- gate-exempt: D165 -->
 
 ---
 

@@ -21,7 +21,7 @@
 set -euo pipefail
 
 SIDECAR="$PWD/tools/spec_lab/extracted/gate-exempt-markers.txt"
-R65_GAMMA_FLOOR=26  # γ(c-1) 注入 13 行跨文件 marker 后实测 (13+13); γ(c-2/3/4) 推进时再 bump
+R65_GAMMA_FLOOR=39  # γ(c-2) 净增 +13 后实测 (26 - 1 撤 + 1 修 + 13 跨文件); γ(c-3/4) 推进时再 bump
 
 # 验证 1: sidecar 存在
 if [[ ! -f "$SIDECAR" ]]; then

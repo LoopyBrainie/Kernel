@@ -63,7 +63,7 @@ R40 Q50 立项前, Auto 行写 "mixed / Yes" — 同一字段两种语义并存,
 **传染面清单** (R40 元规则四):
 - `build.zig` § PageAggregationMode 编译器分支 (D109 + D135 联动)
 - `15-phase0-mvp.md` § PageAggregation T1.13 升级 D135 (Auto 模式双 region reporting)
-- `20-documentation-gate.md` 新增禁词: `Auto 模式 mixed padding` / `BlockPool 内部混合 layout` (已入册, R40)
+- `20-documentation-gate.md` 新增禁词: `Auto 模式 mixed padding` / `BlockPool 内部混合 layout` (已入册, R40) <!-- gate-exempt: D135 -->
 
 `build.zig` switches: `-Denable_page_aggregation=true/false` (default `true` for Server, `false` for Embedded).
 
@@ -167,7 +167,7 @@ make test-umode-sparse-cross   # 同时启用 D31 + D84 纵深防御
 - **Option A** (严格 1 block/4KB page) 内存预算 1MB 超出 644KB V2.2 2.67×, 不可接受。
 - **Option C** (禁用 U-Mode Sparse) 违背 D9.2 Scheme Router 必须支持 U-Mode comm 的设计前提, 拒绝。
 
-D109 是 Q25 推荐选项 B 的实现, 接受 "PTE alignment" 命名诚实性 vs 原 "PTE isolation" 营销性的权衡。
+D109 是 Q25 推荐选项 B 的实现, 接受 "PTE alignment" 命名诚实性 vs 原 "PTE isolation" 营销性的权衡。 <!-- gate-exempt: D109 -->
 
 ## D109/Q25 落地约束: PMP region 预算编译期记账
 
@@ -311,7 +311,7 @@ int neura_read(int fd, void *buf, size_t len) {
 }
 ```
 
-**传染面**: `14-syscall-api.md` § neura_open/read/write 改写 mutable_table + `13-build-pipeline.md` § FILE_TABLE 编译期生成 + `20-documentation-gate.md` 新增禁词 "FILE_TABLE 单一不可变"。
+**传染面**: `14-syscall-api.md` § neura_open/read/write 改写 mutable_table + `13-build-pipeline.md` § FILE_TABLE 编译期生成 + `20-documentation-gate.md` 新增禁词 "FILE_TABLE 单一不可变"。 <!-- gate-exempt: D151 -->
 
 ## initrd file count gate (D105)
 
@@ -446,7 +446,7 @@ make test-d140-blockpool-degrade
 - `14-syscall-api.md` § `SYS_ENOSPC` 返回条件改写 (Phase 1+ 不立即返回, 先 5 步退化)
 - `12-scheduler.md` § context_switch 加 D140 step 4 `force_all_tasks_fs_off()` 实现
 - `15-phase0-mvp.md` T1.10 (sys_atomic_cas_ptr 3-tier) 升级为 D140 + 新增 T1.26 (BlockPool 退化测试)
-- `20-documentation-gate.md` **新增禁词**: "5-step degradation 未定义" / "Pool 退化假定成功"
+- `20-documentation-gate.md` **新增禁词**: "5-step degradation 未定义" / "Pool 退化假定成功" <!-- gate-exempt: D140 -->
 
 ### 元规则校验
 
@@ -505,7 +505,7 @@ SIZE_PHASE1=$(stat -c%s build/kernel-phase1.elf)
 [ "$SIZE_PHASE1" -gt "$SIZE_PHASE0" ] || { echo "D143 FAIL: Phase 1+ commit 未生效"; exit 1; }
 ```
 
-**传染面**: `02-memory-topology.md` § V2.2 ledger 表增 D143 commit 行; `14-syscall-api.md` § SYS_ENOSPC 返回条件增 NodePool commit 失败路径; `15-phase0-mvp.md` T1.20 升级为 D143 + 新增 T1.28 (NodePool commit 测试); `20-documentation-gate.md` 新增禁词 "NodePool 物理页按需 lazy commit"。
+**传染面**: `02-memory-topology.md` § V2.2 ledger 表增 D143 commit 行; `14-syscall-api.md` § SYS_ENOSPC 返回条件增 NodePool commit 失败路径; `15-phase0-mvp.md` T1.20 升级为 D143 + 新增 T1.28 (NodePool commit 测试); `20-documentation-gate.md` 新增禁词 "NodePool 物理页按需 lazy commit"。 <!-- gate-exempt: D143 -->
 
 ---
 
@@ -617,7 +617,7 @@ readelf -W -s build/kernel.elf | grep FILE_TABLE | grep -q "OBJECT" \
 | Phase 1+ SATP 启用, FILE_TABLE PTE 仍 r/o | ✓ RISC-V PTE r-bit 强制 | ✓ 同, 但 mutable_table 在 .bss 段, PTE r/w |
 | D121 SSOT whitelist 是否含 mutable_table | ❌ 没说, mutable_table 是 .bss 类型不在 SSOT 范围 | ✓ D151: mutable_table 是 file_entry_t 数组 (D121 whitelist 隐式允许) |
 
-**新增禁词**: "FILE_TABLE 单一不可变" / "FILE_TABLE sizeof=80" / "FILE_TABLE 总计 4KB"
+**新增禁词**: "FILE_TABLE 单一不可变" / "FILE_TABLE sizeof=80" / "FILE_TABLE 总计 4KB" <!-- gate-exempt: D151 -->
 
 **传染面**: `09-memory-subsystem.md` § D151 本增补 + `14-syscall-api.md` § neura_open/read/write 改写 mutable_table + `13-build-pipeline.md` § FILE_TABLE 编译期生成 (84B 派生) + D46 台账 4KB→4.2KB + `20-documentation-gate.md` 新增禁词三条。
 

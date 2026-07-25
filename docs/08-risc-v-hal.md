@@ -40,7 +40,7 @@ Used for: scheduler tick, timestamp fields in RpcUnit, performance counters. Alw
 
 ## D80: Sstc detection + SBI fallback (P1-4 S-Mode 勘误后)
 
-**P1-4 修复**: `csrr menvcfg` 在 S-Mode 是 **illegal instruction** (RISC-V Privileged Spec §3.1.7: menvcfg 是 M-Mode CSR, S-Mode 读它必然 trap; senvcfg 不含 STCE 位, 无法代理)。R36 D80 原案直接 exec 会 `IllegalInstruction` 然后 D118 三条件消歧误判。
+**P1-4 修复**: `csrr menvcfg` 在 S-Mode 是 **illegal instruction** (RISC-V Privileged Spec §3.1.7: menvcfg 是 M-Mode CSR, S-Mode 读它必然 trap; senvcfg 不含 STCE 位, 无法代理)。R36 D80 原案直接 exec 会 `IllegalInstruction` 然后 D118 三条件消歧误判。 <!-- gate-exempt: D118 -->
 
 **新 D80**: 通过 DTB `riscv,isa-extensions` 解析 "sstc" 字符串; 或 trap-and-probe 写 `stimecmp` (写入成功 = Sstc 可用, 写入 trap = 降级)。`menvcfg` 字面量列入禁词门 (R29 同款反杜撰)。
 
@@ -504,7 +504,7 @@ llvm-objdump -d build/kernel.elf \
 - `12-scheduler.md` § D104 Lazy Save 表 Embedded 行加 "kernel-march=rv64imac 编译期断言"
 - `13-build-pipeline.md` 新增 `make audit-no-fp-kernel` 闸门 + `build_options.kernel_march` 派生
 - `15-phase0-mvp.md` T1.1 升级为 D138 + 新增 T1.24 (no-FP-asm 测试)
-- `20-documentation-gate.md` **新增禁词**: "kernel FP 隐式 allowed" / "FS=Off 默认 by default"
+- `20-documentation-gate.md` **新增禁词**: "kernel FP 隐式 allowed" / "FS=Off 默认 by default" <!-- gate-exempt: D138 -->
 - `16-profile-matrix.md` (R50 D160 索引) — mabi 列 (embedded/qemu_virt/server_compact × lp64/lp64d) 由本 D# 派生, 完整对照表见矩阵 doc
 
 ### 元规则校验
@@ -596,7 +596,7 @@ make test-d139-panic-reset
 
 - `06-boot-sequence.md` § early_console_init 添加 `early_console_is_uart0_ready()` 检测函数 (返回 bool)
 - `15-phase0-mvp.md` T1.7 (basal_panic_abort C HAL) 升级为 D139 + 新增 T1.25 (panic fail-stop 测试)
-- `20-documentation-gate.md` **新增禁词**: "panic 假定成功" / "panic fall-through 单一路径"
+- `20-documentation-gate.md` **新增禁词**: "panic 假定成功" / "panic fall-through 单一路径" <!-- gate-exempt: D139 -->
 
 ### 元规则校验
 
@@ -717,7 +717,7 @@ bool try_fs_vs_lazy_init(uintptr_t sepc, uint64_t scause, uint64_t sstatus) {
 
 **场景矩阵 (5 格)**: RV64GC+V FS=Off 用户 VLE / RV64GC+V FS=Initial 已设 / **RV64GC 无 V FS=Off 用户 VLE (buggy) → 走真异常** / **RV64IMAC 无 F/D/V FS=Off 用户 fmadd.d → 走真异常** / RV64GC FS=Off 用户 fmul.d → 置 FS=Initial → 重试成功。
 
-**传染面**: `12-scheduler.md` § D104 Lazy Save FS/VS 路径引用 D142; `13-build-pipeline.md` build_options.has_fp_extension / has_v_extension 派生 (D138 联动); `20-documentation-gate.md` 新增禁词 "D118 三条件覆盖所有 RVV 场景"。
+**传染面**: `12-scheduler.md` § D104 Lazy Save FS/VS 路径引用 D142; `13-build-pipeline.md` build_options.has_fp_extension / has_v_extension 派生 (D138 联动); `20-documentation-gate.md` 新增禁词 "D118 三条件覆盖所有 RVV 场景"。 <!-- gate-exempt: D142 -->
 
 ---
 
@@ -759,8 +759,8 @@ D94 Tier 3 增加 `num_harts > 1` 检测, 多 Hart 走 SBI IPI 自旋锁 (与 Ti
 }
 ```
 
-**传染面**: `12-scheduler.md` Work-Stealing 联动 + `15-phase0-mvp.md` T1.10 升级 + `20-documentation-gate.md` 新增禁词 "Tier 3 假定单 Hart"。
-**传染面**: `12-scheduler.md` Work-Stealing 联动 + `15-phase0-mvp.md` T1.10 升级 + `20-documentation-gate.md` 新增禁词 "Tier 3 假定单 Hart"。
+**传染面**: `12-scheduler.md` Work-Stealing 联动 + `15-phase0-mvp.md` T1.10 升级 + `20-documentation-gate.md` 新增禁词 "Tier 3 假定单 Hart"。 <!-- gate-exempt: D144 -->
+**传染面**: `12-scheduler.md` Work-Stealing 联动 + `15-phase0-mvp.md` T1.10 升级 + `20-documentation-gate.md` 新增禁词 "Tier 3 假定单 Hart"。 <!-- gate-exempt: D144 -->
 
 ---
 
@@ -810,7 +810,7 @@ static inline bool is_fp_or_vv_opcode(uint32_t instr) {
 
 ```
 
-**传染面**: `12-scheduler.md` § D104 Lazy Save FS/VS 联动 + `20-documentation-gate.md` 新增禁词 "FP CSR 访问假定合法"。
+**传染面**: `12-scheduler.md` § D104 Lazy Save FS/VS 联动 + `20-documentation-gate.md` 新增禁词 "FP CSR 访问假定合法"。 <!-- gate-exempt: D152 -->
 
 ---
 
