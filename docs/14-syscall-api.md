@@ -291,7 +291,7 @@ pub extern "C" fn neura_open_stub(path: *const u8, flags: u32) -> sys_result_t {
 **传染面清单** (R38 元规则四):
 - `04-abi-contract.md` § D119 arity 表 + D129 注释 (a7 stub asm! 块保证)
 - `15-phase0-mvp.md` T1.2 stub 实现升级 D129
-- `20-documentation-gate.md` 新增禁词: `syscall number 隐式 a7 约定` / `7 参数 C 签名落 a7` (已入册, R38)
+- `20-documentation-gate.md` 新增禁词: `syscall number 隐式 a7 约定` / `7 参数 C 签名落 a7` (已入册, R38) <!-- gate-exempt: D129 -->
 
 **编译期闸门** (R38 D129):
 - `nm build/kernel.elf | awk '$3=="neura_open_stub" {print $2}' | grep -q '^T$'` (符号表属性必须 T)

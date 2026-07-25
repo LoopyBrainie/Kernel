@@ -35,7 +35,7 @@ Phase 0 has no MMU, so Shell and Kernel share S-Mode. The Call Gate is a 5-file 
 
 ## 5-file implementation (D56 + D62 + D73 + D82)
 
-**R51 D153 命名锚**: Rust 侧 `cosmo_core_syscall_dispatcher.rs` 重命名为 `syscall_stubs.rs` (D129 stub asm! 块角色明示); Zig 侧 `syscall_dispatch.zig` 是 call gate 入口唯一合法名, **不改名**. 文档中裸名 `dispatcher`(无角色前缀) 视为未锚命名.
+**R51 D153 命名锚**: Rust 侧 `cosmo_core_syscall_dispatcher.rs` 重命名为 `syscall_stubs.rs` (D129 stub asm! 块角色明示); Zig 侧 `syscall_dispatch.zig` 是 call gate 入口唯一合法名, **不改名**. 文档中裸名 `dispatcher`(无角色前缀) 视为未锚命名. <!-- gate-exempt: D153 -->
 
 ```
 kernel/arch/riscv64/call_gate/

@@ -77,7 +77,7 @@ D121 5 struct 白名单 — **不加任何组件前缀**:
 
 ## 6. Rust 内部命名 (R58 收,绑 Q69)
 
-- Shell crate 名: **`cortix_kernel`** (R58 ✅ 补执行, 撤销 `cosmo_kernel`, D173 豁免 Q69 阻塞)
+- Shell crate 名: **`cortix_kernel`** (R58 ✅ 补执行, 撤销 `cosmo_kernel`, D173 豁免 Q69 阻塞) <!-- gate-exempt: D173 -->
 - Phase 0 目录: `cortix/src/` (绑 Q69 Rust crate 拓扑)
 - 模块 snake_case (`syscall_stubs` / `early_console`),类型 PascalCase
 

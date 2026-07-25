@@ -39,7 +39,7 @@ This doc is the **canonical index** for the ISA × ABI × 粒度 profile matrix.
 | 粒度 | 256 B | **PROVISIONAL — 本轮不激活** |
 | 触发条件 | Phase 1+ IPC endpoint 通道极小包场景 (e.g. 16-byte sensor beacons) | 待 Q78 立法研究 |
 | 触及 frozen 门 | `rpc_unit_t = 1536 B` (D57/D85) | 需独立 Q78 立法 + D# 升 `block_t` 三方等价 |
-| 当前禁用依据 | 任何 `rpc_unit_t = 256B` 字面即视为漂移, 已入 `check-docs.sh` 禁词 (R50 D160 配套) | ✓ |
+| 当前禁用依据 | 任何 `rpc_unit_t = 256B` 字面即视为漂移, 已入 `check-docs.sh` 禁词 (R50 D160 配套) | ✓ <!-- gate-exempt: D160 --> |
 
 **Q78 OPEN** (R50 挂账): endpoint_compact 256B 粒度研究 — 是否立法为新 profile, 如何保持 `block_t ≡ RpcUnit ≡ NetworkFrame` 1536B frozen 门, 需独立 Q 研究. 本轮**不立**, 仅作 PROVISIONAL 候选登记.
 
@@ -65,7 +65,7 @@ If a value in the matrix disagrees with its source D#, the source D# wins. The m
 
 ## Forbidden phrases (D160 enforcement)
 
-- `rpc_unit_t = 256B` — R50 D160 配套禁词, endpoint_compact=256B 未立法, 任何现行 RpcUnit 形态暗示 256B 即熔断.
+- `rpc_unit_t = 256B` — R50 D160 配套禁词, endpoint_compact=256B 未立法, 任何现行 RpcUnit 形态暗示 256B 即熔断. <!-- gate-exempt: D160 -->
 
 ## R50 收口传染面
 

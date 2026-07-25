@@ -78,7 +78,7 @@ nm kernel.elf | grep ' U ' | grep -v '__basal_abi_' | grep -q . || {
 
 The user-facing API is **unchanged across phases** (D55). The implementation underneath changes, but the C/Rust source code in Shell does not.
 
-> **P3-10 (R47 勘误)**: Phase 1 "ecall → M-Mode → S-Mode" 表述错误。OpenSBI 默认 `medeleg` 把 U-Mode ecall 委托给 S-Mode 直接处理 (RISC-V Privileged Spec §3.1.8), 不经 M-Mode。Phase 1 实际路径:
+> **P3-10 (R47 勘误)**: Phase 1 "ecall → M-Mode → S-Mode" 表述错误。OpenSBI 默认 `medeleg` 把 U-Mode ecall 委托给 S-Mode 直接处理 (RISC-V Privileged Spec §3.1.8), 不经 M-Mode。Phase 1 实际路径: <!-- gate-exempt: D168 -->
 > `U-Mode ecall` → `medeleg[bit 8]` 命中 → `scause=8` 落到 S-Mode trap_entry → Call Gate 派发。无需绕 M-Mode, 也省 50–100 cycle SBI tax (D21)。
 
 ## Shell example (skeleton)

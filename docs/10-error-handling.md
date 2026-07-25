@@ -228,7 +228,7 @@ Phase 0 only runs steps 1-2 at compile time (D65), runtime branches removed.
 
 **Status**: **RATIFIED** (Q26 → D110, R32).
 
-**致命度**: CRITICAL。R30/R31 spec 中 D91 Bit 31 adaptive mode 与 D89 `error_code: i32` 的符号位发生**位级冲突**——所有负数 errno 的最高位都是 1,被 D91 decoder 错误地当作 descriptor-index,`idx = 0x7FFF_FFFFxx` 远超表大小 1024,统一退化为 SYS_EINVAL。结果:**整个错误返回路径只剩一种错误**,所有 `cosmo_open`/`cosmo_read`/`cosmo_write` 的失败原因在用户态全部丢失。
+**致命度**: CRITICAL。R30/R31 spec 中 D91 Bit 31 adaptive mode 与 D89 `error_code: i32` 的符号位发生**位级冲突**——所有负数 errno 的最高位都是 1,被 D91 decoder 错误地当作 descriptor-index,`idx = 0x7FFF_FFFFxx` 远超表大小 1024,统一退化为 SYS_EINVAL。结果:**整个错误返回路径只剩一种错误**,所有 `cosmo_open`/`cosmo_read`/`cosmo_write` 的失败原因在用户态全部丢失。 <!-- gate-exempt: D91 -->
 
 **核心矛盾**:
 

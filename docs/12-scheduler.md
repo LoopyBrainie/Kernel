@@ -178,7 +178,7 @@ done
 
 **场景矩阵 (4 格)**: 多 Hart 全局 coherence + Work-Stealing / 多 Hart 无 coherence + Work-Stealing (D111 拒绝, D145 降级) / 多 Hart 无 coherence + Pin-Binding (D145 实现 + task_affinity 显式) / 单 Hart + RR (Phase 0 默认)。
 
-**传染面**: `08-risc-v-hal.md` Tier 2 联动 + `15-phase0-mvp.md` T1.20 (PMP) + `20-documentation-gate.md` 新增禁词 "Pin-Binding alternative 假定实现" / "运行时随机 Hart 绑定"。
+**传染面**: `08-risc-v-hal.md` Tier 2 联动 + `15-phase0-mvp.md` T1.20 (PMP) + `20-documentation-gate.md` 新增禁词 "Pin-Binding alternative 假定实现" / "运行时随机 Hart 绑定"。 <!-- gate-exempt: D145 -->
 
 ---
 
@@ -227,7 +227,7 @@ static int debug_audit_read_in_kernel_space(int peer_hart) {
 }
 ```
 
-**新增禁词**: "SBI RFENCE 用作数据一致性原语" / "跨 Hart 偷任务前 SBI RFENCE" / "remote_fence_vma 用于数据 cache 同步"
+**新增禁词**: "SBI RFENCE 用作数据一致性原语" / "跨 Hart 偷任务前 SBI RFENCE" / "remote_fence_vma 用于数据 cache 同步" <!-- gate-exempt: D150 -->
 
 **传染面**: `08-risc-v-hal.md` § D94 Tier 2 联动 + `20-documentation-gate.md` 新增禁词三条。
 

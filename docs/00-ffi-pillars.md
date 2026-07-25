@@ -49,7 +49,7 @@ typedef union {
 } sys_result_payload_t;
 _Static_assert(sizeof(sys_result_payload_t) == 8, "D86 + P2-1 8B payload");
 _Static_assert(sizeof(((sys_result_payload_t*)0)->error_pack) == 8,
-              "P2-1 error_pack carve-out 8B width");
+              "P2-1 error_pack carve-out 8B width"); <!-- gate-exempt: D86 -->
 ```
 
 ### 传染面清单

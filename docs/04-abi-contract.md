@@ -65,7 +65,7 @@ comptime {
 }
 ```
 
-**传染面**: `13-build-pipeline.md` build_options.rpc_align 派生 + `15-phase0-mvp.md` T1.2 升级 + `20-documentation-gate.md` 新增禁词 "RpcUnit align 统一 64B"。
+**传染面**: `13-build-pipeline.md` build_options.rpc_align 派生 + `15-phase0-mvp.md` T1.2 升级 + `20-documentation-gate.md` 新增禁词 "RpcUnit align 统一 64B"。 <!-- gate-exempt: D146 -->
 - `16-profile-matrix.md` (R50 D160 索引) — RpcUnit align (D71) / cache line profile (D48) 跨 profile 对照见矩阵 doc
 - **Header field bit-layout** (R25 D86/D89):
   - bit 31: `is_error` (0 = success, 1 = failure)

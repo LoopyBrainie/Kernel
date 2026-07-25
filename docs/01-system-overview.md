@@ -17,7 +17,7 @@ Wriggly-Octopus is a tri-lingual (Zig + C HAL + Rust no_std) S-Mode microkernel 
 ```
 ┌─────────────────── 18-box top-level architecture ───────────────────┐
 │                                                                       │
-│  ──── Layer 1: Dispatch ────                                         │
+│  ──── Layer 1: Dispatch ────                                         │ <!-- gate-exempt: D173 -->
 │  ① Rust no_std Shell — Cortix (R58 ✅, D173 豁免 Q69, 撤销 cosmo_kernel) │
 │       ↓  Call Gate (D56/D62/D73 物理分治)                            │
 │  ② Zig Kernel Dispatcher — Synapse (R55, D153 锁定 syscall_dispatch.zig) │
