@@ -290,9 +290,9 @@ fi
 # =============================================================================
 # R64 D176 (行内豁免标记机制): extract_gate_exempt_markers() 函数
 # 行为:
-#   - R64: 抽取空集, sidecar 写入空文件 (0 行为变更; 既有 AUDIT_LINE_FILTER 一字不改)
+#   - R64: 抽取空集, sidecar 写入空文件 (0 行为变更; 既有中央行级豁免正则一字不改)
 #   - R65+: 抽取 docs/**/*.md + SPEC.md 中所有 <!-- gate-exempt[: -file]: 标记
-#   - 双轨期 (R64-R65): 门禁只读 AUDIT_LINE_FILTER, sidecar 仅作审计轨迹
+#   - 双轨期 (R64-R65): 门禁只读中央行级豁免正则, sidecar 仅作审计轨迹
 #   - R66 末态 (D176 收官): 行为等价判据满足后, 主循环改读 sidecar (R66 commit 切换)
 # 输出: tools/spec_lab/extracted/gate-exempt-markers.txt (gitignored, 干净克隆首跑必创建)
 # 标记格式 (D176 §1.1):
@@ -330,23 +330,26 @@ extract_gate_exempt_markers() {
 }
 
 EXIT=0
-# Exclude this script + the gate catalog doc + the audit history file from path-level exclude.
-# Line-pattern exclude: R51-FIX (F-1 过滤器真洞修补).
-# R48 老豁免规则: "勘误词出现在注释行"则放行 — 这是 F-1 漏洞根因.
-# R51 新规则: R37-R45 描述行通过 "R4[0-9]+ 勘误" 等锚定模式豁免 (历史反向锁描述).
-#                R51 新加反向锁必须挂 [OBSOLETED-by-...] 才能豁免 (双轨防线).
-AUDIT_LINE_FILTER='grep -vE "\[OBSOLETED|rename from|审计档案|诚实性|命名诚实性|R36 D80 原案|R47 勘误|R51 D153|R51-F1|R52 D16[123]|R52 立法|R53 D16[4567]|D165 反向锚|R30/R31|R31 历史|R31 spec|R58 阻塞|R59 D171|R59 命名|R59 13|D171 立法|D172 历史|D172 围栏|D172 元规则|R60 收口|R58 补执行|R58 ✅|撤销 cosmo_kernel|crate 名|crate 命名空间|R61 syscall 11-15|R61 增补|接口层剥离|R61 收口|P[1-3]-[0-9]+ 修复|P[1-3]-[0-9]+ \(R47|Dispatcher 命名锚定|新增禁词|D160 (配套|矩阵)|R62 D174|R62 GOV.5|收官同步状态头|状态头断档|状态头同步|GOV.5 检查单|R62 双目标|命名法第 19|19 条禁词|R63 D175|R63-FINAL|COSMO BOOT OK|NEURA BOOT OK|boot banner SSOT|四件套|扫描面立法|SPEC.md 扫描面"'
+# Exclude this script + the gate catalog doc from path-level exclude.
+# Line-pattern exclude: 退役 — 中央行级豁免正则 R66 commit 退役, 主循环改读 expanded set.
+# 历史: R51-FIX (F-1 过滤器真洞修补); R51 双轨防线 ([OBSOLETED-by-...] 前缀锚定) 留档于 D176 §1.5 注释.
+# 本笔 (R66-2) 行为等价切后: 展开函数 SELF/PREV/FILE 三态覆盖 47 行 + 30 整文件.
+# 历史锚定: 中央行级豁免正则仅留档于 R51 注释块 (D176 §1.5). R66 收官后 grep -c = 0.
 
 # R64 D176: 行内豁免标记抽取 (R64 期望 0 行 sidecar, R65+ 期望 ≥ 50 行).
-# 0 行为变更: 主门禁仅读 AUDIT_LINE_FILTER, sidecar 仅作审计轨迹.
+# R66-2: 主门禁改读 expanded set (extract_gate_exempt_markers() 仍抽 sidecar 供展开函数使用).
 extract_gate_exempt_markers
+expanded_file=$(mktemp)
+bash "${PWD}/tools/spec_lab/expand_gate_exempt.sh" > "$expanded_file" 2>/dev/null
 
 for word in "${FORBIDDEN[@]}"; do
-  if grep -rnF --exclude=check-docs.sh --exclude=check-d-backlinks.sh --exclude=check_goal_manifest.sh --exclude=check-toolchain.sh --exclude=20-documentation-gate.md --exclude=30-open-questions.md -- "$word" docs/ SPEC.md 2>/dev/null | eval "$AUDIT_LINE_FILTER"; then
+  if grep -rnF --exclude=check-docs.sh --exclude=check-d-backlinks.sh --exclude=check_goal_manifest.sh --exclude=check-toolchain.sh --exclude=20-documentation-gate.md -- "$word" docs/ SPEC.md 2>/dev/null | grep -vFf "$expanded_file"; then
     echo "[ERROR] Forbidden word found: $word"
     EXIT=1
   fi
 done
+
+rm -f "$expanded_file"
 
 if [ $EXIT -eq 0 ]; then
   echo "✓ Wriggly-Octopus documentation gate passed (0/${FORBIDDEN_COUNT} forbidden words)"
