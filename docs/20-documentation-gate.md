@@ -67,7 +67,7 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | R51 F3 dispatcher 命名锚 (D153) | 1 | **136** | cosmo_core_syscall_dispatcher (D153: 旧名被 syscall_stubs.rs 替代) |
 | R51 F4 700KB 量纲澄清 (D-10) | 1 | **137** | ≤700KB 物理跨度 (700KB 是 ELF 文件大小) |
 | R51 F5 rev8 禁 Zbb 假设 (D-13) | 1 | **138** | rev8.*builtin (rv64imac 无 B/Zbb) |
-| R51 M1 SYS_SHUTDOWN 路径冻结 (D154) + R66-3 改真 | 1 | **139** | SYS_SHUTDOWN (R66-3 改真: 原惰性 27 字面 `SYS_SHUTDOWN.*typed-syscall` 0 真命中; 改纯字符串必抓, 5 行靠 D154 marker 白名单兜底) |
+| R51 M1 SYS_SHUTDOWN 路径冻结 (D154) + R66-3 改真 | 1 | **139** | SYS_SHUTDOWN (R66-3 改真: 原惰性 27 字面 `SYS_SHUTDOWN.*typed-syscall` 0 真命中; 改纯字符串必抓, 6 行靠 D154 marker 白名单兜底: 03:297 D154 立法 / 03:312 D163 纯引用 / 03:392 enacted 注释 / 08:616 HAL 注释 / 14:185 + 14:316 syscall 编号表) |
 | R51 M2 锚点变量 .bss 零构造 (D155) | 1 | **140** | ShimState.*const (锚点变量禁 const) |
 | R51 M3 error_pack 三字段冻结 (D156) | 1 | **141** | node=0x%04X\\? (三字段必齐, 缺任一字段视为漂移) |
 | R51 M4 ledger 上限固化 (D157) | 1 | **142** | bss.*16384 (bss 上限 8KB, 不可放宽) |
