@@ -280,6 +280,7 @@ D176 §1.4 行内豁免标记机制配套反伪: `docs/**/*.md` + `SPEC.md` 中�
     - `R64-gate-exempt-d999-in-03_negative.sh` — 副本 03 末行追加 `<!-- gate-exempt: D999 -->` → check-d-backlinks 必须 exit 1 (F1 漏洞复发即 RC=0 → 断言 FAIL)
     - `R64-gate-exempt-narrative-canary.sh` — 副本注入三种 narrative 形式 → check-d-backlinks 必须 exit 0 (EOL $ 锚失效即 RC=1 → 断言 FAIL)
     - **`R64-gate-exempt-table-row-canary_negative.sh` (R65-α 立)** — 副本 03 D-table 行末单元格追加 `... <!-- gate-exempt: D999 --> |` → check-d-backlinks 必须 exit 1 (F4 漏洞复发即 RC=0 → 断言 FAIL)
+- **R65-γ (c-4) FILE 模式首实例**: `docs/30-open-questions.md` 文件头 frontmatter `<!-- gate-exempt-file: 30-open-questions.md 审计档案段 (D153,D154,D155,D156,D157,D172) -->` — 当前在 `--exclude=` 数据载体清单中, 主门禁 0 行为变化 (gate grep 根本不看 30); §2b 抽 marker 验存在性 (D153-D157 全部 ACTIVE, D172 元规则反向锚 ACTIVE); R66 切换时该 frontmatter 是 FILE 模式展开函数的测试床 (整文件豁免展开 → 与 AUDIT_LINE_FILTER 当时覆盖 30 的模式等价). D# 列表严格自律: 仅写 30 文件头部直接提及或本 frontmatter 直接对应的 D# (D153-D157 R51 M 桶 12 锚 + D172 自身元规则反向锚), 不堆砌 ledger 全集.
 
 ```bash
 $ bash docs/ci/check-d-backlinks.sh

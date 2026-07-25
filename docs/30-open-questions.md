@@ -1,5 +1,7 @@
 # 30 · Open Questions
 
+<!-- gate-exempt-file: 30-open-questions.md 审计档案段 (D153,D154,D155,D156,D157,D172) -->
+
 **Status**: ✅ **0 ACTIVE / 0 OPEN** — R37-R45 五轮审计 27 GAP (D126-D152) 全数闭庭, R46 修正落地, 收官注脚生效。
 **Ledger ledger closure**: 45 Qs 全闭 (Q22-Q67, D111 轮空), 27 ACTIVE GAPs (D126-D152) 升 PROPOSED → ACTIVE。
 **Audit ledger**: R37-R45 五轮 + R46 收官 (Q41-Q67) 历史保留作为审计档案, 不再 "待裁定"。
