@@ -21,30 +21,9 @@ cd "$TMP/repo"
 echo "" >> "$TEST_FILE"
 echo "**R66 canary negative**: 注入测试禁词 cosmo_open + D173 marker (单行 marker 覆盖 cosmo_open) <!-- gate-exempt: D173 -->" >> "$TEST_FILE"
 
-# Patch check-docs.sh: AUDIT_LINE_FILTER eval → expanded set 加载 + grep -vFf
-PYTHONIOENCODING=utf-8 python3 -c "
-import sys
-path = 'docs/ci/check-docs.sh'
-with open(path, encoding='utf-8') as f:
-    src = f.read()
-old = '''extract_gate_exempt_markers
-
-for word in \"\${FORBIDDEN[@]}\"; do
-  if grep -rnF --exclude=check-docs.sh --exclude=check-d-backlinks.sh --exclude=check_goal_manifest.sh --exclude=check-toolchain.sh --exclude=20-documentation-gate.md --exclude=30-open-questions.md -- \"\$word\" docs/ SPEC.md 2>/dev/null | eval \"\$AUDIT_LINE_FILTER\"; then'''
-new = '''extract_gate_exempt_markers
-EXPANDED_FILE=\$(mktemp)
-bash \"\${PWD}/tools/spec_lab/expand_gate_exempt.sh\" > \"\$EXPANDED_FILE\" 2>/dev/null
-
-for word in \"\${FORBIDDEN[@]}\"; do
-  if grep -rnF --exclude=check-docs.sh --exclude=check-d-backlinks.sh --exclude=check_goal_manifest.sh --exclude=check-toolchain.sh --exclude=20-documentation-gate.md --exclude=30-open-questions.md -- \"\$word\" docs/ SPEC.md 2>/dev/null | grep -vFf \"\$EXPANDED_FILE\"; then'''
-if old in src and 'EXPANDED_FILE=\$(mktemp)' not in src:
-    src = src.replace(old, new, 1)
-    with open(path, 'w', encoding='utf-8') as f2:
-        f2.write(src)
-    print('PATCHED')
-else:
-    print('SKIP')
-" 2>&1 | head -1
+# R66-3 死代码 purge: 仓库已是切后形态, check-docs.sh 直接运行 (无需 patch).
+# - 切后形态: expanded_file=$(mktemp) + bash expand_gate_exempt.sh > $expanded_file + grep -vFf $expanded_file
+# - 测试直接调门禁,断言 exit 0 (含 D173 marker 的禁词行被 expanded set 精确豁免).
 
 if bash docs/ci/check-docs.sh > /dev/null 2>&1; then
   RC=0

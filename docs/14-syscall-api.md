@@ -182,7 +182,7 @@ sys_result_t neura_ipc_send_6arg(
 | 0x05 | `neura_stat` | 2 | fd, stat_buf | Phase 0 |
 | 0x10 | `neura_yield` | 0 | — | Phase 0 |
 | 0x20 | `neura_ping` | 0 | — | Phase 0 |
-| 0x28 | `SYS_SHUTDOWN` | 0 | — | Phase 0 不实现; Phase 1 立法; 调用必须走 typed-syscall 路径 (D154) |
+| 0x28 | `SYS_SHUTDOWN` | 0 | — | Phase 0 不实现; Phase 1 立法; 调用必须走 typed-syscall 路径 (D154) | <!-- gate-exempt: D154 -->
 | 0x29 | `SYS_FD_RESERVE` | 1 | fd | Phase 1+ 立法 (Q72 挂账); fd 0/1/2 预开 dev://uart0 |
 | 0x30 | (Reserved) PTE map | 6 | vaddr, paddr, flags, pte_perm, cookie, reserved | Phase 1+ |
 | 0x31 | (Reserved) PTE unmap | 4 | vaddr, len, flags, cookie | Phase 1+ |
@@ -313,7 +313,7 @@ pub extern "C" fn neura_open_stub(path: *const u8, flags: u32) -> sys_result_t {
 | 0x05 | `neura_stat` | 2 | fd, stat_buf | Phase 0 |
 | 0x10 | `neura_yield` | 0 | — | Phase 0 |
 | 0x20 | `neura_ping` | 0 | — | Phase 0 |
-| 0x28 | `SYS_SHUTDOWN` | 0 | — | Phase 0 不实现; Phase 1 立法; 调用必须走 typed-syscall 路径 (D154) |
+| 0x28 | `SYS_SHUTDOWN` | 0 | — | Phase 0 不实现; Phase 1 立法; 调用必须走 typed-syscall 路径 (D154) | <!-- gate-exempt: D154 -->
 | 0x29 | `SYS_FD_RESERVE` | 1 | fd | Phase 1+ 立法 (Q72 挂账); fd 0/1/2 预开 dev://uart0 |
 | 0x30 | (Reserved) PTE map | 6 | vaddr, paddr, flags, pte_perm, cookie, reserved | Phase 1+ |
 | 0x31 | (Reserved) PTE unmap | 4 | vaddr, len, flags, cookie | Phase 1+ |

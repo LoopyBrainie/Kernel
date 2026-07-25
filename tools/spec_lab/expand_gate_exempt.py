@@ -7,7 +7,9 @@
 - FILE: frontmatter 覆盖整个文件
 
 Usage: python3 expand_gate_exempt.py [sidecar_file]
-Output: 每行 "file:line" (相对路径, 1-based), 排序去重
+Output: 每行 "file:line:" (相对路径, 1-based, 尾冒号锚定行号边界)
+       — 行号后恒带冒号以配合 grep -n 输出格式 `file:lineno:content`,
+         子串匹配只命中真在该行的输出,杜绝潜伏的行号前缀碰撞 (R66-3 user-observed)
 """
 import sys
 import os
@@ -50,12 +52,12 @@ def main():
             continue
         with open(full_path, encoding="utf-8", errors="replace") as fh:
             for n, _line in enumerate(fh, 1):
-                exempt.add(f"{file}:{n}")
+                exempt.add(f"{file}:{n}:")
 
     # 3. SELF 模式展开: marker 行精确匹配
     for file, lines in file_self_lines.items():
         for n in lines:
-            exempt.add(f"{file}:{n}")
+            exempt.add(f"{file}:{n}:")
 
     # 4. PREV 模式特判 (01:20 → 01:21)
     prev_extras = [("docs/01-system-overview.md", 21)]
@@ -63,7 +65,7 @@ def main():
         if file in file_self_lines and any(
             marker_line == 20 for marker_line in file_self_lines[file]
         ):
-            exempt.add(f"{file}:{n}")
+            exempt.add(f"{file}:{n}:")
 
     # 5. 排序输出
     for line in sorted(exempt):

@@ -14,7 +14,7 @@ trap 'rm -f "$TMP"' EXIT
 cd "$WORK"
 bash "$EXPAND" > "$TMP" 2>/dev/null
 
-if grep -qF "docs/01-system-overview.md:23" "$TMP"; then
+if grep -qF "docs/01-system-overview.md:23:" "$TMP"; then
   echo "FAIL: R66-expand-prev_negative (docs/01-system-overview.md:23 不应展开但展开了, PREV 段落越界)" >&2
   exit 1
 fi

@@ -15,7 +15,7 @@ trap 'rm -f "$TMP"' EXIT
 cd "$WORK"
 bash "$EXPAND" > "$TMP" 2>/dev/null
 
-if grep -qF "docs/01-system-overview.md:21" "$TMP"; then
+if grep -qF "docs/01-system-overview.md:21:" "$TMP"; then
   echo "PASS: R66-expand-prev (docs/01-system-overview.md:21 PREV 展开正确)"
   exit 0
 else

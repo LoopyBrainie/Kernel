@@ -14,7 +14,7 @@ trap 'rm -f "$TMP"' EXIT
 cd "$WORK"
 bash "$EXPAND" > "$TMP" 2>/dev/null
 
-if grep -qF "docs/02-memory-topology.md:1" "$TMP"; then
+if grep -qF "docs/02-memory-topology.md:1:" "$TMP"; then
   echo "FAIL: R66-expand-file_negative (docs/02-memory-topology.md:1 不应展开但展开了, FILE 越界)" >&2
   exit 1
 fi

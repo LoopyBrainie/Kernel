@@ -17,8 +17,8 @@ bash "$EXPAND" > "$TMP" 2>/dev/null
 
 MISSING=()
 for n in 1 100 500 1000 2000 3500; do
-  if ! grep -qF "docs/30-open-questions.md:${n}" "$TMP"; then
-    MISSING+=("docs/30-open-questions.md:${n}")
+  if ! grep -qF "docs/30-open-questions.md:${n}:" "$TMP"; then
+    MISSING+=("docs/30-open-questions.md:${n}:")
   fi
 done
 

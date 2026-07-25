@@ -613,7 +613,7 @@ make test-d139-panic-reset
 
 ```c
 // D163 双轨分流 (HAL FFI 边界)
-// 路径 A: planned shutdown (D154 SYS_SHUTDOWN HAL FFI 路径)
+// 路径 A: planned shutdown (D154 SYS_SHUTDOWN HAL FFI 路径) <!-- gate-exempt: D154 -->
 static inline void sbi_shutdown(uint32_t reason) {
     sbi_system_reset(0, reason);  // (reset_type=shutdown, reason)
     __builtin_unreachable();
