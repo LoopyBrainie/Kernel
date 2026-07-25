@@ -1,7 +1,7 @@
-# Wriggly-Octopus: RISC-V Tri-Lingual Microkernel
+# Neur-Aegis: RISC-V Tri-Lingual Microkernel (R53 顶层改名)
 
-**Date**: 2026-07-17
-**Status**: D1-D125 frozen (R31-R36 18 GAPs RATIFIED); 0 open questions
+**Date**: 2026-07-23
+**Status**: D1-D175 frozen (R31-R63 RATIFIED); 0 open questions
 **Owner**: Brra1n0
 **Branch**: dev
 **Supersedes**: —
@@ -65,7 +65,7 @@ Wriggly-Octopus is a Phase 0 (MVP) S-Mode logical-isolation microkernel that com
 
 - One binary footprint, one ABI, one static-pool topology, one scheduler pluggable interface.
 - Phase 0: 16 KB Hart-Local stack + Zig opaque types + 132 KB NodePool placeholder = 644 KB 净数据 (754 KB 物理), deployable on `0x8020_0000`.
-- Phase 1: Sv39 PTE isolation activates without user-facing API change (D55); Server Profile switches to Page-Aggregation compact storage (D102 Compact 384KB 物理)。
+- Phase 1: Sv39 PTE alignment activates without user-facing API change (D55); Server Profile switches to Page-Aggregation compact storage (D102 Compact 384KB 物理)。
 - 63 forbidden words in `20-documentation-gate.md` mechanically block known traps (D115).
 
 ---
@@ -144,7 +144,7 @@ Full architecture detail: `01-system-overview.md` (D120 重写后)。
    ├── ⑥ dev:// network (D79 14B MAC DMA + D108 -Dip_family 派生)
    └── ⑦ scheme:// router (D9.2 + D85 RpcUnit)
 
-⑧  C HAL (cosmo_panic_abort D76 + D117 panic fall-through)
+⑧  C HAL (basal_panic_abort D168 + D117 panic fall-through)
 ⑨  RISC-V HAL (csrr time D21 + D80 Sstc + D118 FS=Off 懒切换)
 
 ═══ Unified 1536B Invariant (D57) ═══
@@ -176,7 +176,7 @@ Full architecture detail: `01-system-overview.md` (D120 重写后)。
 - [ ] **T1.4** entry.S Step 0 (D95 + D92)
 - [ ] **T1.5** S-Mode Hart ID OpenSBI FFI (D99)
 - [ ] **T1.6** UKI Loader ELF scan (D100)
-- [ ] **T1.7** `cosmo_panic_abort` C HAL (D76 + D117 panic-reachable)
+- [ ] **T1.7** `basal_panic_abort` C HAL (D168 + D117 panic-reachable)
 - [ ] **T1.8** early_console_init SBI Stub (D88)
 - [ ] **T1.9** Call Gate 5-file stub (D56 + D73 + D82)  ← D62 弃用
 - [ ] **T1.10** sys_atomic_cas_ptr 3-tier (D94 + D117 timeout)
@@ -304,7 +304,7 @@ Wave 4: Defer Phase 1 (D26/D31/D43/D83/D91→D110/D102/D104→D118)
 
 ## Adjacent Work
 
-- **Phase 1 Sv39 PTE isolation** (D26/D31/D84/D102/D109) — deferred
+- **Phase 1 Sv39 PTE alignment** (D26/D31/D84/D102/D109) — deferred
 - **AIA/IMSIC driver** (D83) — deferred; D67 PLIC stub satisfies Phase 0
 - **Work-Stealing scheduler** (D43/D111) — deferred; RR satisfies Phase 0
 - **Bit 30 = 1 descriptor table** (D110) — deferred to Phase 1+ server profile

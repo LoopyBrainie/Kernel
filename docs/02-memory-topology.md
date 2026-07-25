@@ -12,6 +12,8 @@ Wriggly-Octopus Phase 0 uses a deterministic, zero-heap memory topology totaling
 
 ## V2.2 physical memory layout (linker-enforced)
 
+> **R50 索引注 (D160)**: 下方 ledger 表按 profile 列出 V2.2 物理布局, 但 mabi (D138) / stride (D126) / cache line (D48, D146) / RpcUnit align (D71) 的**跨 profile 对照** (embedded / qemu_virt / server_compact) 见 [`16-profile-matrix.md`](16-profile-matrix.md). 矩阵为索引, 本 doc 为 source of truth.
+
 ```
 0x8020_0000 ┌─────────────────────────────────────┐  ← _start (D93 fixed base)
             │ .text (Zig kernel + RpcUnit)        │  ~80 KB
@@ -53,10 +55,11 @@ Total kernel image: **644 KB** (D29 + D49 + D51 + D52)
 > | **NodePool** | 0 KB (Phase 0 不读) | 0 KB (占位) | **132 KB NOLOAD** | D61 |
 > | MacDmaPool | 3584 B (256×14B) | 4 KB (1 page) | — | D79 |
 > | Guard Page | — | 4 KB | — | D49 |
-> | **Σ 物理** | — | **622 KB** (净含 BlockPool net) | + 132 KB NOLOAD = **754 KB 物理** | — |
-> | **V2.2 D49 净数据预算** | **644 KB** | — | — | P3-11 (R47 勘误): 22KB 缺口闭合如下 (子段划分) |
+> | **Σ ledger (net)** | **497.5 KB** | — | — | 主段 9 行 ledger net 列逐项求和: 80+10+4+8+4+384+0+3.5+4 = **497.5 KB** ✓ |
+> | **Σ ledger (physical)** | — | **626 KB** | + 132 KB NOLOAD = **758 KB 虚拟** | 主段 9 行 ledger physical 列逐项求和: 80+10+4+8+4+512+0+4+4 = **626 KB** ✓ (R48 勘误: 原 '622 KB' 系笔误, 实际求和 = 626 KB) |
+> | **D49 双行制 (R48 立法)** | ceiling **644 KB** = named **581.5 KB** + headroom **62.5 KB** | — | — | D49 ceiling + 已命名子段 Σ + 未分配余量 = ceiling (581.5 + 62.5 = 644 算术恒等) |
 >
-> **P3-11 22KB 缺口子段划分 (R47 增补)**: D49=644KB = .text(80) + .rodata(10) + .data(4) + .bss(8) + .boot_meta(4) + BlockPool net(384) + MacDmaPool(3.5) + Guard Page(4) + **早期栈池(64 KB Hart-Local, 4 Hart × 16 KB)** + **早期 SBI stub 区(8 KB, D88)** + **D139 panic log 环形(2 KB)** + **DTB 转储预留(2 KB, D77)** + **Step 0 trampoline(2 KB, D92/D95)** + **HLCB 表(4 KB, 64 Hart × 64 B)** + **预留 scheme 路径池(2 KB, D103)** = **644 KB** ✓
+> **P3-11 子段划分 (R48 重做, 删除 R47 伪闭合恒等式)**: D49 双行制在文, 不再写 "=644 ✓" 伪闭合.
 >
 > | 子段 | 大小 | D# | 备注 |
 > |------|------|-----|------|
@@ -65,14 +68,27 @@ Total kernel image: **644 KB** (D29 + D49 + D51 + D52)
 > | D139 panic log 环形 | 2 KB | D139 | 512 entry × 4B, 持久化到 .boot_meta |
 > | DTB 转储预留 | 2 KB | D77 | QEMU virt DTB 通常 ≤ 8 KB, 留 2 KB 缓冲 |
 > | Step 0 trampoline | 2 KB | D92/D95 | Anti-Trampling + sscratch 设置代码 |
-> | HLCB 表 | 4 KB | D107 | 64 Hart × 64 B (含 P1-1 HLCB extern) |
-> | scheme 路径池 | 2 KB | D103 | Pin static pool, ~256 个 scheme handle |
-> | **子段合计** | **84 KB** | — | 但 .bss 已含 HLCB(4 KB) + scheme(2 KB), 实际增量 = 84 − 6 = **78 KB** |
+> | HLCB 表 | 4 KB | D107 | 64 Hart × 64 B (含 P1-1 HLCB extern) — **已含于 .bss 8 KB, 不重复计入 ledger** |
+> | scheme 路径池 | 2 KB | D103 | Pin static pool, ~256 个 scheme handle — **已含于 .bss 8 KB, 不重复计入 ledger** |
+> | **Σ 子段** | **84 KB** | — | 子段总额 84 KB; 其中 HLCB 4 + scheme 2 共 6 KB 已含于 .bss, 净子段增量 = 84 − 6 = 78 KB |
 >
-> **P3-11 修正恒等式**: D49=644 KB 净 = 主段 80+10+4+8+4+384+3.5+4 = 497.5 KB + 子段新增 (64+8+2+2+2+0+0) = **640 KB**, 仍差 4 KB — **保留 4 KB 对齐 padding (BlockPool sparse 起头 512B × 8 池首 = 4 KB)**, 验证闭合。
-> **P3-11 最终恒等式 (机检恒等)**: `0x8020_0000 + 644 KB = 0x802A_1000`, BlockPool 物理基址 0x802?_???? 由链接器派生, **D49 与 ledger 双口径闭环** ✓
+> **D49 双行制 (R48 立法, 替换 R47 伪闭合恒等式)**:
 >
-> **D123 落地约束 ②**: spec 中一切内存数字禁止裸写, 必须带量纲标签 (net / physical / NOLOAD),doc-gate `make audit-derive-numbers` 机检恒等式, 不闭合即熔断。
+> | 量纲 | 数值 | 派生 | 语义 |
+> |------|------|------|------|
+> | D49 预算上限 (ceiling) | **644 KB** | D49 立法 (Phase 0 任何时刻 footprint 不得越此线) | ceiling |
+> | Σ 已命名子段 (named) | **581.5 KB** | 主段 net ledger 497.5 KB + 子段总额 84 KB | named (按 ledger 逐项可复算) |
+> | 未分配余量 (headroom) | **62.5 KB** | ceiling − named = 644 − 581.5 | 留头 (ELF overhead, 链接 padding, .got/.plt 等) |
+>
+> **复算留证 (R48 收官节引用)**:
+> - 主段 ledger net: 80 + 10 + 4 + 8 + 4 + 384 + 0 + 3.5 + 4 = **497.5 KB** (按 ledger 9 行 net 列逐项)
+> - 子段 Σ: 64 + 8 + 2 + 2 + 2 + 4 + 2 = **84 KB** (按子段 7 行)
+> - ledger + 子段 总: 497.5 + 84 = **581.5 KB**
+> - 未分配余量: 644 − 581.5 = **62.5 KB**
+> - D49 双行制 验证: 581.5 + 62.5 = **644 KB** ✓ (算术恒等)
+> - **R47 伪闭合删除**: 原 "主段 497.5 + 子段新增 (64+8+2+2+2+0+0) = 640 KB, 再 +4 KB 对齐 padding = 644" 系算术伪造 (497.5 + 78 ≠ 640); R48 改用子段总额 84 KB (含已含于 .bss 部分, 不二次扣减) + 未分配余量 62.5 KB, 与 ceiling 644 KB 算术严格相等.
+>
+> **D123 落地约束 ②**: spec 中一切内存数字禁止裸写, 必须带量纲标签 (net / physical / NOLOAD / ceiling / named / headroom), doc-gate `make audit-derive-numbers` 机检双行制, 不闭合即熔断.
 
 ## Decision trace (audit history)
 
@@ -135,7 +151,7 @@ BlockPool is split in 4KB pages per D45 sparse formula. NodePool is `NOLOAD` in 
 Phase 0 does not need a node table, but the 132 KB placeholder:
 - **Formats the address space** uniformly across embedded/server
 - **Enables binary identity** between 16 KB-stack SoC and NUMA server builds
-- **Reserves the range** for future `cosmo_node_id → fd` translation tables
+- **Reserves the range** for future `basal_node_id → fd` translation tables
 - Costs zero (no physical pages, no runtime reads)
 
 ## Cross-references

@@ -9,6 +9,8 @@
 
 本文件聚合 R1-R36 全部 4 个 FFI/Syscall/HAL pillar 的**红线陈述** + D# 锚 + 指针,禁止复制实现细节。子系统文档中复述 pillar 红线必须回链本文件锚点,无回链视为私自立法(熔断)。
 
+**R53 D164 回链 (Naming Taxonomy SSOT)**: 系统级命名( `Neur-Aegis` 全称 / `neura` 命名空间 / Basal / Synapse / Cortix 三组件代号 / `neura_` syscall 前缀) 的权威源是同级 0X 跨切面文档 `docs/00-naming-taxonomy.md` (D164)。本文件红线规则与命名 SSOT 互不冲突 — FFI 规则决定 *什么能跨语言传 / 怎么传*, 命名 SSOT 决定 *类型/函数叫什么 / 目录怎么摆*。子系统文档复述命名规则必须回链 `00-naming-taxonomy.md` 锚点 (D167 纪律)。
+
 ## Pillar 索引
 
 | Pillar | 红线 | 决策锚 | 传染面 |
@@ -53,7 +55,7 @@ _Static_assert(sizeof(((sys_result_payload_t*)0)->error_pack) == 8,
 ### 传染面清单
 - 4-abi-contract.md: 5-Layer Defense L1 描述改写 (SSOT diff whitelist ∪ compile-time assert all)
 - 5-call-gate.md: HLCB 64B 编译期断言
-- 8-risc-v-hal.md: cosmo_atomic_cas_ptr / try_fs_lazy_init 类型签名
+- 8-risc-v-hal.md: basal_atomic_cas_ptr / try_fs_lazy_init 类型签名
 - 14-syscall-api.md: 17 个跨 FFI 签名 + per-syscall arity 表
 - call_gate.h 等手写文件: 头部加 `/* HANDWRITTEN: tri-end asserts embedded */` marker
 

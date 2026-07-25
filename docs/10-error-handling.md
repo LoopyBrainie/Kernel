@@ -29,6 +29,12 @@ All kernel returns use the 16-byte `sys_result_t` carrying an 8-byte `sys_result
 - On success: `value: u64` (fd, block id, length)
 - On failure: `error_pack: { remote_node_id u16, subsystem_id u16, error_code i32 }`
 
+**R51-M3 (D-08 / D156)**: Error print 字面量冻结 — 三字段必齐, **唯一合法格式**:
+```
+error: code=%d sub=0x%04X node=0x%04X
+```
+其中 `code` = `error_pack.error_code` (i32), `sub` = `error_pack.subsystem_id` (u16), `node` = `error_pack.remote_node_id` (u16). 缺任一字段即视为 R51 漂移. spec_lab 双向断言 `R51-M3-errorprint.{sh,_negative.sh}` 验: 正向 grep 字面量; 反向故意改 `node=0x%X` 缺 padding 期望被抓. QEMU log 三字段正则 + 实测 panic 输出解析.
+
 ## Q22 closure: `error_pack` (D89)
 
 ```c
@@ -175,7 +181,7 @@ typedef enum {
 
 ## D103: FFI ownership red line
 
-Cross-FFI error returns MUST include `owner_subsystem_id` so the receiving side can validate the source. A result without a valid subsystem_id is a protocol violation and triggers D76 `cosmo_panic_abort`.
+Cross-FFI error returns MUST include `owner_subsystem_id` so the receiving side can validate the source. A result without a valid subsystem_id is a protocol violation and triggers D168 `basal_panic_abort` (D76 DEPRECATED, SUPERSEDED by D168).
 
 ```zig
 // Error returns must include owner (D89 + D103)
@@ -201,7 +207,7 @@ D28/D40 define a 5-step fallback when BlockPool is exhausted:
 2. **Trigger file service GC** (close idle fd)
 3. **Drop in-flight RpcUnits** (only if `Pinned == false`)
 4. **IPC retry queue** (defer to next tick)
-5. **Hard failure**: return `SYS_ENOSPC` (Phase 1) / `cosmo_panic_abort` (Phase 0, D65 comptime assert)
+5. **Hard failure**: return `SYS_ENOSPC` (Phase 1) / `basal_panic_abort` (Phase 0, D65 comptime assert; D76 DEPRECATED, SUPERSEDED by D168)
 
 Phase 0 only runs steps 1-2 at compile time (D65), runtime branches removed.
 
@@ -222,7 +228,7 @@ Phase 0 only runs steps 1-2 at compile time (D65), runtime branches removed.
 
 **Status**: **RATIFIED** (Q26 → D110, R32).
 
-**致命度**: CRITICAL。R30/R31 spec 中 D91 Bit 31 adaptive mode 与 D89 `error_code: i32` 的符号位发生**位级冲突**——所有负数 errno 的最高位都是 1,被 D91 decoder 错误地当作 descriptor-index,`idx = 0x7FFF_FFFFxx` 远超表大小 1024,统一退化为 SYS_EINVAL。结果:**整个错误返回路径只剩一种错误**,所有 `cosmo_open`/`cosmo_read`/`cosmo_write` 的失败原因在用户态全部丢失。
+**致命度**: CRITICAL。R30/R31 spec 中 D91 Bit 31 adaptive mode 与 D89 `error_code: i32` 的符号位发生**位级冲突**——所有负数 errno 的最高位都是 1,被 D91 decoder 错误地当作 descriptor-index,`idx = 0x7FFF_FFFFxx` 远超表大小 1024,统一退化为 SYS_EINVAL。结果:**整个错误返回路径只剩一种错误**,所有 `cosmo_open`/`cosmo_read`/`cosmo_write` 的失败原因在用户态全部丢失。 <!-- gate-exempt: D91 -->
 
 **核心矛盾**:
 

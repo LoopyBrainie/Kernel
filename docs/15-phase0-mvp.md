@@ -19,7 +19,7 @@ T1.1 build pipeline ──┬── T1.2 C abi.h
 
 T1.4 entry.S ──────────┬── T1.5 S-Mode Hart ID FFI
                       ├── T1.6 UKI Loader ELF scan
-                      └── T1.7 cosmo_panic_abort C HAL
+                      └── T1.7 basal_panic_abort C HAL (D168, D76 SUPERSEDED)
 
 T1.7 panic + T1.2 abi ┬── T1.8 early_console_init SBI Stub
                       ├── T1.9 Call Gate 5-file stub
@@ -34,40 +34,77 @@ T1.1 + T1.2 ──────────┬── T1.12 initrd ≤ 50 build.zi
 
 ## Tasks
 
+**R51-F1 (D-01)**: Host Zig version is `Zig ≥0.15`, locked by `toolchain.lock`. Any `Zig 0.16` literal is forbidden. Back-link: `05-call-gate.md:193`.
+
+**R51-F5 (D-13)**: `rev8` (RISC-V Zbb byte-reverse) is **forbidden** in spec_lab frozen code. rv64imac target (D138) has no B extension; `rev8` illegal at link time. Byte-reverse must be explicit `slli+srli+or` sequence. See `06-boot-sequence.md` § rev8 sequence anchor for explicit form. spec_lab assertion `R51-F5-rev8.sh` enforces: forward = explicit `slli.*srli` form; reverse = `rev8` must NOT appear in non-audit lines.
+
 ### T1.1: build.zig SSOT translate-abi (D74)
 
 ```zig
 // build.zig: Stage 2 emit FFI bindings
 const translate_abi = b.addSystemCommand(&.{
     "python3", "tools/translate_abi.py",
-    "--input", "kernel/include/sys/abi.zig",
+    "--input", "basal/include/sys/abi.zig",
     "--rust-out", "arch/riscv64/abi.rs",
-    "--c-out", "kernel/include/sys/abi.h",
+    "--c-out", "basal/include/sys/abi.h",
 });
 ```
 
 **Verify**: `zig build` succeeds; `arch/riscv64/abi.rs` regenerated, no manual edits.
 
-### T1.2: C `sys_result_t` 16B + payload 8B (D86/D89)
+### T1.2: C `sys_result_t` 16B + payload 8B (D86/D89, R48 勘误增补: 恢复 payload union)
 
 ```c
+// R48: 原形态 {header, reserved, value: u64} 丢失 payload union,
+//      错误路径的 remote_node_id/subsystem_id/error_code 无处安放。
+//      改回 04 § Three-end assert templates frozen 形态。
+typedef union {
+    uint64_t value;
+    struct __attribute__((packed)) {
+        uint16_t remote_node_id;   /* D4 position transparency (0xFFFF = local) */
+        uint16_t subsystem_id;
+        int32_t  error_code;       /* D89 + P2-2: errno always negative */
+    } error_pack;
+} sys_result_payload_t;
+_Static_assert(sizeof(sys_result_payload_t) == 8, "D86 8B payload");
+
 typedef struct {
-    uint32_t header;     /* P1-2: bit 31 = is_error (D89), bits 0-30 = flags/subsystem_hint */
-    uint32_t reserved;   /* P1-2: reserved for future flag expansion */
-    uint64_t value;      /* payload.value when success (P1-2 + D89 + P2-1 carve-out) */
+    uint32_t header;     /* P1-2: bit 31 = is_error, bits 0-30 = flags/subsystem_hint */
+    uint32_t reserved;
+    sys_result_payload_t payload;
 } alignas(8) sys_result_t;
-_Static_assert(sizeof(sys_result_t) == 16, "FATAL: 16B red line");
-_Static_assert(alignof(sys_result_t) == 8, "FATAL: 8B align");
+_Static_assert(sizeof(sys_result_t) == 16, "FATAL: 16B red line (D86)");
+_Static_assert(alignof(sys_result_t) == 8,  "FATAL: 8B align");
 ```
 
 **Verify**: `zig build` succeeds; C-side `static_assert` passes; ABI smoke test.
 
-### T1.3: Rust `#[repr(C, align(8))] sys_result_t` (D74 auto-gen)
+### T1.3: Rust `#[repr(C, align(8))] sys_result_t` (D74 auto-gen, R48 勘误增补: 全改 canonical 形态)
 
 ```rust
+// R48: 原 Rust 三字段形态 (P1-2 前的旧 C 风格 code/status/value) 已被废弃,
+//      改回与 04 C/Rust frozen 一致, 引入 sys_result_payload_t 与 error_pack。
 #[repr(C, align(8))]
-pub struct sys_result_t { pub code: u32, pub status: u32, pub value: u64 }
-const _: () = { assert!(size_of::<sys_result_t>() == 16); };
+pub struct sys_error_pack_t {
+    pub remote_node_id: u16,
+    pub subsystem_id:   u16,
+    pub error_code:     i32,
+}
+const _: () = { assert!(size_of::<sys_error_pack_t>() == 8); };
+
+#[repr(C, align(8))]
+pub union sys_result_payload_t {
+    pub value:      u64,
+    pub error_pack: sys_error_pack_t,
+}
+const _: () = { assert!(size_of::<sys_result_payload_t>() == 8); };
+
+#[repr(C, align(8))]
+pub struct sys_result_t { pub header: u32, pub reserved: u32, pub payload: sys_result_payload_t }
+const _: () = {
+    assert!(size_of::<sys_result_t>() == 16);
+    assert!(align_of::<sys_result_t>() == 8);
+};
 ```
 
 **Verify**: `cargo build` succeeds; `cargo test` ABI tests pass.
@@ -84,7 +121,7 @@ _start:
     j kmain
 ```
 
-**Verify**: QEMU boots with corrupt DTB → SBI SRST halt; valid DTB → reaches kmain.
+**Verify**: QEMU boots with corrupt DTB → SBI SRST halt (R52 D163: cold_reboot 路径, a0=1); valid DTB → reaches kmain.
 
 ### T1.5: S-Mode Hart ID OpenSBI FFI (D99)
 
@@ -109,11 +146,11 @@ for (int i = 0; i < ehdr->e_phnum; i++) {
 
 **Verify**: UKI Loader locates `__boot_meta_start` for elastic `.text` size.
 
-### T1.7: cosmo_panic_abort C HAL (D76)
+### T1.7: basal_panic_abort C HAL (D168, D76 SUPERSEDED)
 
 ```c
-// kernel/hal/c/cosmo_panic.c
-__attribute__((noreturn)) void cosmo_panic_abort(const char *file, int line, const char *msg) {
+// basal/c/basal_panic.c
+__attribute__((noreturn)) void basal_panic_abort(const char *file, int line, const char *msg) {
     // D76: single panic entry
     early_console_puts("[PANIC] ");
     early_console_puts(file); early_console_puts(":");
@@ -140,16 +177,18 @@ void early_console_init(void) {
 
 ### T1.9: Call Gate 5-file stub (D56/D62/D73/D82)
 
+**R51 D153 命名锚**: Rust dispatcher 重命名 `cosmo_core_syscall_dispatcher.rs` → `syscall_stubs.rs`(D129 stub 角色明示). Zig 侧 `syscall_dispatch.zig` 不改名. <!-- gate-exempt: D153 -->
+
 ```
 kernel/arch/riscv64/call_gate/
 ├── syscall_dispatch.zig
-├── cosmo_core_syscall_dispatcher.rs
+├── syscall_stubs.rs
 ├── call_gate.h
 ├── entry_call_gate.S
 └── HLCB.zig
 ```
 
-**Verify**: Shell `cosmo_open("scheme://0/...")` reaches kernel dispatcher; cargo-geiger 0 unsafe.
+**Verify**: Shell `neura_open("scheme://0/...")` reaches kernel dispatcher; cargo-geiger 0 unsafe.
 
 ### T1.10: sys_atomic_cas_ptr 3-tier (D94)
 
@@ -169,6 +208,19 @@ kernel/arch/riscv64/call_gate/
 ```
 
 **Verify**: Hand-edit one struct size in source → gate aborts; revert → gate passes. Add `sys_result_aux_t` symbol → still passes (D113 substring-immune).
+
+### T1.11b: cflag 编译期防线 (R52 D161/D162 收口)
+
+```bash
+# D161: C HAL 栈保护器必启 (-fstack-protector-strong)
+# D162: 单函数栈帧警告阀 (-Wstack-usage=2048, warning-as-error)
+zig build -Dcflags_c_hal="-fstack-protector-strong -Wstack-usage=2048 -Werror=stack-usage"
+```
+
+**Verify**:
+- D161: `nm kernel.elf | grep __stack_chk_guard` 必须单一实例 (`.rodata` 链接期唯一); 故意写一个越界数组函数 → build ABORT (`-fstack-protector-strong` 触发 `__stack_chk_fail` 链接)
+- D162: 故意写一个 3KB 栈帧函数 → build ABORT (`-Werror=stack-usage` 升级 warning)
+- D161 + D162 联防: 16KB Hart-Local 栈 (D107) + 2048B 单帧上限 → ≥8 帧安全余量
 
 ### T1.12: initrd ≤ 50 build.zig gate (D105)
 
@@ -302,9 +354,21 @@ Wave 4: Defer Phase 1 (D26/D31/D43/D83/D91/D102/D104)
 
 ## Exit criteria
 
-- [ ] `zig build` produces `kernel.elf` ≤ 700KB
+- [ ] `zig build` produces `kernel.elf` ≤ 700KB **(R51-F4 (D-10): 指 ELF 文件大小 = `readelf -S` 累计. 物理跨度由 02 § D49 ledger 双轨制闸门 (D112/D57/D126) 覆盖, 不可混用. Back-link: 02-memory-topology.md § V2.2 ceiling 644KB)**
 - [ ] `make audit-shell` passes 4 checks
 - [ ] `make test-no-a-ext` boots on RV64IMAC
 - [ ] `make test-dtb-corruption` halts via SBI SRST
 - [ ] `make test-jumbo-on` 1500B MTU roundtrip byte-identical
 - [ ] Documentation gate `bash docs/ci/check-docs.sh` 0/N forbidden words (N = `${#FORBIDDEN[@]}` 派生; D115 R33, R37-R46 入册, R47 D151 撤销)
+- [ ] **R49-C7 证据补丁: harness verdict 必须落盘 artifacts/** — 任何 Exit criteria 触发的 smoke / shutdown / boot 检查, 必须把 `verdict=PASS|FAIL` 与关键 marker (如 `shutting down` / `NEURA BOOT OK` (D175 boot banner SSOT, 见 `06-boot-sequence.md` § Banner SSOT) / `error: code=`) 写到 `artifacts/<test>.verdict` 与 `artifacts/<test>.log` 双文件. 沙箱二 C7 缺口 (verdict 仅 echo, 未落盘) 起, 证据从此受规矩管. 验收: `tools/check_artifacts_on_disk.sh` 扫描所有 `artifacts/*.verdict`, 缺失 → gate 熔断
+
+---
+
+## Naming Migration Reference (D172 back-link)
+
+本 Phase 0 MVP 实现遵循 Neur-Aegis 命名体系 (R53-R60 收口):
+
+- **D171** (R59): T1.1 `basal/include/sys/abi.zig` SSOT 输入路径 (D170 替代 D74); T1.7 C HAL `basal_panic_abort` 单一 panic 出口 (D168); T1.4-T1.6 `basal_hal_*` 14 符号族 (D166 范式); T1.10 `basal_atomic_cas_ptr`; 用户态 syscall stub 通过 `basal_call_gate` (D169) 跳入 dispatcher。
+- **D172** (R60): 历史审计豁免策略。Phase 0 spec 历史叙述 (R30/R31 R47 等) 中旧 `cosmo_*` 命名引用保留, 当前有效代码已同步; 详见 `30-open-questions.md` 文件头部 D172 声明段 + `03-design-decisions.md` D172 立法条款。
+
+任何 Phase 0 MVP 任务的 syscall / C HAL / Shell 调用都必须使用新前缀 (`neura_*` syscall API, `basal_*` C HAL 内部, `cortix_*` Shell crate 待 R58/Q69 解除阻塞)。

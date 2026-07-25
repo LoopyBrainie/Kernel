@@ -1,9 +1,15 @@
 # 30 · Open Questions
 
+<!-- gate-exempt-file: 30-open-questions.md 审计档案段 (D153,D154,D155,D156,D157,D172) -->
+
 **Status**: ✅ **0 ACTIVE / 0 OPEN** — R37-R45 五轮审计 27 GAP (D126-D152) 全数闭庭, R46 修正落地, 收官注脚生效。
 **Ledger ledger closure**: 45 Qs 全闭 (Q22-Q67, D111 轮空), 27 ACTIVE GAPs (D126-D152) 升 PROPOSED → ACTIVE。
 **Audit ledger**: R37-R45 五轮 + R46 收官 (Q41-Q67) 历史保留作为审计档案, 不再 "待裁定"。
 **Closure history**: 见 `03-design-decisions.md` (status 列 + supersede 链) 唯一权威源; 修正总账见本文末尾 "R41-R45 裁决修正总账"。
+
+---
+
+> **D172 历史引用豁免声明** (R60 RATIFIED): 本文件 R37-R45 审计档案段落, R30/R31 历史 bug 描述, R55-R59 命名迁移前的决策上下文, 围栏外的 markdown 段落 / 表格行 / 引用块保留 `cosmo_call_gate` 等旧名引用, 不强迁, 以维持历史准确性; 围栏内代码块 (asm / rust / bash / c) 的当前有效代码示例按 R54-R59 命名迁移同步。D172 适用对象不限于本文件, 泛化到所有 1X 子系统文档 (例 `10-error-handling.md:231` R30/R31 spec 引用)。见 `docs/03-design-decisions.md` D172 立法条款。
 
 ---
 
@@ -274,8 +280,8 @@ trap_entry:
 ```asm
 # R37 D128 裁定: D73 立法原样保留, 不加 SIE 临界区、不加 amoswap
 # Q42 Tier 3 RMW 雷因没引入 RMW 而天然不存在
-cosmo_call_gate:
-    la      t0, __cosmo_dispatcher_ptr
+basal_call_gate:
+    la      t0, __basal_dispatcher_ptr
     ld      t0, 0(t0)
     jr      t0
 ```
@@ -380,20 +386,20 @@ cosmo_call_gate:
 # kernel/arch/riscv64/call_gate/entry_call_gate.S
 # D129: 纯汇编全局符号, 不导出 C/Rust 原型
 .section .text
-.global cosmo_call_gate
-cosmo_call_gate:
+.global basal_call_gate
+basal_call_gate:
     # D56 + D73: NO sscratch, NO ecall
-    la      t0, __cosmo_dispatcher_ptr
+    la      t0, __basal_dispatcher_ptr
     ld      t0, 0(t0)
     jr      t0
     # D129 注释: a7 由 stub 的 asm! 块负责写入, 本函数不读不写 a7
 ```
 
 ```rust
-// D129: 每个 syscall stub 用 asm! 封装 mv a7 + call cosmo_call_gate
+// D129: 每个 syscall stub 用 asm! 封装 mv a7 + call basal_call_gate
 // clobber 列表完整覆盖 ra, t0-t6, 除返回寄存器外 a0-a7, memory
 #[inline(never)]
-pub unsafe fn cosmo_open(path: *const u8, flags: u32) -> sys_result_t {
+pub unsafe fn neura_open(path: *const u8, flags: u32) -> sys_result_t {
     let a7: u64 = SYS_OPEN;
     let mut ret_low: u64;
     let mut ret_high: u64;
@@ -401,8 +407,8 @@ pub unsafe fn cosmo_open(path: *const u8, flags: u32) -> sys_result_t {
         "mv a0, {path}",
         "mv a1, {flags}",
         "mv a7, {a7}",
-        "call cosmo_call_gate",
-        sym cosmo_call_gate,
+        "call basal_call_gate",
+        sym basal_call_gate,
         in("a0") path as u64,
         in("a1") flags as u64,
         in("a7") a7,                       // D129: a7 由 asm! 写入, 编译器不能重排
@@ -418,14 +424,14 @@ pub unsafe fn cosmo_open(path: *const u8, flags: u32) -> sys_result_t {
 ```bash
 # D129 编译期闸门: objdump 校验每个 stub 调用点前必有 a7 写入
 make test-syscall-a7-preserve
-for stub in cosmo_open cosmo_read cosmo_write cosmo_close cosmo_seek cosmo_stat cosmo_yield; do
+for stub in neura_open neura_read neura_write neura_close neura_seek neura_stat neura_yield; do
   llvm-objdump -d build/kernel.elf \
-    | grep -B3 "call.*cosmo_call_gate" \
-    | grep -q "mv a7, .*${stub#cosmo_}" \
+    | grep -B3 "call.*basal_call_gate" \
+    | grep -q "mv a7, .*${stub#neura_}" \
     || { echo "D129 FAIL: stub $stub missing a7 setup before call"; exit 1; }
 done
-# D129 二道闸门: cosmo_call_gate 符号表属性必须是 T (text, 全局)
-nm build/kernel.elf | awk '$3=="cosmo_call_gate" {print $2}' | grep -q '^T$' || { echo "D129 FAIL"; exit 1; }
+# D129 二道闸门: basal_call_gate 符号表属性必须是 T (text, 全局)
+nm build/kernel.elf | awk '$3=="basal_call_gate" {print $2}' | grep -q '^T$' || { echo "D129 FAIL"; exit 1; }
 ```
 
 **传染面清单**:
@@ -1137,7 +1143,7 @@ readelf -l build/kernel.elf | awk '/PT_LOAD/{print NR, $0}'
 | 场景 | 修复前 (D102 Auto 现状) | 修复后 (D135 提案) |
 |------|---------------------------|---------------------|
 | Server Profile, kernel 内部分配 (block_alloc) | ❌ "mixed" 与 "Yes" PTE alignment 同时存在, 不知是 Compact 0% padding 还是 Sparse 25% padding | ✓ D135: Auto 在 boot 期 per-region 决定, BlockPool = Compact, U-Mode comm = Sparse |
-| Server Profile, U-Mode mmap (mmap_cosmo) | ❌ 同上, "mixed" 含糊 | ✓ D135: U-Mode comm region 始终走 Sparse, 走 D31/D84 二级隔离 |
+| Server Profile, U-Mode mmap (neura_mmap) | ❌ 同上, "mixed" 含糊 | ✓ D135: U-Mode comm region 始终走 Sparse, 走 D31/D84 二级隔离 |
 | Embedded Profile, kernel 内部分配 | ❌ Auto 默认 "Server: Compact", 但 Embedded 不是 Server, 行为未定义 | ✓ D135: Embedded Profile 默认走 Sparse (无论 Auto 还是显式), 与 D45 一致 |
 | Phase 1+ server, BlockPool 与 U-Mode comm 共存 | ❌ "mixed padding" 物理不可能: 一块 1536B 不能既在 4KB 页又 1536B-strided | ✓ D135: BlockPool 与 U-Mode comm 是两个独立 region, 各走各的 layout, 不共享 layout |
 | doc-gate 编译期闸门 | ❌ "mixed" 无法单点定义, 闸门失锚 | ✓ D135: `is_auto_mode_consistent(build_options)` 编译期函数验证 per-region 决定 |
@@ -2393,11 +2399,11 @@ comptime {
 **当前 Spec 状态**:
 - D115: "SUM (sstatus Bit 18) 搭便车在 trap_entry 自动保存/恢复"
 - D116: ex_table fixup 强制清零 SUM=0
-- 06-boot-sequence.md:172-178: `cosmo_do_user_fault_fixup` 显式清 SUM=0
+- 06-boot-sequence.md:172-178: `basal_do_user_fault_fixup` 显式清 SUM=0
 
 **冲突点 (R44 元规则六: 嵌套异常全场景)**:
 
-- User U-Mode SUM=1, 跑 cosmo_copy_from_user, 触发 page fault (D116 ex_table 命中)
+- User U-Mode SUM=1, 跑 neura_copy_from_user, 触发 page fault (D116 ex_table 命中)
 - Fixup: SUM=0 (D115 协同), 注入 EFAULT, sret
 - 但 fixup 自己可能触发 page fault (fixup 代码在 kernel text, 通常不会; 但若 fixup 操作 touch 一个尚未映射的栈页)
 - 嵌套 page fault → trap_entry → trap_handler → nested trap
@@ -2640,7 +2646,7 @@ void file_table_init(void) {
 }
 
 // D151 运行时文件操作: 写 mutable_table
-int cosmo_read(int fd, void *buf, size_t len) {
+int neura_read(int fd, void *buf, size_t len) {
     // ... (不变) 但块索引更新写 mutable_table[fd].block_index
     if (new_block_index != mutable_table[fd].block_index) {
         mutable_table[fd].block_index = new_block_index;  // D151: 写 .bss
@@ -3027,4 +3033,510 @@ R37-R45 累计 9 轮审计, 覆盖:
 - Phase 1+ 推进触及 Phase 0 spec 边界
 
 否则 R47 即最终冻结版本。
+
+---
+
+## R48 (收官修复轮 — R47 漏项 + Meta 三账, 已闭庭 → ACTIVE)
+
+> **审计动机**: R47 循环自查报全过, 外部抽检+磁盘核验判定 F1–F5 未过、M1–M3 挂账. R48 收官修复所有漏项, 全部 D# 挂靠既有 RATIFIED 决议, 不新增 D 编号.
+> **执行顺序**: R48-0 (git init) → R48-1 (F2 致命) → R48-2 (F3 ABI) → R48-3 (F4) → R48-4 (F1) → R48-5 (F5 账目) → R48-6 (M2) → R48-7 (M3) → C10 (本节).
+> **OPEN**: 0 条 (R48 全部条目均已闭环, 无新增 OPEN).
+
+### R48 收官节 (C10 验证输出表)
+
+| 项 | D# 挂靠 | 文件 | 验证输出 | 状态 |
+|----|---------|------|----------|------|
+| **R48-0 (M1)** | (元变更, 无新 D) | `.git/` + 三分支 | `git rev-parse --is-inside-work-tree → true`; 分支 dev/main/release 全在; 初始 commit `c6736d8` 含 23 文件 (docs/ + ci/ + README + SPEC + docs/README); dev HEAD 线性无 merge commit | ✅ |
+| **R48-1 (F2)** | D107 + D136 (P1-1 extern struct 修复) | `05-call-gate.md` + `06-boot-sequence.md` | C1: `grep -nE "\\b(24\|32\|40)\\(t3\\)" 06-boot-sequence.md` → 0 hits; HLCB_* 命名常量 (SSCRATCH_INIT=56 / KERNEL_STACK_BASE=32 / KERNEL_STACK_TOP=40 / STRIDE_SHIFT=6) 与 05 comptime offsetOf 逐值同源; C2: `<!-- R31 题面: superseded... -->` 注释贴邻 05 § HLCB (D82) 旧题面代码块 (line 65, 紧邻 line 67 代码) | ✅ |
+| **R48-2 (F3)** | D86 + D89 + P1-2 (sys_result_t 形态统一) | `04-abi-contract.md` + `15-phase0-mvp.md` + `20-documentation-gate.md` + `ci/check-docs.sh` | C3: `grep -rnE "uint32_t code\|code: u32\|status: u32" docs/0*.md docs/1*.md` → 0 hits; 04 Zig SSOT / 15 T1.2 C / 15 T1.3 Rust 均含 error_pack 与 payload union; C9: 3 条新禁词 (`uint32_t code` / `code: u32` / `status: u32`) 已入 ci 数组与 20 防御对象表 | ✅ |
+| **R48-3 (F4)** | D103 + P2-4 (静态池来源) | `07-shell-architecture.md` | C4: `grep -nE "0u8; 512" 07-shell-architecture.md` → 0 hits; shell_main 内 buf 改 `extern "C" { static mut __shell_io_pool: [u8; 1536] }` (BlockPool 1 块); 补 "Shell I/O pool 划分说明" 段 (build/link.zig boot 期划分, Phase 1+ 多线程按 fd 进一步划分) | ✅ |
+| **R48-4 (F1)** | (docs/README 改实态, 不涉 D#) | `docs/README.md` | C5: `grep -nE "to split\|30 audit rounds\|✅ empty\|58 forbidden" docs/README.md` → 0 hits; 索引表 16 行全部 R48 ACTIVE + R48 勘误增补来源标注; 禁词数一律 `${#FORBIDDEN[@]}` 派生 (无硬编码 N); 根 README 与 docs/README 数字口径互洽 | ✅ |
+| **R48-5 (F5)** | D49 双行制 (R48 立法, 不算新 D) | `02-memory-topology.md` | C6: `grep -nE "= 644 KB ✓\|=644KB ✓\|= 644 ✓"` → 0 hits (R47 伪闭合已删); D49 双行制表在文: ceiling 644 KB = named 581.5 KB + headroom 62.5 KB; 算术恒等 581.5 + 62.5 = 644 ✓ (Python 复算 PASS); Σ ledger (net) 497.5 KB + Σ ledger (physical) 626 KB (R48 勘误: 原 '622 KB' 系笔误) | ✅ |
+| **R48-6 (M2)** | (禁词审计链补全, 不算新 D) | `20-documentation-gate.md` | 防御对象表末行轮次 = R47 (`hartid<<SHIFT`); R33-R47 共 57 行新条目落入, 来源 ci/check-docs.sh 实际数组; 每条含字面量/轮次/D#/一句防御对象 | ✅ |
+| **R48-7 (M3)** | (census + Total==N, 不算新 D) | `20-documentation-gate.md` + `ci/check-docs.sh` | census 表拆分 R32 (10 → 7) + 新增 R33 (2) / R34 (1) / R35 (0) / R36 (0) / R46 (0) / R48 (3) 独立行; Total 117 → 132; `bash docs/ci/check-docs.sh` 输出 `✓ Wriggly-Octopus documentation gate passed (0/132 forbidden words)`; `EXPECTED_TOTAL=132` 自校断言启用 fail-closed | ✅ |
+
+### R48 自检总览
+
+```
+C1  06 trap_entry 硬编码偏移消除         PASS  (0 hits)
+C2  05 R31 superseded 注释贴邻旧 HLCB    PASS  (line 65, 紧邻 line 67)
+C3  0*.md 1*.md 旧 sys_result_t 形态     PASS  (0 hits, 04/15 全归 canonical)
+C4  07 shell 栈缓冲消除                 PASS  (0 hits, __shell_io_pool 替代)
+C5  docs/README 改实态                   PASS  (0 stale phrases)
+C6  02 ledger 诚实化 + D49 双行制        PASS  (0 fake closures, 581.5+62.5=644 ✓)
+C7  20 防御表 ≥R47 + census Total==N    PASS  (末行 R47, 0/132 自校 PASS)
+C8  git 仓库 + dev/main/release          PASS  (8 commits on dev linear)
+C9  禁词门新条目                         PASS  (3 条 R48 F3)
+C10 R48 收官节 (本节)                     PASS  (本节即收官节)
+```
+
+**连续一轮 C1–C10 全量自检零失败 ✓**
+
+### R48 传染面清单 (R48 元规则四)
+
+- `04-abi-contract.md` § Zig SSOT + D86 强化模板 → **R48-2** (F3 sys_result_t 形态归一)
+- `05-call-gate.md` § HLCB (D82) 旧题面 + asm 端常量 + 传染面 → **R48-1** (F2 HLCB 命名常量)
+- `06-boot-sequence.md` § D136 trap_entry asm → **R48-1** (F2)
+- `07-shell-architecture.md` § Shell example + 划分说明 → **R48-3** (F4 静态池)
+- `02-memory-topology.md` § D49 双行制 + ledger 台账 → **R48-5** (F5 账目)
+- `15-phase0-mvp.md` § T1.2/T1.3 sys_result_t 模板 → **R48-2** (F3)
+- `20-documentation-gate.md` § census + 防御对象表 + 落地约束 → **R48-6, R48-7** (M2, M3)
+- `docs/README.md` § 索引表 + 禁词数派生口径 → **R48-4** (F1)
+- `docs/ci/check-docs.sh` § FORBIDDEN 数组 + EXPECTED_TOTAL 自校 → **R48-2, R48-7** (F3, M3)
+- `README.md` (根) 数字口径互洽 → **R48-4** (F1)
+- `.git/` 三分支骨架 → **R48-0** (M1 元变更)
+- `30-open-questions.md` (本节) → **C10**
+
+### R48 数字口径锚定 (供 R49+ 引用)
+
+- **禁词总数 N = 132** (派生自 `${#FORBIDDEN[@]}`)
+- **D49 双行制**: ceiling 644 KB = named 581.5 KB + headroom 62.5 KB
+- **HLCB 字段偏移**: kernel_stack_base@32, kernel_stack_top@40, user_stack_top@48, sscratch_initialized@56, hart_id@24 (P1-1 extern struct)
+- **sys_result_t frozen 形态**: `{header: u32, reserved: u32, payload: union{value: u64 | error_pack}}` (C/Rust/Zig 三端一致)
+- **git 分支**: dev (HEAD) / main / release (initial commit c6736d8)
+
+### R48 闭庭注
+
+R48 在 R47 漏项 + Meta 三账上完成全部 8 项收官 (R48-0 ~ R48-7) + C10 收官节. 连续一轮 C1–C10 全量自检零失败. 文档集进入 R48 收官冻结状态, 可签发 R48 标签.
+
+下一轮 (R49) 仅在以下任一情况启动:
+- R48 build-verify 闸门 (ci/check-docs.sh 0/132 + EXPECTED_TOTAL 一致) 失败
+- 外部审计发现 R48 漏判
+- Phase 1+ 推进触及 Phase 0 R48 边界
+
+否则 R48 即最终冻结版本.
+
+---
+
+## Governance (R49 立骨)
+
+> **审计动机**: R48 收官后沙箱二 O2 暴露 GOAL 任务级静默 override spec frozen (lp64d vs spec D138 lp64). 这是治理问题不是技术问题 — 没有人拦住. R49 立治理流程, 防未声明的偏离, 不惩罚已声明且已验证的选择.
+
+### R49-GOV.1 GOAL × spec 冲突治理
+
+**核心规则**: 任何 GOAL / 任务级文档若触及 spec frozen 决策 (D#), 必须:
+1. 文件头部带 `## 涉及决策` 清单, 列触及的 D 编号
+2. 与 spec 语义冲突的每条必须挂 R 号勘误链接 (如 `[R49-EMBEDDED-LP64]`)
+3. 清单缺失 或 D# 无 R 号 → 治理门禁熔断
+
+**enforcement**: `docs/ci/check_goal_manifest.sh` (R50 落地, Q76 交付).
+```bash
+# 用法: 与 check-docs / check-d-backlinks 并列, 每次 commit 前跑
+bash docs/ci/check_goal_manifest.sh
+```
+脚本扫描 `GOAL*.md` (排除 `mvp/`), 校验每份:
+- 必须有 `## 涉及决策` 节 (头部缺失 = 熔断)
+- 节内必须含 ≥1 个 D# 标注 (D# 无标注 = 熔断)
+- 任何 R# 必须落入 R1..R52 硬编码白名单 (R# 悬空 = 熔断)
+- 含自验证 canary: 干净 GOAL 过 / 缺头坏 GOAL 必熔 / 悬空 R# 必熔, 证据落盘 `mvp/R50-Q76-canary-evidence.log`
+- 零 GOAL 文件场景显式兜底 (空仓显式 PASS, 严禁静默死亡, 沿用 R51-FIX 教训)
+
+**值的 vs 流程的**: 值级冲突 (lp64d vs lp64, 1536B vs 256B) 靠人查 + 文档留痕; 流程冲突 (缺清单, 缺 R 号) 靠机器查 + 闸门熔断.
+
+### R49-GOV.2 O2 首例归档 (lp64d override D138)
+
+**事件**: 沙箱二 GOAL P1 强制 `-mabi=lp64d` 覆盖 spec `08-risc-v-hal.md:468-485` D138 embedded profile 强制 `lp64 -mno-f -mno-d -mno-v`. 实现走 GOAL, spec 未挂 R 号勘误, 沙箱自查未拦截.
+
+**处置**: O2 不视为违规产物 (沙箱二已用 lp64d 在 qemu_virt profile 下完整通过 C1–C9 + sha256 复现), 但须追认到 spec:
+- 矩阵立法后必须包含: `qemu_virt ⇒ lp64d` (追认, 非惩罚)
+- GOAL 文件回填 `## 涉及决策 D138 (已 R49-EMBEDDED-LP64 追认)`
+
+**R49-EMBEDDED-LP64** (R49 挂的 R 号): "qemu_virt profile 验证形态, lp64d 暂列该 profile 合法 mabi; Phase 1 profile 矩阵立法时正式落 D-号". 本条不算新 D, 是 O2 的追认记录.
+
+### R49-GOV.3 ISA/ABI profile 矩阵 — Phase 1 第一项立法
+
+**未立**: 当前 spec 散落 D138 (mabi per profile) / D126 (stride per profile) / D146 (cache line per profile), 没有合并 profile 矩阵, "跨端兼容性"承诺没有统一判据.
+
+**R49 排除**: profile 矩阵不在 R49 立, 因答案取决于 Phase 1 还没做的决策 (FPU 上下文策略 / server-embedded ISA 子集 / 1536B 粒度分档).
+
+**Phase 1 第一项**: R49-GOV.3 显式点名 profile 矩阵立法为 Phase 1 第一项. Phase 1 启动即立, 不许无限延后. Phase 1 立法完成前, 任何新 profile (lp64d, embedded_sparse 等) 走 R49-GOV.2 流程追认.
+
+### R49-GOV.4 spec_lab 制度化 (frozen = 编译过的)
+
+**核心**: tools/spec_lab/ 已立骨, 首批 3 条断言 (F1/F2/F3) + 3 条反向 + audit-rust-unsafe. 任何后续 frozen 内容必须经 spec_lab 验证. 禁止 spec 草图写完不验证就贴 frozen 标签.
+
+**R50 立法确认**: R49-GOV 全部 4 节自 R50 起转正, check_goal_manifest.sh 已交付 (Q76 关闭, 见后). R49 "provisional until R50" 自毁条款已到期, **不延续**; GOV 规则现行生效, 不再标"provisional".
+
+**禁止漂移词** (R50 入 check-docs.sh, EXPECTED_TOTAL 145 → 149):
+- "spec_lab 副本" — 断言目录下出现代码副本, 不是抽取得到
+- "frozen 等同于已写" — frozen 必须经 runner
+- "R49 草图烂掉靠 reviewer 眼" — 必须机器 enforced
+- 矩阵立法 (D160) 配套: "rpc_unit_t = 256B" — 256B 粒度未立法, 任何现行 RpcUnit 形态暗示 256B 即视为漂移
+
+---
+
+### R49-GOV.5 收官全量重跑 (R50 立法)
+
+**核心**: 任何 R-round 收官 (`R## closed`) 的**最后一个 commit 之后**, 必须**全量重跑所有门禁**:
+- `bash docs/ci/check-docs.sh`
+- `bash docs/ci/check-d-backlinks.sh`
+- `bash docs/ci/check_goal_manifest.sh`
+- `bash docs/ci/check-toolchain.sh`   （本轮新增第 6 门 — toolchain.lock 区间锁格式门, R49-GOV.6 配套）
+- `bash tools/spec_lab/run_all.sh`
+- `bash tools/spec_lab/run_negative.sh`
+
+**起源 (R51 教训)**: R51 收口 D# 悬空 (D156/D157/D159) 的直接成因, 是 AGENDA commit 后仅中段跑了"passed (34)" 检, 终态 34/37 FAIL 被掩盖. 本条立法把"收官前全量重跑"写成**硬性签发前提**, 任何 R## closed 签发前若不重跑全部 5 门, R## 即视为未签发.
+
+**enforcement**: 签发时 check-d-backlinks.sh 与 check_goal_manifest.sh 必然 (因 D# 与 GOAL 同步) 抓到回归; check-docs.sh 的 EXPECTED_TOTAL 自校 (R48 立法) 必抓 census 漂移. 三重独立验证保证.
+
+---
+
+### R49-GOV.6 spec_lab / 门禁反向测试禁止原地变异 spec (捕兽夹隔离)
+
+**核心**: 任何 spec_lab 反向断言 (`*_negative.sh`) 与门禁自检 (canary) **不得原地 `sed -i` / `awk` 改写 `docs/*.md`**。变异必须发生在 `mktemp -d` 临时目录的副本上, 真 spec 在测试全程恒不可变。
+
+**凶器复盘 (立法动机)**: 旧 `*_negative.sh` 与 `check-d-backlinks.sh` 金丝雀均 (a) 原地改真 spec, (b) 备份进 gitignored `extracted/` 或行变量, (c) F1/F2/F3 无 `set -e` / 全体无 `trap`, (d) 复原路径一旦读空备份即抽空 spec。四项叠加 = 中断留污 / 空备份抽空 / clean clone 复原源缺失。P5 疣子 #1 (本文件) 已点名 backlinks 金丝雀同款 (mktemp 建了没用)。
+
+**落地形态 (强制模板)**:
+- `set -euo pipefail` + `WORK=$(mktemp -d); trap 'rm -rf "$WORK"' EXIT`
+- `cp` 真 spec 进 `$WORK/docs/`; 只改副本
+- 正向断言 / 门禁逻辑以 `CWD=$WORK` 跑 (相对路径 `docs/XX.md` 落副本); `LAB_DIR` / 抽取产物路径保持绝对 (真树, gitignored)
+- 无备份、无复原 — 真 spec 不可变即无可复原, 无可抽空
+
+**捕兽夹自指判据 (硬性签发前提)**: `bash tools/spec_lab/run_negative.sh` 与 `bash docs/ci/check-d-backlinks.sh` 跑完, `git status` 必须 clean (`docs/` 零改动)。任何测试跑完留下 `docs/` diff = 本条违规 = 未签发。
+
+**本轮落地**: 11 个 `*_negative.sh` (R49-F1/F2/F3 + R51-F5/M1..M7) 全部改 mktemp 副本; `check-d-backlinks.sh` 金丝雀 (P5 #1) 改 `docs/` 副本; `extract.sh` 补 `mkdir -p`（extracted/ gitignored, clean clone 缺目录首跑即挂）+ anchor `if/then/else`（复活 exit 3, 消 pipefail 死代码）。extract.sh 与 11 脚本注释挂 `R49-GOV.6` 锚。
+
+---
+
+## Open Questions (R49+ 启新)
+
+### Q68 — RV32 缺席 (D 编号未立, R49 挂开放)
+
+**当前 Spec 状态**:
+- 00-ffi-pillars.md:70 明文 "RV32IMAC: N/A — Phase 0 仅 RV64"
+- 03-design-decisions.md D138 embedded 基线 `rv64imac -mno-f -mno-d -mno-v`
+- frozen ABI 是 rv64 中心: a0/a1 寄存器对 / lp64 / 64 位地址
+- "覆盖低端嵌入式"承诺在 ISA 层面是空话: rv32 ilp32 ABI 变体从未设计
+
+**冲突点**:
+- 用户总结复盘明文标 "rv32 缺席是跨端兼容性承诺里最大的一个窟窿"
+- 若 Phase 1+ 不开 ilp32, 跨端兼容性承诺实际兑现 0%
+- 若 Phase 1+ 开 ilp32, 需重做 sys_result_t (32 位机 2×XLEN = 8B 不足以装 16B) / a0/a1 寄存器对 (32 位寄存器只能装 8B) / BlockPool stride / cache line 对齐
+
+**Phase 2+ 排期**: 不在 R49 排进立法, 不在 Phase 1 排进立法. Phase 1 完成 U-Mode + 物理通路 + 多 Hart 后, Phase 2 启动时第一个动作是 rv32 ilp32 ABI 变体立法 (Q68 → D-号).
+
+**R49 排除理由** (与 R49-GOV.3 同源): "frozen = 编译过的" 要求立法的结果必须经过 spec_lab 验证; rv32 ilp32 涉及全部 ABI 结构体 + 全部 syscall stub, 立法前必须有 Phase 1 的实测基线 (rv64 U-Mode + 多 Hart), 否则立出来的是空中楼阁.
+
+**禁止漂移词自查**:
+- 不写 "rv32 Phase 1 立" (当前不在 Phase 1 立法清单)
+- 不写 "rv32 N/A 永久" (永久排除违反跨端兼容性承诺)
+- 必须写 "rv32 ilp32 ABI 变体 Phase 2 第一项立法 (Q68)"
+
+---
+
+## R51 议程条目 (7 大桶挂账 — D-03/06/09/15/17/18/19 留 Phase 1 立法)
+
+> **R51 决议**: 以下 7 条 D-勘误在 R51 一轮**不立**, 但**必须书面挂账**留 Phase 1 第一项. 切割依据不是工作量, 是**依赖方向** —— 这 7 条的正确答案都挂在 Phase 1 未做的决策上 (fd 语义依赖 U-Mode fd 表 / CPIO 是 Phase 1 交付物 / buf 校验是 Phase 1 安全边界 / geiger 是 Phase 1 计划 / 等). **R51 显式点名**为 Phase 1 第一项, Phase 1 启动即立, 不许无限延后. 沙箱实测继续暴露的对应 DIVERGENCE 条目归此处, 不必重写决议.
+
+### Q69 — Rust crate 拓扑 (D-03, R51 挂账)
+
+**当前 Spec 状态**:
+- docs/07-shell-architecture.md 已有 fd 0/1/2 拓扑, 但未指定 U-Mode 依赖
+- 沙箱三实测 fd 0/1/2 走 M-Mode 直通 (Phase 0 现状)
+
+**冲突点**:
+- Phase 1 U-Mode 启动后, fd 0/1/2 必须经 U-Mode 调度再到 Rust Shell
+- crate 拓扑依赖 syscall ABI 立法 (D86/D119/D121)
+
+**Phase 1 第一项立法**: 触发条件 = U-Mode 立法完成.
+
+**禁止漂移自查**:
+- 不写 "Phase 1 兼容 fd 0/1/2 直通"
+- 必须写 "Phase 1 U-Mode 立法完成前, fd 0/1/2 走 M-Mode 直通 (R0 现状)"
+
+---
+
+### Q70 — file:// ro-memdisk 编译期嵌入 (D-06, R51 挂账)
+
+**当前 Spec 状态**:
+- D46 FILE_TABLE = 50 entries, initrd file count ≤ 50 (D105)
+- Phase 0 initrd 是 CPIO runtime parse (D62/D78)
+- 沙箱三实测 Phase 0 编译期嵌入 `@embedFile → .rodata` 替代 CPIO runtime parse
+
+**冲突点**:
+- `@embedFile` 改 build.zig 编译期逻辑, Phase 0 内存布局改变
+- CPIO 解析是 Phase 1 通用文件系统过渡形态
+- 两条路 Phase 0 选谁, 直接决定 Phase 1 filesystem 立法起点
+
+**Phase 1 第一项立法**: 触发条件 = CPIO 完成 (Phase 1 filesystem 交付).
+
+**禁止漂移自查**:
+- 不写 "Phase 0 用 @embedFile ro-memdisk"
+- 不写 "CPIO 永久 runtime parse"
+- 必须写 "Phase 0 memdisk 模式挂账 Phase 1 第一项 (Q70)"
+
+---
+
+### Q71 — D97 '0 unsafe' 改写 (D-09, R51 挂账)
+
+**当前 Spec 状态**:
+- D97: Rust Shell `unsafe` 计数 = 0
+- D129: stub `asm!` 块**必须 unsafe**, 与 D97 "0 unsafe" 字面冲突
+- 沙箱二实测 unsafe 计数 5 处 (payload 解码 1 + FFI 调用 2 + 其他 2)
+
+**冲突点**:
+- D97 字面与 D129 机制矛盾, 但 D129 必须 unsafe (R38 D129 立法)
+- "0 unsafe" 应解读为 "0 unsafe **除 FFI 桥接白名单 (D129 stub asm!)**" 还是 "Rust Shell 全 0 unsafe 退到 unsafe-free Rust subset"
+- 沙箱二 5 处 unsafe 中, 4 处是 D129 合法白名单, 1 处是 payload 解码 (应可改用 safe wrapper)
+
+**Phase 1 第一项立法**: 触发条件 = 第三方应用上架流程启动 (Phase 1 才需要 cargo geiger).
+
+**禁止漂移自查**:
+- 不写 "0 unsafe 绝对零"
+- 不写 "geiger Phase 0 启用"
+- 必须写 "0 unsafe 除 FFI 桥接白名单 (D129 stub asm! + payload 解码 safe wrapper)"
+
+---
+
+### Q72 — fd 0/1/2 立法 (D-15, R51 挂账)
+
+**当前 Spec 状态**:
+- M1 (D-05) 已加 SYS_FD_RESERVE=0x29 到 14 号表, 但 fd 0/1/2 预开 dev://uart0 未立法
+- 沙箱三实测 Phase 0 fd 0/1/2 走 M-Mode 直通, fd_table 不存在
+
+**冲突点**:
+- Phase 1 U-Mode 启动后, fd 0/1/2 必须经 U-Mode 调度
+- fd 语义依赖 syscall ABI 立法 (D86/D119/D121) + Q69 crate 拓扑
+
+**Phase 1 第一项立法**: 触发条件 = Phase 1 fd 语义 + U-Mode syscall 立法完成.
+
+**禁止漂移自查**:
+- 不写 "Phase 0 fd 0/1/2 = dev://uart0"
+- 必须写 "Phase 1 立法前 fd 0/1/2 走 M-Mode 直通, Phase 1 启动即重立法"
+
+---
+
+### Q73 — D33 单 Hart 退化路径 (D-17, R51 挂账)
+
+**当前 Spec 状态**:
+- D33: kmain first-step = DTB dump + HLCB parse
+- D141 (R40 立法): Phase 0 单 Hart 下 DTB 仅校验 + num_harts 断言, 栈区间由链接符号给
+- 沙箱三实测 D141 path 完整跑通, 但 "单 Hart vs 多 Hart 退化路径" 未定义切换边界
+
+**冲突点**:
+- D33 / D141 / D68 (secondary Hart spin-wait) 三者依赖关系, Phase 0 默认是单 Hart, 多 Hart 路径是 Phase 1
+- "单 Hart 时 D33 退化" = DTB 仅校验, num_harts 必为 1; "多 Hart 时 D33 全功能"
+
+**Phase 1 第一项立法**: 触发条件 = Phase 1 多 Hart 调度立法 (D43/D144/D145 联动).
+
+**禁止漂移自查**:
+- 不写 "单 Hart 退化为 Phase 1 主题"
+- 必须写 "Phase 1 多 Hart 立法时同步标 D33 refinement"
+
+---
+
+### Q74 — D103 buf 校验强度 (D-18, R51 挂账)
+
+**当前 Spec 状态**:
+- D103: 跨 FFI 签名禁 `&[u8]` (caller stack)
+- 14-syscall-api.md § cosmo_read/write: "Phase 0 仅 len ≤ 1536 闸门, 严格范围校验留 Phase 1"
+
+**冲突点**:
+- Phase 0 buf 校验强度 = len ≤ 1536 + .bss 来源, 这是"门闸"不是"安全边界"
+- Phase 1 安全边界需 MPU/SATP PTE 强制 user buf 可读性 + 防 TOCTOU
+- 沙箱三实测 buf 校验在 Phase 0 现状下"足够用但不安全"
+
+**Phase 1 第一项立法**: 触发条件 = Phase 1 跨 FFI 栈指针立法 (Pillar 1 红线 #3).
+
+**禁止漂移自查**:
+- 不写 "Phase 0 buf 校验强度 = Phase 1 等价"
+- 必须写 "Phase 0 = 门闸 (len 1536), Phase 1 = 安全边界 (MPU PTE)"
+
+---
+
+### Q75 — T1.17 `-Dip_family` 缺省 (D-19, R51 挂账)
+
+**当前 Spec 状态**:
+- T1.17 (15-phase0-mvp.md) 缺位, `-Dip_family` build option 缺省值未定
+- 沙箱三实测: `-Dip_family` 缺省 = v4 (IPv4 UDP), 非法值熔断
+- T1.17 任务本身不在 R49 立法清单, Phase 0 默认 IP family 立法缺位
+
+**冲突点**:
+- T1.17 立法 = Shim Layer 编译期立骨, 依赖 D131 (SHIM_PAYLOAD_MAX per-L4 派生)
+- 沙箱三 D-08/M3 同时挂账同一 spec 章节, 立法合并才合理
+
+**Phase 1 第一项立法**: 触发条件 = Shim Layer 编译期立骨 (Phase 1 net stack 立法前置).
+
+**禁止漂移自查**:
+- 不写 "T1.17 缺省 v4 已立"
+- 必须写 "T1.17 缺省/非法值熔断归 Phase 1 第一项 (Q75)"
+
+---
+
+### Q76 — check_goal_manifest.sh R50 滑账 (R51 挂账)
+
+**当前 Spec 状态**:
+- R49-GOV.1: GOAL × spec 冲突治理闸门 `check_goal_manifest.sh` 是 R50 第一项必交付
+- 沙箱三 2026-07-22 实测: R50 未交付, R51 收口时仍空缺
+- 本轮 (R51) §0.e 用户明文: "R50 manifest 未交付不阻塞本轮; Q76 check_goal_manifest.sh R52 前必补"
+
+**冲突点**:
+- R49-GOV.1 是治理流程硬性挂账, R50 滑账意味着 GOV-1 失效
+- R51 启动可绕开 R50, 但 R52 必须补 check_goal_manifest.sh 否则 GOV 全节失效
+
+**R52 第一项必交付**: 触发条件 = R51 收官签发后下一轮会话启动.
+
+**禁止漂移自查**:
+- 不写 "check_goal_manifest.sh R50 已交付"
+- 必须写 "check_goal_manifest.sh R52 前必补 (R50 滑账, GOV-1 失效待恢复)"
+
+---
+
+## ✅ Q76 关闭 (R50 交付)
+
+**关闭时间**: R50 收官节 (R50 closed)
+**交付证据**:
+1. `docs/ci/check_goal_manifest.sh` 已落地 (R50 任务1)
+2. 自验证 canary 双向通过: 干净 GOAL PASS / 缺头坏 GOAL FAIL / 悬空 R# FAIL (3/3 命中)
+3. 证据落盘 `mvp/R50-Q76-canary-evidence.log` (含 3 case 可读审计)
+4. R1..R52 硬编码白名单替代动态搜索 (避开 R99 vs R999 子串碰撞元级 bug)
+5. 零 GOAL 文件场景显式兜底 (空仓显式 PASS, 严禁静默死亡, 沿用 R51-FIX 教训)
+6. check_goal_manifest.sh 与 check-docs / check-d-backlinks 并列挂入 ci/ (R49-GOV.1 enforcement 行已更新, 见 30 号本节 GOV.1 段)
+7. 完整 4 门综合 (check-docs / check-d-backlinks / check_goal_manifest / spec_lab) 收官后重跑全绿
+
+**GOV 状态**: R49-GOV 4 节全部 R50 转正, GOV.5 (R50 立法) 同步落地, GOV-1 / GOV-4 "provisional" 自毁条款已到期删除. R49 全节现行生效.
+
+---
+
+## R50 收官节 — Governance 转正 + ISA/ABI profile 矩阵立法 (Q76 关闭 + GOV.5 立法)
+
+**触发**: R49-GOV.1 "provisional until R50" 自毁条款到期 (Q76 挂账); R51 收口时 D153-D159 占用 D 编号 (本轮新 D 从 D160 起).
+
+### 任务清单 + D# 挂靠 + 验证输出
+
+| 任务 | 摘要 | D# 挂靠 | 验证输出 |
+|------|------|---------|----------|
+| **1. check_goal_manifest.sh** | 扫 GOAL*.md, 校验 `## 涉及决策` 头部 / D# 标注 / R# 悬空; 含 3 双向 canary 自验证; R-round 硬编码白名单 (R1..R52) 替代动态 grep (避开 R99 vs R999 子串碰撞元级 bug) | Q76 → D160 治理闭环 | `mvp/R50-Q76-canary-evidence.log` 落盘, 3/3 canary (clean PASS / bad-no-header FAIL / bad-dangling-r FAIL) |
+| **2. GOV 转正** | GOV.1 enforcement 行更新 (R49 立骨的工具引用 → R50 真实路径 `docs/ci/check_goal_manifest.sh`); GOV.4 "provisional until R50" 自毁条款删除; 新增 GOV.5 (收官全量重跑硬性签发前提); Q76 在 30 号本节标注关闭 (含交付证据 7 项) | D160 治理配套 / GOV.5 立法 | 30 号 § GOV.1/GOV.4/GOV.5/Q76 段已更新; 30 号状态行无 "provisional" 字样 |
+| **3. profile 矩阵立法** | 新建 `docs/16-profile-matrix.md` 三档 profile 五元组 (ISA / mabi / RpcUnit 粒度 / BlockPool 池 / cache line); endpoint_compact=256B 记 PROVISIONAL 候选 (Q78 OPEN); 回追批准 (沙箱二 lp64d → qemu_virt 特许变体 / 沙箱三 imac → qemu_virt 基线); D138/D126/D146/D71 加"见 16-profile-matrix.md"索引注 (语义不删, 矩阵为索引) | D160 (单一立法, R50 立法型非勘误型) | 03 总账 D160 ACTIVE 行落 + 4 子系统 doc (02/04/08/13) 索引注 + grep "16-profile-matrix" 命中 6 文件 (08/13/02/04/README + 16 自身) |
+| **4. R50 收官节** | 本节, 逐条 D# 挂靠 + 验证输出 | D160 | 本节即收官节 |
+
+### 5 门综合重跑 (R50 收官后, GOV.5 硬性签发前提)
+
+| 门 | 退出码 | 输出 |
+|----|--------|------|
+| `bash docs/ci/check-docs.sh` | 0 | ✓ Wriggly-Octopus documentation gate passed (0/149 forbidden words) |
+| `bash docs/ci/check-d-backlinks.sh` | 0 | ✓ check-d-backlinks passed (35 D126-D160 tags, all back-linked, canary self-test OK) |
+| `bash docs/ci/check_goal_manifest.sh` | 0 | ✓ check_goal_manifest passed (0 GOAL*.md files; zero-match = explicit pass) ✓ canary self-test OK (3/3) |
+| `bash tools/spec_lab/run_all.sh` | 0 | ========================================== R51 spec_lab: 11/11 PASS ========================================== |
+| `bash tools/spec_lab/run_negative.sh` | 0 | ========================================== R51 spec_lab negative: 11/11 反例被抓到 ========================================== |
+
+**C1–C6 验证** (目标 §3 成功条件):
+
+- **C1 P0 前置三门**: backlinks 34/34 (R51 终态) + check-docs 0/145 (前置) + spec_lab 11/11 PASS → ✅ (P0 阶段记录在案)
+- **C2 check_goal_manifest.sh 存在 + canary 双向 + 无静默死亡**: ✅ (`mvp/R50-Q76-canary-evidence.log` 落盘 + 3/3 canary + 零 GOAL 文件显式 PASS, 不静默)
+- **C3 GOV.1 无 provisional + enforcement 行 + GOV.5 + Q76 关闭**: ✅ (30 号 GOV.1 段已更新 enforcement 至 `docs/ci/check_goal_manifest.sh`; GOV.4 "provisional until R50" 已删; GOV.5 已立; Q76 关闭节在 30 号)
+- **C4 docs/16-profile-matrix.md 存在 + 三档五元组 + 回追条款 + grep 命中 + 03 总账 D160+ ACTIVE**: ✅ (16 文档 80+ 行, 三档 profile 五元组表 + endpoint_compact PROVISIONAL + 回追批准双条款; grep "16-profile-matrix" 命中 6 文件; 03 总账 D160 ACTIVE 单行)
+- **C5 收官后全量重跑绿**: ✅ (5 门 0 退出码, 上表)
+- **C6 30 号 R50 收官节完整, OPEN=仅本轮新增 Q78**: ✅ (本节完整, Q78 endpoint_compact 256B 研究为唯一本轮新增 OPEN)
+
+**传染面清单 (R36 元规则四) — 5 门外延 R50**:
+
+- `docs/ci/check_goal_manifest.sh` (新增, R50 任务1) → GOV.1 enforcement 行 (R50 任务2) → `30-open-questions.md` GOV.1 / GOV.4 / GOV.5 / Q76 段 (R50 任务2) → `30-open-questions.md` R50 收官节 + Q78 OPEN (本任务)
+- `docs/16-profile-matrix.md` (新增, R50 任务3) → `03-design-decisions.md` D160 ACTIVE 行 (R50 任务3) → `02/04/08/13-build-pipeline.md` 索引注 (R50 任务3) → `20-documentation-gate.md` R50 census 行 + 4 防御对象 (R50 任务3) → `docs/ci/check-docs.sh` 4 新禁词 (R50 任务2) → `docs/ci/check-d-backlinks.sh` 正则扩 D160+ (R50 任务3) → `docs/README.md` 索引行 + CI 列表 (R50 任务3) → `README.md` 文档地图 + D1-D160 + 5 门 (R50 任务3)
+
+**R50 收口 OPEN 计数 = 1** (Q78 endpoint_compact 256B 研究, D160 PROVISIONAL 候选不激活, 等独立 Q 研究).
+
+### 闭庭注
+
+R50 一轮完成 GOV 全节转正 (R49-GOV.1 落地 + R49-GOV.4 漂移词入册 + 新立 GOV.5 收官重跑立法) + 矩阵立法 (D160) + Q76 关闭. 文档集进入 R50 收官冻结状态, 可签发 R50 标签. 5 门综合 (check-docs / check-d-backlinks / check_goal_manifest / spec_lab run_all / run_negative) 全部 0 退出码, 收官 GOV.5 硬性签发前提达成.
+
+下一轮 (R51+ / Phase 1 推进) 仅在以下任一情况启动:
+- Q78 endpoint_compact 256B 研究触发新 D# 立法
+- 新 R-round 暴露 GOV 失效
+- Phase 1 推进触及 R50 边界 (e.g. 96 页 compact 池落地, FPU 上下文策略立法)
+
+否则 R50 即 D126-D160 终态.
+
+---
+
+## R50-FIX 微轮 — 4 补丁 (P1 exclude 收窄 / P2 Q78 补条目 / P3 docs/README 双漂移 / P4 CRLF 防线)
+
+**触发**: R50 准签前 4 补丁 + 1 边界记录, 全十分钟级, 不开新 R 轮.
+
+| # | 补丁 | 修复 | 证据 |
+|---|------|------|------|
+| **P1** | exclude 收窄 | 16-profile-matrix.md 整文件踢出 149 词扫描是错解 (为 2 行定义开盲区). 改行锚豁免: `D160 (配套\|矩阵)` + `16 号文.*rpc_unit_t.*(配套\|未立法\|禁用依据\|R50 立法)`. | clean 0/149 ✓ / 注入 `0x801FF000` 真熔断 (rc=1) ✓ / 删后 0/149 ✓ |
+| **P2** | Q78 补条目 | 30 号文缺 `### Q78`, README/矩阵/收官节三处引 Q78 但 30 无标准模板. 补 Q78 = endpoint_compact=256B PROVISIONAL 候选挂账 Phase 1 第一项立法, 与 Q69-Q77 风格一致. | `grep -nE "^### Q78" docs/30-open-questions.md` → 1 命中 (line 3456) ✓ |
+| **P3** | docs/README 双漂移 | 03 行仍写 "D1–D152, R47 closed" 落后 2 轮 → 改 "D1–D160, R47 closed + R51 R#-anchored + R50 D160 profile matrix" R50 ACTIVE; CI 列表 3 行加 `docs/` 前缀 (与 GOV.1/收官节路径一致) | grep 命中 1× "D1–D160" + 3× "docs/ci/" ✓ |
+| **P4** | CRLF 防线 | 用户裁决: 本地 CRLF 用 git 处理, 不会上传到仓库. 保留 `.gitattributes` 的 `*.sh text eol=lf` 作为未来检出防线 (R51 收官已立法), 不在本轮强转. | `.gitattributes` 第 6 行 `*.sh text eol=lf` 保留 ✓ |
+
+### 边界记录 (GOV.1 设计内, 非缺陷)
+
+**manifest 门是形式门**: 验 "## 涉及决策 头部存在 + D# 齐全 + R# 合法", 不验声明真实性. GOAL 写 "D126 无冲突" 而实际冲突, 此门看不见. 这是 GOV.1 的设计内边界: **形式归机器, 真实归 spec_lab + 评审**. 写进记录, 免得以后有人拿 "门禁过了" 当冲突不存在的证据.
+
+### P5 健壮性疣子 (R50-FIX 不修, R51+ 治理候选)
+
+1. `backlinks` 金丝雀原地 `sed -i` 改 10 号文再恢复 (mktemp 建了却没用, 应在副本上跑). 中断留污 + 10 号文一旦出现第二处 D156, 金丝雀误报 FATAL.
+2. `manifest` 的 `${arr[@]//[[:space:]]/}` 在带空格路径上会绞碎 (当前所有路径无空格, 不实际触发).
+
+R50 准签, P1-P4 闭环. 5 门 0 退出码 (含 3 双向 canary) 落盘. R50 标签可签发.
+
+---
+
+### Q77 — spec_lab 7 断言脚本 Phase 1 第一项交付 (R51 收官核验挂账)
+
+**当前 Spec 状态**:
+- R51-F4 (c1eb577): 7 对 M 桶 spec_lab 断言脚本已落地 (R51-M1~M7)
+- 但所有 7 对均为 **grep-based 文本断言**, 非编译期验证 (本计划 §5 风险 #3: "缺 zig 环境 ENOENT → `command -v zig || exit 0` fallback")
+- 03 总账 D154–D159 的 `Assertion:` 字段标注为 `(script pending, Q77)`
+
+**冲突点**:
+- spec_lab 设计硬性要求 #1 (R49 立法): "任何写进 `docs/*.md` 的指令级 / ABI 级代码片段, 必须能在编译期被验证, 否则不享受 'frozen' 身份"
+- 当前 M2/M4/M5/M7 四个断言是 text-grep 而非 compile-gate — 它们能抓 spec 文字漂移, 但抓不到 Zig 代码的编译期错误
+- Phase 1 交付物: 把这 4 条 text-grep 升级为 `zig build-obj` 编译验证 (与 R49-F1/F2/F3 同等级)
+
+**自毁条款** (照抄 GOV.1 "provisional 失效" 句式):
+> Phase 1 启动后第一个 commit 若不交付 Q77 (D154–D159 七条款全量 compile-gate spec_lab), D154–D159 全条款判为 **provisional 失效** — 即恢复为未立法状态, 必须重走 R51 立法流程.
+
+**Phase 1 第一项交付**: 触发条件 = Phase 1 启动.
+- 交付清单: R51-M2-bss-anchor / R51-M4-ledger-cap / R51-M5-hlcb-bss / R51-M7-strip-mode 四条 `zig build-obj` 编译断言
+- 完成判据: `bash tools/spec_lab/run_all.sh` → 11/11 (其中 4 条新增 compile-gate 通过)
+- **D157 量测口径钉死 (本轮)**: `bss ≤ 8192B` 等四段上限的测量口径 = 链接脚本符号 (`.bss_size` 等, 链接后), **不是** `llvm-size` 的段列 — 后者把 NOLOAD 的 Hart-Local 栈 (D107, 约 20 KB) 计入 bss 必然误报越界。分层立法: 池维度 (BlockPool / NodePool `@compileError`) 属编译期熔断; 四段实测属链接后 `verify-elf` 判据 (Q77 compile-gate 交付时一并落 verify-elf)。M4-ledger-cap 现 text-grep 只锁"上限数字 + `@compileError` 字面", 不越权测实测段; 口径分层由本条固定 (D157 总账行同步)。
+- 若 zig 环境仍不可用: 必须在 RUN_LOG.md 记录 `NO_ZIG=1` 环境标记 + 明确预计可用时间
+
+**禁止漂移自查**:
+- 不写 "M2/M4/M5/M7 已 frozen" (text-grep 不是 frozen)
+- 不写 "Phase 1 可跳过 Q77 直接立法"
+- 必须写 "Phase 1 第一项交付 Q77, 不交 = D154–D159 provisional 失效"
+
+---
+
+### Q78 — endpoint_compact = 256 B 粒度研究 (D160 PROVISIONAL 候选, R50 挂账)
+
+**当前 Spec 状态**:
+- `docs/16-profile-matrix.md` § endpoint_compact = 256 B 行 (D160 第 4 行, R50 立法): PROVISIONAL 候选, 粒度列当前一律 1536 B, endpoint_compact=256 B 不激活.
+- D57 / D85 frozen 门: `block_t ≡ RpcUnit ≡ NetworkFrame ≡ 1536 B` 三方等价, `rpc_unit_t = 256 B` 字面即熔断.
+- 20-documentation-gate.md R50 行入册禁词 `rpc_unit_t = 256B` (D160 配套), 任何"endpoint_compact 已立法"暗示即漂移.
+- D160 行 PROVISIONAL 标记: 256 B 粒度研究挂账 Q78, 立法时机 = Phase 1 启动 + IPC endpoint 通道极小包场景实证 (e.g. 16-byte sensor beacons).
+
+**冲突点**:
+- 若 endpoint_compact 256 B 立法, D57 frozen 三方等价 (`block_t ≡ RpcUnit ≡ NetworkFrame`) 需 D# 升 / supersede 链: 1536 B / 256 B 同时存在, 需明确"小包用 256 B + 大包仍 1536 B"还是"全 256 B 取代 1536 B"两条路径的择一立法.
+- Phase 0 build pipeline (D113 / D124 / D126 闸门) 实测 1536 B, 切 256 B 需重写 size/offsetof 断言链, R51 收口 12 锚定词链路需复核.
+- 256 B 粒度的 wire format 后果: MAC DMA pool (D79, 256×14B=3584B) 仍按 14 B / frame 走, 但 NetworkFrame 字段 (D108/D131) 需重排 256 B 边界, 与现有 R51 spec_lab M6 size-csv 闸门冲突.
+
+**Phase 1 第一项立法**: 触发条件 = Phase 1 启动 + IPC endpoint 通道实证基线.
+- 立法路径 (任择一): (A) 全 256 B 取代 1536 B → D57 / D85 升 PROPOSED → ACTIVE, spec_lab 重写 7 对断言; (B) 小包 256 B + 大包 1536 B 双粒度并存 → D57 双精度, build.zig 增 `-Dunit_size` 编译期参数.
+- 收口传染面: D57 / D85 / D108 / D124 / D126 / D131 / D138 + 02-memory-topology.md / 09-memory-subsystem.md / 13-build-pipeline.md / 15-phase0-mvp.md / 16-profile-matrix.md (改 PROVISIONAL → ACTIVE 行).
+- Q78 不算新 D#, 是 endpoint_compact=256B PROVISIONAL 候选的挂账. Phase 1 立法 D# 编号预计 D161+.
+
+**禁止漂移自查**:
+- 不写 "endpoint_compact 256B 已立法 / ACTIVE" (本轮 PROVISIONAL, 不激活)
+- 不写 "rpc_unit_t = 256 B 是 Phase 0 现状" (frozen 门反例, 必熔断)
+- 必须写 "endpoint_compact = 256 B (PROVISIONAL 候选, D160, Q78 挂账 Phase 1 第一项立法)"
+
+---
+
+### build.zig `.ReleaseSmall` 违反 D159 — 裁决 ReleaseSafe (本轮挂账, 侧分支 phase0-final-windows)
+
+**触发**: `mvp/phase0-final-windows-20260722/build.zig:25` 用 `const optimize = .ReleaseSmall`, 违反 D159 (要求显式 `-Dstrip=false -Doptimize=ReleaseSafe`)。该偏差 **未** 记入本分支 `DIVERGENCE.md` (D-ENV / D-IMPL 均无此条)。
+
+**裁决 (本轮定, 用户拍板 "回退 ReleaseSafe + strip=false")**:
+- build.zig optimize 模式 **回退 ReleaseSafe**, 并显式 `-Dstrip=false`。理由: D159 立法正因 ReleaseSmall 默认剥符号让 nm/readobj 输空表, P1-P2 的 ELF 尺寸/符号闸门 (D101 / D113 / D157) 空真过 — 回退即消除这一潜伏闸门失效, 且合规、最小。
+- **不** 走 "挂 R 号勘误追认 ReleaseSmall" 一路。
+
+**落地挂账 (本轮 dev 不改 build.zig)**: build.zig 属 gitignored `mvp/` 子树, dev 分支不追踪它。故本条只在 dev 记裁决; **代码回退落在下一次合法进入 `phase0-final-windows-20260722` 侧分支时执行**, 且必须同步补记 `DIVERGENCE.md` (归因: 实施决议 D-IMPL, 非 spec 缺陷)。签发前提: build.zig diff 必须有人评审 (不许第三次无人过 diff 放行)。
+
+---
 

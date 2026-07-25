@@ -26,38 +26,38 @@ The 16B `sys_result_t` MUST be passed via `a0`/`a1` register pair (RISC-V C ABI)
 
 | a7 | Subsystem | Notes |
 |----|-----------|-------|
-| 0x00 | `cosmo_open` | D22 v2.1 file open |
-| 0x01 | `cosmo_read` | fd + buf + len |
-| 0x02 | `cosmo_write` | fd + buf + len |
-| 0x03 | `cosmo_close` | fd |
-| 0x04 | `cosmo_seek` | fd + offset + whence |
-| 0x05 | `cosmo_stat` | fd + stat buf |
-| 0x10 | `cosmo_yield` | scheduler hint |
-| 0x20 | `cosmo_ping` | D76 panic check |
+| 0x00 | `neura_open` | D22 v2.1 file open |
+| 0x01 | `neura_read` | fd + buf + len |
+| 0x02 | `neura_write` | fd + buf + len |
+| 0x03 | `neura_close` | fd |
+| 0x04 | `neura_seek` | fd + offset + whence |
+| 0x05 | `neura_stat` | fd + stat buf |
+| 0x10 | `neura_yield` | scheduler hint |
+| 0x20 | `neura_ping` | D76 panic check |
 | 0x30..0x3F | Reserved (Phase 1+) | PTE / IPC |
 
 ## FFI ownership (D103 + P2-4 放宽 source 例外)
 
 ```c
 // CORRECT: path 来自 .rodata 字面量 (D86 16B 兼容: 字面量在 .rodata, 跨 FFI 安全)
-sys_result_t res = cosmo_open("scheme://0/initrd/motd", O_RDONLY);
+sys_result_t res = neura_open("scheme://0/initrd/motd", O_RDONLY);
 
 // P2-4: path 来自静态 path_pool 块 (放宽 D103, 允许 Shell 用户键入文件路径)
 // 不再要求 caller 把 path 固定为 .rodata 字面量 (否则 Shell 无法打开用户键入的文件名, cat 不可实现)
 char path_pool[1536];  // 静态池块 (如 BlockPool 划分出 path_pool)
 strcpy(path_pool, user_input_path);  // Shell 侧 std::strcpy no_alloc
-sys_result_t res = cosmo_open(path_pool, O_RDONLY);
+sys_result_t res = neura_open(path_pool, O_RDONLY);
 
 // CORRECT: buf 来自 BlockPool (P2-4 与表 #3/#4 一致, 不再允许 caller stack buf)
 char io_buf[1536];  // 静态池 (Shell 在 boot 时从 BlockPool 划出一块)
-sys_result_t read_res = cosmo_read(fd, io_buf, sizeof(io_buf));
+sys_result_t read_res = neura_read(fd, io_buf, sizeof(io_buf));
 
 // WRONG (历史错例, P2-4 移除): "char buf[512]; // local stack for READ, OK"
 // sink-only 栈缓冲在 D103 严格版本下争议大, P2-4 统一堵漏, 所有 buf 一律来自静态池
 
 // WRONG (compiles but runtime panic):
 RpcUnit *local_rpc = alloca(sizeof(RpcUnit));  // stack allocated
-cosmo_rpc_send(local_rpc);  // kernel will dereference after caller returns → STACK USE AFTER RETURN
+neura_rpc_send(local_rpc);  // kernel will dereference after caller returns → STACK USE AFTER RETURN
 ```
 
 D103 forbids the third pattern at compile time:
@@ -65,7 +65,7 @@ D103 forbids the third pattern at compile time:
 ```zig
 comptime {
     // D103: cross-FFI signature must not allow &[u8] (stack slice)
-    const open_sig = @typeInfo(@TypeOf(cosmo_open));
+    const open_sig = @typeInfo(@TypeOf(neura_open));
     for (open_sig.@"fn".params) |param| {
         if (param.type == []const u8) {
             @compileError("cross-FFI signature uses stack slice; " ++
@@ -79,7 +79,7 @@ comptime {
 
 ```c
 // D4: scheme://[node]/path position-transparent
-sys_result_t res = cosmo_open("scheme://0/initrd/motd", O_RDONLY);
+sys_result_t res = neura_open("scheme://0/initrd/motd", O_RDONLY);
 if (res.header & (1U << 31)) {  // P1-2: is_error 在 bit 31; 旧 res.is_error 已废除
     // D89 + D103: subsystem_id identifies the source
     sys_error_descriptor_t desc;
@@ -97,11 +97,11 @@ if (res.header & (1U << 31)) {  // P1-2: is_error 在 bit 31; 旧 res.is_error �
 
 | Call | Phase 0 ABI | Phase 1 ABI | Source change? |
 |------|-------------|-------------|----------------|
-| `cosmo_open` | `a0=path, a1=flags, ret a0/a1` | same | No |
-| `cosmo_read` | `a0=fd, a1=buf, a2=len, ret` | same | No |
-| `cosmo_write` | `a0=fd, a1=buf, a2=len, ret` | same | No |
-| `cosmo_close` | `a0=fd, ret` | same | No |
-| `cosmo_yield` | `ret` | same | No |
+| `neura_open` | `a0=path, a1=flags, ret a0/a1` | same | No |
+| `neura_read` | `a0=fd, a1=buf, a2=len, ret` | same | No |
+| `neura_write` | `a0=fd, a1=buf, a2=len, ret` | same | No |
+| `neura_close` | `a0=fd, ret` | same | No |
+| `neura_yield` | `ret` | same | No |
 
 Phase 1 adds new syscalls (0x30..0x3F) but does **not** change existing ones. Shell source compiles unchanged across phases.
 
@@ -116,7 +116,7 @@ D55 Phase 0/1 API stability 列出的 5 个 syscall 均 ≤3 参数,但 syscall6
 // 继承 D86 (sys_result_t 16B 返回) + D90 (全裸整型) + D103 (静态池红线)
 
 // 允许的 6-arg syscall 签名示例:
-sys_result_t cosmo_pte_map_6arg(
+sys_result_t neura_pte_map_6arg(
     u64 vaddr,           // a0  - u64 原生整型
     u64 paddr,           // a1  - u64 原生整型
     u64 flags,           // a2  - u64 原生整型
@@ -129,7 +129,7 @@ sys_result_t cosmo_pte_map_6arg(
 // D119 binding constraint: 编译期闸门
 comptime {
     // D119 + D90: 禁止 Option<T>/enum/嵌套 struct 出现在 a0-a5 类型
-    const sig = @typeInfo(@TypeOf(cosmo_pte_map_6arg));
+    const sig = @typeInfo(@TypeOf(neura_pte_map_6arg));
     for (sig.@"fn".params) |param| {
         const T = param.type;
         if (T == []const u8 or T == ?*anyopaque) {
@@ -140,7 +140,7 @@ comptime {
 }
 
 // D119 复杂结构体参数强制走静态池 (D103 延伸)
-sys_result_t cosmo_ipc_send_6arg(
+sys_result_t neura_ipc_send_6arg(
     u32 scheme_id,                  // a0  - u32
     u32 node_id,                    // a1  - u32
     u32 msg_id,                     // a2  - u32
@@ -174,14 +174,16 @@ sys_result_t cosmo_ipc_send_6arg(
 
 | a7 (hex) | Syscall | Arity | 参数列表 (a0..a5) | 阶段 |
 |----------|---------|-------|------------------|------|
-| 0x00 | `cosmo_open` | 2 | path, flags | Phase 0 |
-| 0x01 | `cosmo_read` | 3 | fd, buf, len | Phase 0 |
-| 0x02 | `cosmo_write` | 3 | fd, buf, len | Phase 0 |
-| 0x03 | `cosmo_close` | 1 | fd | Phase 0 |
-| 0x04 | `cosmo_seek` | 3 | fd, offset, whence | Phase 0 |
-| 0x05 | `cosmo_stat` | 2 | fd, stat_buf | Phase 0 |
-| 0x10 | `cosmo_yield` | 0 | — | Phase 0 |
-| 0x20 | `cosmo_ping` | 0 | — | Phase 0 |
+| 0x00 | `neura_open` | 2 | path, flags | Phase 0 |
+| 0x01 | `neura_read` | 3 | fd, buf, len | Phase 0 |
+| 0x02 | `neura_write` | 3 | fd, buf, len | Phase 0 |
+| 0x03 | `neura_close` | 1 | fd | Phase 0 |
+| 0x04 | `neura_seek` | 3 | fd, offset, whence | Phase 0 |
+| 0x05 | `neura_stat` | 2 | fd, stat_buf | Phase 0 |
+| 0x10 | `neura_yield` | 0 | — | Phase 0 |
+| 0x20 | `neura_ping` | 0 | — | Phase 0 |
+| 0x28 | `SYS_SHUTDOWN` | 0 | — | Phase 0 不实现; Phase 1 立法; 调用必须走 typed-syscall 路径 (D154) | <!-- gate-exempt: D154 -->
+| 0x29 | `SYS_FD_RESERVE` | 1 | fd | Phase 1+ 立法 (Q72 挂账); fd 0/1/2 预开 dev://uart0 |
 | 0x30 | (Reserved) PTE map | 6 | vaddr, paddr, flags, pte_perm, cookie, reserved | Phase 1+ |
 | 0x31 | (Reserved) PTE unmap | 4 | vaddr, len, flags, cookie | Phase 1+ |
 | 0x32 | (Reserved) IPC send | 6 | scheme_id, node_id, msg_id, flags, *RpcUnit, timeout_ms | Phase 1+ |
@@ -194,7 +196,7 @@ sys_result_t cosmo_ipc_send_6arg(
 // D119 binding: 双端 arity ≤6 且每 arg ≤8B 编译期闸门
 // Zig 端:
 comptime {
-    const sig = @typeInfo(@TypeOf(cosmo_pte_map_6arg));
+    const sig = @typeInfo(@TypeOf(neura_pte_map_6arg));
     if (sig.@"fn".params.len > 6)
         @compileError("D119: arity > 6, syscall6 已达上限");
     for (sig.@"fn".params) |param| {
@@ -212,8 +214,8 @@ comptime {
 #define D119_ARG_SIZE_CHECK(arg)  _Static_assert(sizeof(arg) <= 8, \
     "D119: arg > 8B (XLEN), 结构体按值传寄存器永久禁止")
 
-D119_ARITY_CHECK(cosmo_pte_map_6arg, 6);
-D119_ARG_SIZE_CHECK(((cosmo_pte_map_6arg_fn)0)(0,0,0,0,0,0));  // 类型检查
+D119_ARITY_CHECK(neura_pte_map_6arg, 6);
+D119_ARG_SIZE_CHECK(((neura_pte_map_6arg_fn)0)(0,0,0,0,0,0));  // 类型检查
 ```
 
 **D119 字节序与扩展规则 (Q34 R34 落地约束 ①)**:
@@ -237,34 +239,34 @@ D119_ARG_SIZE_CHECK(((cosmo_pte_map_6arg_fn)0)(0,0,0,0,0,0));  // 类型检查
 | # | 跨 FFI 签名 | D# | stack 指针? | 类型 |
 |---|------------|-----|------------|------|
 | 1 | `sys_call(a7, a0..a5) -> sys_result_t` | D55/D86/D90/D103/D119/D129 | ✗ | a7 由 stub asm! 块写入 (D129), 防 clobber |
-| 2 | `cosmo_open(path, flags) -> sys_result_t` | D86/D90/D103/P2-4 | ✗ | path 来自 `.rodata` 字面量 **或** 静态 path_pool 块 (P2-4 放宽; 否则 Shell 无法打开用户键入文件名, cat 不可实现) |
-| 3 | `cosmo_read(fd, buf, len)` | D90/D103 | ✗ | buf 来自 BlockPool (sink — kernel 写入) |
-| 4 | `cosmo_write(fd, buf, len)` | D90/D103 | ✗ | buf 来自 BlockPool (source — kernel 读取) |
-| 5 | `cosmo_close(fd)` | D90 | ✗ | fd 整数 |
-| 6 | `cosmo_yield()` | D86 | ✗ | 无参 |
-| 7 | `cosmo_ping()` | D86 | ✗ | 无参 |
-| 8 | `cosmo_pte_map_6arg(vaddr, paddr, flags, pte_perm, cookie, reserved)` | D86/D90/D119 | ✗ | 全 u64 ≤ 8B |
-| 9 | `cosmo_ipc_send_6arg(scheme_id, node_id, msg_id, flags, *RpcUnit, timeout_ms)` | D86/D90/D103/D119 | ✗ | *RpcUnit 静态池 |
-| 10 | `cosmo_panic_abort(file, line, msg)` | D90 | ✗ | msg 来自 .rodata |
-| 11 | `cosmo_copy_from_user(kernel_dst, user_src, len)` | D90/D103 | ✗ | kernel_dst 必须 BlockPool |
-| 12 | `cosmo_copy_to_user(user_dst, kernel_src, len)` | D90/D103 | ✗ | kernel_src 必须 BlockPool |
-| 13 | `cosmo_atomic_cas_ptr(dest, old, new, peer_mask) -> bool` | D90/D117 | ✗ | dest 静态池 |
-| 14 | `cosmo_hal_set_next_timer(next_deadline)` | D90 | ✗ | u64 整数 |
-| 15 | `cosmo_hal_fs_is_dirty(sstatus) -> bool` | D90 | ✗ | u64 整数 |
+| 2 | `neura_open(path, flags) -> sys_result_t` | D86/D90/D103/P2-4 | ✗ | path 来自 `.rodata` 字面量 **或** 静态 path_pool 块 (P2-4 放宽; 否则 Shell 无法打开用户键入文件名, cat 不可实现) |
+| 3 | `neura_read(fd, buf, len)` | D90/D103 | ✗ | buf 来自 BlockPool (sink — kernel 写入) |
+| 4 | `neura_write(fd, buf, len)` | D90/D103 | ✗ | buf 来自 BlockPool (source — kernel 读取) |
+| 5 | `neura_close(fd)` | D90 | ✗ | fd 整数 |
+| 6 | `neura_yield()` | D86 | ✗ | 无参 |
+| 7 | `neura_ping()` | D86 | ✗ | 无参 |
+| 8 | `neura_pte_map_6arg(vaddr, paddr, flags, pte_perm, cookie, reserved)` | D86/D90/D119 | ✗ | 全 u64 ≤ 8B |
+| 9 | `neura_ipc_send_6arg(scheme_id, node_id, msg_id, flags, *RpcUnit, timeout_ms)` | D86/D90/D103/D119 | ✗ | *RpcUnit 静态池 |
+| 10 | `basal_panic_abort(file, line, msg)` (D168, D76 SUPERSEDED) | D90 | ✗ | msg 来自 .rodata |
+| 11 | `neura_copy_from_user(kernel_dst, user_src, len)` | D90/D103 | ✗ | kernel_dst 必须 BlockPool |
+| 12 | `neura_copy_to_user(user_dst, kernel_src, len)` | D90/D103 | ✗ | kernel_src 必须 BlockPool |
+| 13 | `neura_atomic_cas_ptr(dest, old, new, peer_mask) -> bool` | D90/D117 | ✗ | dest 静态池 |
+| 14 | `neura_set_next_timer(next_deadline)` | D90 | ✗ | u64 整数 |
+| 15 | `neura_fs_is_dirty(sstatus) -> bool` | D90 | ✗ | u64 整数 |
 | 16 | `try_fs_lazy_init_with_dedup(sepc, scause, sstatus) -> bool` | D118/D90/D130 | ✗ | u64 + uintptr_t, D130 decoder 覆盖 0x07/0x27/0x43-0x4F 主码 |
-| 17 | `cosmo_do_user_fault_fixup(ctx_ptr, fixup_addr)` | D90/D112/D148 | ✗ | uintptr_t 整数, D148 SUM=0 嵌套触发 panic |
+| 17 | `basal_do_user_fault_fixup(ctx_ptr, fixup_addr)` (R54 改名, D148 锁) | D90/D112/D148 | ✗ | uintptr_t 整数, D148 SUM=0 嵌套触发 panic |
 
 ## D129: a7 syscall 号由 stub asm! 块写入 (Q44 R38)
 
-D119 立法 a7 = syscall number, a0..a5 = up to 6 args。但 D119 没说 a7 必须**在 stub 内部**写入; 当前默认 `call cosmo_call_gate` 由编译器生成, 编译器可在 prologue 自由分配 a7 给临时变量, dispatcher 收到错的 syscall #。
+D119 立法 a7 = syscall number, a0..a5 = up to 6 args。但 D119 没说 a7 必须**在 stub 内部**写入; 当前默认 `call basal_call_gate` 由编译器生成, 编译器可在 prologue 自由分配 a7 给临时变量, dispatcher 收到错的 syscall #。
 
-D129 机制: stub 函数由 **纯汇编全局符号** (不导出 C/Rust 原型) 实现, asm! 块在同一函数内 `mv a7, <syscall_id>` 后 `call cosmo_call_gate`。这样编译器无法重排, a7 写入发生在 `call` 之前。
+D129 机制: stub 函数由 **纯汇编全局符号** (不导出 C/Rust 原型) 实现, asm! 块在同一函数内 `mv a7, <syscall_id>` 后 `call basal_call_gate`。这样编译器无法重排, a7 写入发生在 `call` 之前。
 
 ```rust
-// D129 example: stub for cosmo_open (syscall 0x00)
+// D129 example: stub for neura_open (syscall 0x00)
 // 纯汇编全局符号, 不导出 C/Rust 原型, nm 属性必须 T
 #[no_mangle]
-pub extern "C" fn cosmo_open_stub(path: *const u8, flags: u32) -> sys_result_t {
+pub extern "C" fn neura_open_stub(path: *const u8, flags: u32) -> sys_result_t {
     let mut res: sys_result_t;
     // D129: a7 与 path/flags/res 在同一 asm! 块, 编译器不能重排
     unsafe {
@@ -277,7 +279,7 @@ pub extern "C" fn cosmo_open_stub(path: *const u8, flags: u32) -> sys_result_t {
             syscall_id = const 0x00,
             path = in(reg) path,
             flags = in(reg) flags,
-            dispatcher = sym cosmo_call_gate,
+            dispatcher = sym basal_call_gate,
             res = out(reg) res,
             clobber_abi("C"),
         );
@@ -289,11 +291,11 @@ pub extern "C" fn cosmo_open_stub(path: *const u8, flags: u32) -> sys_result_t {
 **传染面清单** (R38 元规则四):
 - `04-abi-contract.md` § D119 arity 表 + D129 注释 (a7 stub asm! 块保证)
 - `15-phase0-mvp.md` T1.2 stub 实现升级 D129
-- `20-documentation-gate.md` 新增禁词: `syscall number 隐式 a7 约定` / `7 参数 C 签名落 a7` (已入册, R38)
+- `20-documentation-gate.md` 新增禁词: `syscall number 隐式 a7 约定` / `7 参数 C 签名落 a7` (已入册, R38) <!-- gate-exempt: D129 -->
 
 **编译期闸门** (R38 D129):
-- `nm build/kernel.elf | awk '$3=="cosmo_open_stub" {print $2}' | grep -q '^T$'` (符号表属性必须 T)
-- `objdump -d build/kernel.elf | grep -B1 'call.*cosmo_call_gate'` 必须前一指令为 `mv a7, ...`
+- `nm build/kernel.elf | awk '$3=="neura_open_stub" {print $2}' | grep -q '^T$'` (符号表属性必须 T)
+- `objdump -d build/kernel.elf | grep -B1 'call.*basal_call_gate'` 必须前一指令为 `mv a7, ...`
 
 **D103 binding**: 所有 17 个签名满足"参数仅 `u8/u16/u32/u64 + [u8; N]` 或 `*const T` 指向静态池", **无任何签名泄漏 caller stack 指针**。
 
@@ -303,14 +305,16 @@ pub extern "C" fn cosmo_open_stub(path: *const u8, flags: u32) -> sys_result_t {
 
 | a7 (hex) | Syscall | Arity | 参数列表 (a0..a5) | 阶段 |
 |----------|---------|-------|------------------|------|
-| 0x00 | `cosmo_open` | 2 | path, flags | Phase 0 |
-| 0x01 | `cosmo_read` | 3 | fd, buf, len | Phase 0 |
-| 0x02 | `cosmo_write` | 3 | fd, buf, len | Phase 0 |
-| 0x03 | `cosmo_close` | 1 | fd | Phase 0 |
-| 0x04 | `cosmo_seek` | 3 | fd, offset, whence | Phase 0 |
-| 0x05 | `cosmo_stat` | 2 | fd, stat_buf | Phase 0 |
-| 0x10 | `cosmo_yield` | 0 | — | Phase 0 |
-| 0x20 | `cosmo_ping` | 0 | — | Phase 0 |
+| 0x00 | `neura_open` | 2 | path, flags | Phase 0 |
+| 0x01 | `neura_read` | 3 | fd, buf, len | Phase 0 |
+| 0x02 | `neura_write` | 3 | fd, buf, len | Phase 0 |
+| 0x03 | `neura_close` | 1 | fd | Phase 0 |
+| 0x04 | `neura_seek` | 3 | fd, offset, whence | Phase 0 |
+| 0x05 | `neura_stat` | 2 | fd, stat_buf | Phase 0 |
+| 0x10 | `neura_yield` | 0 | — | Phase 0 |
+| 0x20 | `neura_ping` | 0 | — | Phase 0 |
+| 0x28 | `SYS_SHUTDOWN` | 0 | — | Phase 0 不实现; Phase 1 立法; 调用必须走 typed-syscall 路径 (D154) | <!-- gate-exempt: D154 -->
+| 0x29 | `SYS_FD_RESERVE` | 1 | fd | Phase 1+ 立法 (Q72 挂账); fd 0/1/2 预开 dev://uart0 |
 | 0x30 | (Reserved) PTE map | 6 | vaddr, paddr, flags, pte_perm, cookie, reserved | Phase 1+ |
 | 0x31 | (Reserved) PTE unmap | 4 | vaddr, len, flags, cookie | Phase 1+ |
 | 0x32 | (Reserved) IPC send | 6 | scheme_id, node_id, msg_id, flags, *RpcUnit, timeout_ms | Phase 1+ |

@@ -56,7 +56,7 @@ FORBIDDEN=(
   "1536B 直接写入 4KB Flash"             # R21 D75 (4KB 物理页对齐伪装协议)
 
   # R22
-  "Panic handler 各语言独立"             # R22 D76 (C HAL cosmo_panic_abort 唯一)
+  "Panic handler 各语言独立"             # R22 D76 (C HAL basal_panic_abort 唯一; D168 R54 收口, D76 SUPERSEDED)
   "Primary Hart 立即释放 DTB"            # R22 D77 (推迟到 Rendezvous Phase B)
   "FILE_TABLE 在 NodePool 槽位"          # R22 D78 (FILE_TABLE 驻留 .rodata)
 
@@ -192,14 +192,84 @@ FORBIDDEN=(
   "stimecmp 无条件直写"                  # R23 D80 (Sstc 探测 + SBI 降级) — R47 P1-4 保留原条目
   "jr t0                  # jump"        # R47 P3-4 (syscall 必须 jalr ra, t0)
   "task_table\[next\].active"             # R47 P3-5 (rr_pick_next 终止条件修复)
-  "& 0x3  // FS == 0b11"                 # R47 P3-6 (cosmo_hal_fs_is_dirty 名实一致)
+  "& 0x3  // FS == 0b11"                 # R47 P3-6 (basal_hal_fs_is_dirty 名实一致)
   ".\\[\\]\\?\\.\\[\\]\\?"              # R47 P3-7 (jq 3-level 路径修补)
   "SSTATUS_MXR & (1 << 19)"              # R47 P3-8 (恒假断言, 改 ALLOWED_MASK)
   "csrs/csrc 接受立即数, csrrs/csrrc 接受寄存器" # R47 P3-9 (D119 立法颠倒)
   "ecall → M-Mode → S-Mode"              # R47 P3-10 (medeleg 直委派 S-Mode)
   "22KB 缺口"                            # R47 P3-11 (子段划分后闭合)
   "hartid<<SHIFT"                        # R47 P3-1 (off-by-one, 改 (hartid+1)<<SHIFT)
+
+  # R48 (F3 sys_result_t 形态统一, P1-2 反向禁词, R48 勘误增补)
+  "uint32_t code"                        # R48 F3 (sys_result_t 旧 C 形态, P1-2 后改 header)
+  "code: u32"                            # R48 F3 (sys_result_t 旧 Rust 形态)
+  "status: u32"                          # R48 F3 (sys_result_t 旧 Zig 形态, P1-2 后改 reserved)
+  "struct sys_result_payload_t"         # R48 F3 终验抓出 (amend bae69b1 范畴): Rust payload 必须 union 不是 struct (两个 8B 字段在 struct = 16B, size_of==8 断言永远熔断)
+
+  # R51 (12 锚定词, F 桶 5 + M 桶 7 = 12, 见 §1 R51 收口路径)
+  "host Zig 0.16"                       # R51 F1 (D-01: Zig ≥0.15 toolchain.lock)
+  "rustup.*lp64d.*构建"               # R51 F2 (D-02: 审计 vs 构建 profile 分立)
+  "cosmo_core_syscall_dispatcher"     # R51 F3 (D-04 / D153: 旧名被 syscall_stubs.rs 替代)
+  "≤700KB 物理跨度"                   # R51 F4 (D-10: 700KB 是 ELF 文件大小)
+  "rev8.*builtin"                     # R51 F5 (D-13: rv64imac 无 Zbb, 禁 rev8)
+  "SYS_SHUTDOWN"                       # R51 M1 + R66-3 改真 (D-05 / D154: shutdown 走 HAL FFI 路径, 不占 a7; 取代原 `SYS_SHUTDOWN.*typed-syscall` 惰性 27 字符串字面 — 改真后任何 SYS_SHUTDOWN 字面量必抓, 5 行合规共现/纯引用靠 D154 marker 白名单兜底: `03:297` `03:312` `08:616` `14:185` `14:316`)
+  "node=0x%04X\\?"                     # R51 M3 (D-08 / D156: node= 字段收尾问号? 防止缺字段)
+  "ShimState.*const"                  # R51 M2 (D-07 / D155: 锚点变量禁 const, 必须 var = .{})
+  "ReleaseSmall.*默认.*strip"        # R51 M7 (D-21 / D159: 必须 strip=false)
+  "llvm-readobj.*--syms.*--json "    # R51 M6 (D-20: LLVM 18 必须 --elf-output-style=JSON)
+  "in_kernel_space:.*AtomicBool"     # R51 M5 (D-16 / D158: HLCB 已删此字段, .bss RR 托管)
+  "bss.*16384"                        # R51 M4 (D-11 / D157: bss 上限 8KB, 不可放宽到 16KB)
+
+  # R50 (GOV.4 立法 + 矩阵立法, D160, 4 条新禁词)
+  "spec_lab 副本"                     # R49-GOV.4 (R50 入册): 断言目录下出现代码副本, 不是抽取得到
+  "frozen 等同于已写"                 # R49-GOV.4 (R50 入册): frozen 必须经 runner 验证
+  "R49 草图烂掉靠 reviewer 眼"       # R49-GOV.4 (R50 入册): 必须机器 enforced, 不靠眼
+  "rpc_unit_t = 256B"                # R50 D160 (矩阵立法): 256B 粒度未立法, 任何 RpcUnit 形态暗示 256B 即视为漂移
+
+  # R52 (第四节血统缺口登记册收口, D161 栈保护器反向锁)
+  "-fno-stack-protector"             # R52 D161: C HAL 栈保护器必启 -fstack-protector-strong, 严禁 -fno-stack-protector
+
+  # R53 (命名法 SSOT 立法, D165 跨语言无前缀规则 4 反向锚)
+  "neura_sys_result_t"                # R53 D165: D121 5 struct 不加 neura_ 前缀
+  "basal_sys_result_t"                # R53 D165: D121 5 struct 不加 basal_ 前缀
+  "cortix_sys_result_t"               # R53 D165: D121 5 struct 不加 cortix_ 前缀
+  "synapse_sys_result_t"              # R53 D165: D121 5 struct 不加 synapse_ 前缀
+
+  # R60 (命名迁移最终封口, D172 历史引用豁免 + 14 派生禁词入册)
+  "cosmo_open"                         # R60 D171/R172: Phase 0 syscall 入口, R59 迁 neura_open, 历史审计豁免 (R30/R31|R59|R60 模式)
+  "cosmo_read"                         # R60 D171/R172: Phase 0 syscall 入口, R59 迁 neura_read
+  "cosmo_write"                        # R60 D171/R172: Phase 0 syscall 入口, R59 迁 neura_write
+  "cosmo_close"                        # R60 D171/R172: Phase 0 syscall 入口, R59 迁 neura_close
+  "cosmo_seek"                         # R60 D171/R172: Phase 0 syscall 入口, R59 迁 neura_seek
+  "cosmo_stat"                         # R60 D171/R172: Phase 0 syscall 入口, R59 迁 neura_stat
+  "cosmo_yield"                        # R60 D171/R172: Phase 0 syscall 入口, R59 迁 neura_yield
+  "cosmo_ping"                         # R60 D171/R172: Phase 0 syscall 入口, R59 迁 neura_ping
+  "cosmo_rpc_send"                     # R60 D171/R172: Phase 0 stub 注释, R59 迁 neura_rpc_send
+  "cosmo_pte_map_6arg"                 # R60 D171/R172: Phase 1 typed syscall, R59 迁 neura_pte_map_6arg
+  "cosmo_ipc_send_6arg"                # R60 D171/R172: Phase 1 typed syscall, R59 迁 neura_ipc_send_6arg
+  "cosmo_open_stub"                    # R60 D171/R172: Rust syscall stub, R59 迁 neura_open_stub
+  "cosmo_pte_map_6arg_fn"              # R60 D171/R172: D119 arity 检查函数指针类型, R59 迁 neura_pte_map_6arg_fn
+  "cosmo_node_id"                      # R60 D171/R172: 节点 ID 类型 (绑 Basal, 非 syscall), R59 迁 basal_node_id
+  "mmap_cosmo"                         # R62 D174: U-Mode mmap syscall API 后缀 `_cosmo` 漏网 (18 条现有禁词仅前缀 `cosmo_*` 字面匹配不覆盖后缀), R62 迁 neura_mmap (D171 syscall API 命名法)
+
+  # R63 D175: boot banner SSOT — COSMO BOOT OK 是 R50 时代 brand marker, R53 Neur-Aegis 改名后未同步, 15:363 是全 spec 唯一引用点. R63 迁 NEURA BOOT OK (D175 boot banner SSOT 立法于 06-boot-sequence.md § Banner SSOT 段)
+  "COSMO BOOT OK"
+
+  # R58 补执行 (D173 Q69 豁免, crate 名迁移)
+  "cosmo_kernel"                       # R58 D173: Rust Shell crate 名 (绑 Cortix, 非 syscall), R58 补执行迁 cortix_kernel; Q69 阻塞由 D173 正交论证豁免 (crate 命名空间 vs 运行时数据流)
+
+  # R61 (R59 遗漏修复, syscall 编号表 11-15 HAL-暴露型 syscall 入口增补)
+  "cosmo_copy_from_user"               # R61 D171 增补: syscall 0x0B, R61 迁 neura_copy_from_user (HAL 后端 basal_copy_from_user)
+  "cosmo_copy_to_user"                 # R61 D171 增补: syscall 0x0C, R61 迁 neura_copy_to_user (HAL 后端 basal_copy_to_user)
+  "cosmo_atomic_cas_ptr"               # R61 D171 增补: syscall 0x0D, R61 迁 neura_atomic_cas_ptr (HAL 后端 basal_atomic_cas_ptr)
+  "cosmo_hal_set_next_timer"           # R61 D171 增补: syscall 0x0E, R61 迁 neura_set_next_timer (HAL 后端 basal_hal_set_next_timer, 接口层剥离 hal_)
+  "cosmo_hal_fs_is_dirty"              # R61 D171 增补: syscall 0x0F, R61 迁 neura_fs_is_dirty (HAL 后端 basal_hal_fs_is_dirty, 接口层剥离 hal_)
 )
+# Self-validation: derived count, single source of truth.
+# Lower bound = R12-R36 baseline (70). Floor avoids regression to old total.
+# Self-validation: derived count, single source of truth.
+# Self-validation: derived count, single source of truth.
+# Self-validation: derived count, single source of truth.
 # Self-validation: derived count, single source of truth.
 # Lower bound = R12-R36 baseline (70). Floor avoids regression to old total.
 FORBIDDEN_COUNT=${#FORBIDDEN[@]}
@@ -207,17 +277,82 @@ if [ "${FORBIDDEN_COUNT}" -lt 70 ]; then
   echo "[FATAL] check-docs.sh array length ${FORBIDDEN_COUNT} dropped below R12-R36 floor (70)"
   exit 2
 fi
+# R48 勘误增补: 自验证 census Total == N (硬性提交门槛)
+#   census Total 在 20-documentation-gate.md "Forbidden word census" 表末行
+#   每次新增禁词必须同步更新 census 与本 EXPECTED_TOTAL, 否则 fail-closed
+EXPECTED_TOTAL=176
+if [ "${FORBIDDEN_COUNT}" -ne "${EXPECTED_TOTAL}" ]; then
+  echo "[FATAL] check-docs.sh array length ${FORBIDDEN_COUNT} != census Total ${EXPECTED_TOTAL}"
+  echo "  (R48+: 同步更新 census 表 (20-documentation-gate.md) 与脚本 EXPECTED_TOTAL)"
+  exit 2
+fi
+
+# =============================================================================
+# R64 D176 (行内豁免标记机制): extract_gate_exempt_markers() 函数
+# 行为:
+#   - R64: 抽取空集, sidecar 写入空文件 (0 行为变更; 既有中央行级豁免正则一字不改)
+#   - R65+: 抽取 docs/**/*.md + SPEC.md 中所有 <!-- gate-exempt[: -file]: 标记
+#   - 双轨期 (R64-R65): 门禁只读中央行级豁免正则, sidecar 仅作审计轨迹
+#   - R66 末态 (D176 收官): 行为等价判据满足后, 主循环改读 sidecar (R66 commit 切换)
+# 输出: tools/spec_lab/extracted/gate-exempt-markers.txt (gitignored, 干净克隆首跑必创建)
+# 标记格式 (D176 §1.1):
+#   - 行内: <!-- gate-exempt: D### --> / <!-- gate-exempt: R##-D### --> / <!-- gate-exempt: D###,D### -->
+#   - 文件级 (frontmatter): <!-- gate-exempt-file: <desc> [(D###,...)] -->
+# 兜底:
+#   - mkdir -p 处理 gitignored sidecar dir 不存在 (R49-GOV.6 实证, 干净克隆首跑)
+#   - if/then/else 包裹 grep, 零命中 return 1 不会触发 set -e 自杀 (R51-FIX 母版模式)
+# =============================================================================
+extract_gate_exempt_markers() {
+  local sidecar="tools/spec_lab/extracted/gate-exempt-markers.txt"
+  mkdir -p "$(dirname "$sidecar")"
+
+  # 严格 end-of-line 收紧 (D176 §1.1 marker 形式):
+  #   真实 marker 必须以 `-->` 收尾当前行 (行内尾部追加 / 独立行 frontmatter).
+  #   narrative 提及 (`<!-- gate-exempt: ... -->` 在 markdown 叙述中, 后跟反引号/括号/斜杠等) 被 `$` 锚点排除,
+  #   例如 03:388 (`-->` 后接反引号 ` `` `)、20:85 (`-->` 后接 `); D-ref ...`)、20:269 (`-->` 后接反引号 ` `` `)、
+  #   ci/check-d-backlinks.sh:75-78 (`-->` 后接空格 + `(单 D)` 注释).
+  #
+  # R65-α F4 扩展: regex 末段扩为 `-->[[:space:]]*\|?[[:space:]]*$`, 允许 markdown 表格行
+  #   末单元格 marker (`-->` 后仅余 ` |`); narrative 形式 (反引号/括号/斜杠等非空白非
+  #   `|` 字符) 仍被 `$` 锚点排除. 与 §2b check-d-backlinks.sh 同步.
+  #
+  # 第二道过滤: 排除 ci/ 脚本自身 (与 main loop 同集), 防止本函数注释块 (299-300) 的多 marker 同行示例
+  # (如 `<!-- gate-exempt: D### -->` / `<!-- gate-exempt: R##-D### -->` / `<!-- gate-exempt: D###,D### -->` 在同一注释行)
+  # 因末段 marker 恰落在 EOL 前被 `$` 锚点错误命中.
+  if grep -rnE '<!-- gate-exempt(-file)?:.*-->[[:space:]]*\|?[[:space:]]*$' \
+       --exclude=check-docs.sh --exclude=check-d-backlinks.sh \
+       --exclude=check_goal_manifest.sh --exclude=check-toolchain.sh \
+       docs/ SPEC.md > "$sidecar" 2>/dev/null; then
+    : # 命中, 已写入 sidecar
+  else
+    : > "$sidecar" # 零命中, 写空文件保证 sidecar 存在
+  fi
+}
 
 EXIT=0
-# Exclude this script + the gate catalog doc + the audit history file from path-level exclude.
-# Line-pattern exclude: skip lines that are clearly audit/catalog/propagation records.
-AUDIT_LINE_FILTER='grep -vE "新增禁词|传染面清单|\(R4[0-6] 修正|R4[0-6] 勘误增补|rename from|审计档案|审计动机|应为|应改|诚实性|命名诚实性|was: PTE|migration|原文|勘误后|P[1-3]-[0-9]+ \(R47|P[1-3]-[0-9]+ 修复|P[1-3]-[0-9]+ 勘误|P[1-3]-[0-9]+ 同款|R47 勘误|R47 增补|R47 撤销|R47 反杜撰|R47 立法|R47 立法注|R47 ctypes|R47 后回到|R47 默认|R46 勘误|R46 自然布局|R46 ledger|R46 双结构|R46 同步|R46 落地|R46 临时|R46 版|R46 关键|R46 形式|R46 错判|R46 臆想|R46 4\.2KB|R36 错算|R36 D80 原案|R37 D128|Step 0 trap 防御|不分配 Vec|原 char buf|原 cosmo_do_user_fault_fixup|OBSOLETED|勘误后|勘误前|R45 默认|R45 裁定|R45 原案|D151 R46|R46 勘误后"'
+# Exclude this script + the gate catalog doc from path-level exclude.
+# Line-pattern exclude: 退役 — 中央行级豁免正则 R66 commit 退役, 主循环改读 expanded set.
+# 历史: R51-FIX (F-1 过滤器真洞修补); R51 双轨防线 ([OBSOLETED-by-...] 前缀锚定) 留档于 D176 §1.5 注释.
+# 本笔 (R66-2) 行为等价切后: 展开函数 SELF/PREV/FILE 三态覆盖 47 行 + 30 整文件.
+# 历史锚定: 中央行级豁免正则仅留档于 R51 注释块 (D176 §1.5). R66 收官后 grep -c = 0.
+# D-A (R66-3 显文记载): R51 双轨防线执行机制 ([OBSOLETED-by-...] 锚定) 随中央正则退役,
+#   其安全性质 (历史豁免显式化、可审计) 由 D176 marker 机制构造性保持, 校验强度严格更高
+#   (自由文本锚 → 机器验 D### 存在性, 每次 CI 强制). 此为归档, 非降级.
+
+# R64 D176: 行内豁免标记抽取 (R64 期望 0 行 sidecar, R65+ 期望 ≥ 50 行).
+# R66-2: 主门禁改读 expanded set (extract_gate_exempt_markers() 仍抽 sidecar 供展开函数使用).
+extract_gate_exempt_markers
+expanded_file=$(mktemp)
+bash "${PWD}/tools/spec_lab/expand_gate_exempt.sh" > "$expanded_file" 2>/dev/null
+
 for word in "${FORBIDDEN[@]}"; do
-  if grep -rnF --exclude=check-docs.sh --exclude=20-documentation-gate.md --exclude=30-open-questions.md -- "$word" docs/ 2>/dev/null | eval "$AUDIT_LINE_FILTER"; then
+  if grep -rnF --exclude=check-docs.sh --exclude=check-d-backlinks.sh --exclude=check_goal_manifest.sh --exclude=check-toolchain.sh --exclude=20-documentation-gate.md -- "$word" docs/ SPEC.md 2>/dev/null | grep -vFf "$expanded_file"; then
     echo "[ERROR] Forbidden word found: $word"
     EXIT=1
   fi
 done
+
+rm -f "$expanded_file"
 
 if [ $EXIT -eq 0 ]; then
   echo "✓ Wriggly-Octopus documentation gate passed (0/${FORBIDDEN_COUNT} forbidden words)"

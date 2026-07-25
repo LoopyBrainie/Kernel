@@ -1,14 +1,23 @@
 # 13 · Build Pipeline (SSOT + Profile Switch + 3 Hard Gates)
 
 **Plan section**: §十三
-**Key decisions**: D48, D74, D81, D93, D100, D101, D105
-**Status**: Frozen; 3 hard gates + SSOT auto-generation
+**Key decisions**: D48, D74, D81, D93, D100, D101, D105, D126, D133, D138, D146, D157, D159, D160, **D161, D162** (R52 cflag 防线)
+**Status**: Frozen; 3 hard gates + SSOT auto-generation + cflag 防线 (R52 收口)
 
 ---
 
 ## Overview
 
 The build pipeline is a 3-stage `build.zig` chain that (1) compiles each language with profile-specific flags, (2) auto-generates cross-language FFI bindings from a Zig SSOT, and (3) runs 3 hard gates: SSOT alignment (L1-L4 of D74/D85/D86/D90), post-build ELF size gate (D101), and initrd file count gate (D105). All three gates fail closed and abort the build.
+
+**R53 D167 回链 (命名变更纪律 5 步闭环)**: 本节涉及 SSOT 路径迁移 D74 (`kernel/include/sys/abi.zig`) → D170 (`basal/include/sys/abi.zig`, R54 收口)。任何代号 / 目录 / 前缀变更须经 5 步闭环: (1) D## 立法, (2) 1X 子系统文档回链, (3) 禁词 census 同步, (4) 分批迁移 (D166 范式), (5) spec_lab 断言脚本同步。详见 `docs/00-naming-taxonomy.md` § 11 (D167 命名变更纪律)。
+
+**R51-F1 (D-01)**: Host Zig version is `Zig ≥0.15`, locked by `toolchain.lock` (not by `host Zig 0.16` — that version does not exist). The forbidden-word list enforces this: literal `Zig 0.16` / `host Zig 0.16` are banned. Back-link: `05-call-gate.md:193`. <!-- gate-exempt: D153 -->
+
+**R51-F2 (D-02)**: Toolchain audit vs build profile — **two distinct profiles must not be conflated**:
+- `rustup target add riscv64gc-unknown-linux-gnu` (lp64d, hard-float) is the **toolchain audit** profile used by Rust cargo for crate-resolution audits. It is **not** a build output.
+- Build target is D138 embedded profile: `riscv64imac-unknown-none-elf` (lp64, soft-float, no-f/d/v). This is what `zig build` produces and what `qemu_virt` boots.
+- Lesson: mismatch between audit profile (lp64d) and build profile (lp64 imac) caused sandbox-two O2 silent override of D138. Frozen in R51 via the `audit profile is build profile` distinction. Back-link: R49-GOV.2 (O2 first-case archived as `R49-EMBEDDED-LP64`).
 
 ## 3-stage build chain
 
@@ -22,9 +31,9 @@ build.zig
   │   └── RISC-V assembly (entry.S D92/D95/D99/D106)
   │
   ├── Stage 2: SSOT translate-abi (D74)
-  │   ├── Parse Zig extern struct from kernel/include/sys/abi.zig
+  │   ├── Parse Zig extern struct from basal/include/sys/abi.zig
   │   ├── Generate Rust (arch/riscv64/abi.rs)
-  │   ├── Generate C (kernel/include/sys/abi.h)
+  │   ├── Generate C (basal/include/sys/abi.h)
   │   └── Verify three-end offsetof (D85)
   │
   └── Stage 3: 3 Hard Gates (fail-closed)
@@ -37,21 +46,38 @@ build.zig
 
 ```zig
 // build.zig (sketch)
-const abi = @import("kernel/include/sys/abi.zig");
+const abi = @import("basal/include/sys/abi.zig");
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
     const translate_abi = b.addSystemCommand(&.{
         "python3", "tools/translate_abi.py",
-        "--input", "kernel/include/sys/abi.zig",
+        "--input", "basal/include/sys/abi.zig",
         "--rust-out", "arch/riscv64/abi.rs",
-        "--c-out", "kernel/include/sys/abi.h",
+        "--c-out", "basal/include/sys/abi.h",
     });
     b.getInstallStep().dependOn(&translate_abi.step);
 }
 ```
 
 The translator walks the Zig SSOT, generates matching `#[repr(C, align(N))]` Rust structs, and matching `_Static_assert`-guarded C structs. Manual edits to the generated files are detected by `git diff` pre-commit hook and rejected (R21 D74 forbids hand-written abi.rs).
+
+## D161 + D162: cflag 编译期防线 (R52 收口)
+
+**Why these**: Phase 0 无 MMU，16KB Hart-Local 栈 (D107) 是为数不多的活防线。栈溢出只能靠编译期哨兵抓。C HAL 必须开栈保护器 + 单函数栈帧警告阀；Zig 路径同步 `_Static_assert(@sizeOf(@Frame(fn)) ≤ 2048)` 形态约束。详见 `03-design-decisions.md` § R52 D161/D162 立法条。
+
+```bash
+# D161: C HAL 栈保护器必启 (-fstack-protector-strong)
+# D162: 单函数栈帧警告阀 (-Wstack-usage=2048, warning-as-error)
+zig build -Dcflags_c_hal="-fstack-protector-strong -Wstack-usage=2048 -Werror=stack-usage"
+```
+
+**禁止形态**: `-fno-stack-protector` 严禁出现于 `docs/` (R52 D161 forbidden-word, 见 `check-docs.sh` 末段)。Windows MVP 早先用 `-fno-stack-protector` 是 v2.1 §3.2 防御静默消失的实例；R52 立法后, `build.zig` 必须显式 `-fstack-protector-strong`, cflags 链中不得出现 `-fno-stack-protector`。 <!-- gate-exempt: D161 -->
+
+**传染面**:
+- `08-risc-v-hal.md` § panic 多通道 (D139 + `__stack_chk_fail` D161 → `sbi_cold_reboot` D163)
+- `15-phase0-mvp.md` T1.11 cflag 闸 (D161/D162 进 verify-elf)
+- `check-docs.sh` 新增禁词 `-fno-stack-protector` (R52 D161 收口) <!-- gate-exempt: D161 -->
 
 ## D93 + D111: Profile switch + Work-Stealing compile-time guard
 
@@ -67,6 +93,49 @@ zig build -Dtarget=server -Denable_page_aggregation=true
 
 # Pin-Binding static (D111, multi-Hart + no coherence)
 zig build -Dtarget=server -Dsched=pin_binding
+```
+
+```zig
+// R51-M4 (D-11 / D157): Phase 0 ledger 上限固化 (编译期熔断, 越界 build ABORT)
+// 单一真相: 02 § D49 ceiling 644 KB; 各 section 严格 ≤ 限额
+pub const ledger_caps = struct {
+    pub const text_max: u32    = 81920;   // .text  ≤ 80 KB
+    pub const rodata_max: u32  = 10240;   // .rodata ≤ 10 KB
+    pub const data_max: u32    = 4096;    // .data   ≤ 4 KB
+    pub const bss_max: u32     = 8192;    // .bss    ≤ 8 KB
+};
+comptime {
+    if (kernel.text_size    > ledger_caps.text_max)   @compileError("R51-M4: text 越界");
+    if (kernel.rodata_size  > ledger_caps.rodata_max) @compileError("R51-M4: rodata 越界");
+    if (kernel.data_size    > ledger_caps.data_max)   @compileError("R51-M4: data 越界");
+    if (kernel.bss_size     > ledger_caps.bss_max)    @compileError("R51-M4: bss 越界");
+}
+```
+
+```zig
+// R51-M7 (D-21 / D159): ReleaseSmall 默认 `-Dstrip` 让 nm/readobj 输空表, 门禁空真通过.
+// 必须显式 `-Dstrip=false -Doptimize=ReleaseSafe`, 否则 D129 T-属性门禁 + D113 size-csv
+// 闸门都返回空表, 误判 ELF 合规. 沙箱三实测: ReleaseSmall 默认 + nm 输出空 → elf size gate PASS
+// 但实际 symbol 全 strip → 真实不通过. 修正: build.zig 强制 `-Dstrip=false`.
+pub const kernel_optimize: std.builtin.OptimizeMode = .ReleaseSafe;
+pub const kernel_strip: bool = false;  // R51-M7 强制 false; D-21 收口
+```
+
+```zig
+// R51-M6 (D-20): size-csv 工具链锁定 LLVM 18 兼容命令 (沙箱三实测撞过)
+// **正确命令**: llvm-readobj --syms --elf-output-style=JSON | jq '.[].Symbols[].Symbol'
+// **错误命令 (R47 草图)**: llvm-readobj --syms --json | jq '.[]' — LLVM 18 不存在 --json
+//   标志, 返回空 symbol, 误判 D113 size-csv 闸门通过 (空真). 必须 --elf-output-style=JSON.
+// jq 三层路径: .[] (program headers) → .Symbols[] (符号表) → .Symbol (Symbol struct)
+// spec_lab 双向断言 R51-M6-size-csv.{sh,_negative.sh}.
+pub fn size_csv_extract(kernel_elf: []const u8) ![]const u8 {
+    var stdout: [4096]u8 = undefined;
+    const argv = &[_][]const u8{
+        "llvm-readobj", "--syms", "--elf-output-style=JSON",
+    };
+    // 3 层 jq: .[].Symbols[].Symbol (note: NOT --json flag)
+    // ...
+}
 ```
 
 ```zig
@@ -163,7 +232,10 @@ EXPECTED=(
 
 for elf in zig-out/bin/*; do
     [[ -f "$elf" ]] || continue
-    sym_json=$(llvm-readobj --syms --json "$elf" 2>/dev/null) || {
+    # R51-FIX (F-1 传染失败修补): 旧脚本用 `llvm-readobj --syms --json`, LLVM 18 不存在 --json 旗标,
+    # 沙箱三实测空表空真过. 新 size-csv 段 (13:107-115) 用 --elf-output-style=JSON + jq 三层.
+    # 本块 [OBSOLETED-by-R51-M6]: 旧命令在本仓库不再适用, 严禁复活.
+    sym_json=$(llvm-readobj --elf-output-style=JSON --syms "$elf" 2>/dev/null) || {
         echo "FATAL: cannot read $elf"; exit 1;
     }
     for entry in "${EXPECTED[@]}"; do
@@ -284,7 +356,8 @@ echo "✓ D126 stride gate passed ($PROFILE/$LAYOUT, measured $ACTUAL_PHYSICAL_K
 - `02-memory-topology.md` § D45/D102 双 Profile 表同步
 - `check_elf_sizes.sh` 升级点 (D113 → D126)
 - `15-phase0-mvp.md` T1.11 (D113 → D126)
-- `20-documentation-gate.md` 新增禁词: `stride 期望值未感知 profile` (已入册, R37)
+- `20-documentation-gate.md` 新增禁词: `stride 期望值未感知 profile` (已入册, R37) <!-- gate-exempt: D126 -->
+- `16-profile-matrix.md` (R50 D160 索引) — stride 列 (embedded/qemu_virt/server_compact 各池) 由本 D# 派生, 完整对照表见矩阵 doc
 
 **Cost / Benefit**:
 

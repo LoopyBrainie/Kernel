@@ -10,6 +10,8 @@
 
 The RISC-V HAL provides a uniform interface to hardware features that vary across the embedded ↔ server spectrum. Each feature has a 2-3 tier fallback so that a single binary runs on Allwinner D1s (RV64IMAC) and SiFive HiFive Unmatched (RV64GC) without recompilation.
 
+**R53 D166 回链 (basal_ 分批范式)**: 本节涉及 C HAL `cosmo_*` 前缀向 `basal_*` 的迁移 (R54 panic 族 / R55 call_gate 族 / R56 hal_ 族 / R57 ABI 过滤 / R59 basal_node_id), 共 23 个符号分 5 批迁移, 每批独立 R## 收口全量门禁, 单批变更不得跨多个 D# 撤销 (D166 范式)。详见 `docs/00-naming-taxonomy.md` § 4 (D166 basal_ 分批迁移范式)。
+
 ## Feature matrix and fallback tiers
 
 | Feature | Tier 1 (Server) | Tier 2 (Embedded) | Tier 3 (Fallback) | Decision |
@@ -27,7 +29,7 @@ The RISC-V HAL provides a uniform interface to hardware features that vary acros
 
 ```c
 // Read time without SBI ecall (50-100 cycle tax)
-static inline uint64_t cosmo_read_time(void) {
+static inline uint64_t basal_read_time(void) {
     uint64_t t;
     asm volatile ("csrr %0, time" : "=r"(t));
     return t;
@@ -38,7 +40,7 @@ Used for: scheduler tick, timestamp fields in RpcUnit, performance counters. Alw
 
 ## D80: Sstc detection + SBI fallback (P1-4 S-Mode 勘误后)
 
-**P1-4 修复**: `csrr menvcfg` 在 S-Mode 是 **illegal instruction** (RISC-V Privileged Spec §3.1.7: menvcfg 是 M-Mode CSR, S-Mode 读它必然 trap; senvcfg 不含 STCE 位, 无法代理)。R36 D80 原案直接 exec 会 `IllegalInstruction` 然后 D118 三条件消歧误判。
+**P1-4 修复**: `csrr menvcfg` 在 S-Mode 是 **illegal instruction** (RISC-V Privileged Spec §3.1.7: menvcfg 是 M-Mode CSR, S-Mode 读它必然 trap; senvcfg 不含 STCE 位, 无法代理)。R36 D80 原案直接 exec 会 `IllegalInstruction` 然后 D118 三条件消歧误判。 <!-- gate-exempt: D118 -->
 
 **新 D80**: 通过 DTB `riscv,isa-extensions` 解析 "sstc" 字符串; 或 trap-and-probe 写 `stimecmp` (写入成功 = Sstc 可用, 写入 trap = 降级)。`menvcfg` 字面量列入禁词门 (R29 同款反杜撰)。
 
@@ -46,30 +48,30 @@ Used for: scheduler tick, timestamp fields in RpcUnit, performance counters. Alw
 // Probe Sstc extension at boot (P1-4: 禁 menvcfg 读)
 static bool has_sstc = false;
 
-void cosmo_hal_clock_init(void) {
+void basal_hal_clock_init(void) {
     // 路径 1: DTB 解析 (M-Mode OpenSBI 通常已写 riscv,isa-extensions 节点)
     has_sstc = dtb_has_isa_extension(dtb, "sstc");
 
     // 路径 2 (fallback): trap-and-probe 写 stimecmp — 写入成功 = Sstc 可用
     if (!has_sstc) {
-        uint64_t probe_deadline = cosmo_read_time() + 1;  // 1 tick 触发未来中断
+        uint64_t probe_deadline = basal_read_time() + 1;  // 1 tick 触发未来中断
         sbi_set_timer(probe_deadline);  // 先 SBI 写入防丢失
-        uint64_t before = cosmo_read_time();
+        uint64_t before = basal_read_time();
         asm volatile ("csrw stimecmp, %0" : : "r"(probe_deadline));   // 如 trap 走 D118/三条件
         // 若未 trap, Sstc 可用, has_sstc = true
         // 注: OpenSBI 默认 medeleg 不会拦截 illegal instruction (拦截需显式设 bit)
         //     写 stimecmp 在 S-Mode 下 Sstc 可用时是合法的
-        if (cosmo_read_time() >= probe_deadline || /* 写未 trap */ 1) {
+        if (basal_read_time() >= probe_deadline || /* 写未 trap */ 1) {
             has_sstc = true;
         }
     }
 
     if (!has_sstc) {
-        sbi_set_timer(cosmo_read_time() + TICK_INTERVAL);  // SBI 降级
+        sbi_set_timer(basal_read_time() + TICK_INTERVAL);  // SBI 降级
     }
 }
 
-void cosmo_hal_set_next_timer(uint64_t next_deadline) {
+void basal_hal_set_next_timer(uint64_t next_deadline) {
     if (has_sstc) {
         asm volatile ("csrw stimecmp, %0" : : "r"(next_deadline));
     } else {
@@ -90,7 +92,7 @@ void cosmo_hal_set_next_timer(uint64_t next_deadline) {
 // D9.2 + D94: Tier 1 (server, has A + cross-Hart Coherence)
 // D94 + D108 R31 fix: Tier 2 (has A but no cross-Hart Coherence) MUST use SBI IPI
 // D87 Tier 3: no A extension → soft fallback
-static inline bool cosmo_atomic_cas_ptr(
+static inline bool basal_atomic_cas_ptr(
     void **dest, void *old_val, void *new_val, hart_mask_t peer_mask)
 {
     if (has_a_extension && has_global_coherence) {
@@ -111,7 +113,7 @@ static inline bool cosmo_atomic_cas_ptr(
         // D108 R31 fix: Tier 2 MUST pair csrc sstatus, SIE with SBI IPI sync.
         // Single-Hart SIE disable cannot block remote Hart writes.
         if (!has_ipi_capability) {
-            cosmo_panic_abort("Tier 2 requires SBI IPI (D108)");
+            basal_panic_abort("Tier 2 requires SBI IPI (D108)");
         }
         register_t prev = csr_read_clear(sstatus, SSTATUS_SIE);
         sbi_send_ipi(peer_mask);                          // notify peer Harts
@@ -141,23 +143,23 @@ typedef enum {
     FS_OFF = 0, FS_INITIAL = 1, FS_CLEAN = 2, FS_DIRTY = 3
 } fs_state_t;
 
-static inline bool cosmo_hal_fs_is_dirty(uint64_t sstatus) {
+static inline bool basal_hal_fs_is_dirty(uint64_t sstatus) {
     // P3-6 (R47 勘误): &0x3 是位掩码 (取值 0/1/2/3), 真值表对齐 FS_* 枚举, 但
     // INITIAL/CLEAN(=1,=2) 也命中 true — 与注释 "FS==0b11" 不符。
     // D118 状态机对齐: 仅 FS_DIRTY==3 是真脏, 改 ==0b3 (与 D118 三状态语义一致)。
     return ((sstatus >> 13) & 0x3) == 0x3;  // FS == 0b11 (FS_DIRTY only)
 }
 
-static inline bool cosmo_hal_vs_is_dirty(uint64_t sstatus) {
+static inline bool basal_hal_vs_is_dirty(uint64_t sstatus) {
     // P3-6 同款: VS_DIRTY (0b11) only
     return ((sstatus >> 9) & 0x3) == 0x3;   // VS == 0b11 (VS_DIRTY only)
 }
 
 // In scheduler context_switch:
-if (cosmo_hal_fs_is_dirty(prev_sstatus)) {
+if (basal_hal_fs_is_dirty(prev_sstatus)) {
     save_f0_f31(prev_task);  // 32 × 64-bit = 256B
 }
-if (cosmo_hal_vs_is_dirty(prev_sstatus)) {
+if (basal_hal_vs_is_dirty(prev_sstatus)) {
     save_v0_v31(prev_task);  // 32 × vlenb = 1024B-4096B
 }
 // Embedded: FS=VS=Off → zero save tax
@@ -179,11 +181,11 @@ D94 Tier 2 atomic CAS 的 `while (!ipi_acked(peer_mask)) { }` 是**无超时忙�
 static uint64_t d94_tier2_timeout_ticks = 0;  // 初始化时由 DTB timebase-frequency 派生
 
 // D117 binding: DTB timebase-frequency → ticks-per-ms 转换
-void cosmo_d94_init_timeout(uint64_t timebase_freq_hz) {
+void basal_d94_init_timeout(uint64_t timebase_freq_hz) {
     d94_tier2_timeout_ticks = (timebase_freq_hz / 1000);  // 1ms
 }
 
-static inline bool cosmo_atomic_cas_ptr(
+static inline bool basal_atomic_cas_ptr(
     void **dest, void *old_val, void *new_val, hart_mask_t peer_mask)
 {
     if (has_a_extension && has_global_coherence) {
@@ -201,7 +203,7 @@ static inline bool cosmo_atomic_cas_ptr(
         return cur == old_val;
     } else if (has_a_extension && !has_global_coherence) {
         if (!has_ipi_capability) {
-            cosmo_panic_abort(__FILE__, __LINE__, "Tier 2 requires SBI IPI (D108)");
+            basal_panic_abort(__FILE__, __LINE__, "Tier 2 requires SBI IPI (D108)");
         }
         register_t prev = csr_read_clear(sstatus, SSTATUS_SIE);
         sbi_send_ipi(peer_mask);
@@ -210,7 +212,7 @@ static inline bool cosmo_atomic_cas_ptr(
         while (!ipi_acked(peer_mask)) {
             if (csrr_read(time) > deadline) {
                 // D117 binding: panic 输出 peer_mask + 发起 Hart ID,定位信息
-                cosmo_panic_abort_fmt(__FILE__, __LINE__,
+                basal_panic_abort_fmt(__FILE__, __LINE__,
                     "D94 Tier 2 IPI ACK timeout: peer_mask=0x%lx hart_id=%u",
                     (unsigned long)peer_mask, current_hart_id());
             }
@@ -348,7 +350,7 @@ void plic_disable(int irq) { /* no-op */ }
 _Static_assert((SSTATUS_ALLOWED_MASK & SSTATUS_MXR) == 0,
                "D115: ALLOWED_MASK must NOT contain MXR (XOM 最高安全生态, MXR 永久冻结)");
 
-static inline void cosmo_user_access_enable(void) {
+static inline void basal_user_access_enable(void) {
     // D119: csrrs 寄存器版本, 而非 csrs (立即数)
     register uint32_t val = SSTATUS_SUM;
     asm volatile (
@@ -357,7 +359,7 @@ static inline void cosmo_user_access_enable(void) {
     );
 }
 
-static inline void cosmo_user_access_disable(void) {
+static inline void basal_user_access_disable(void) {
     register uint32_t val = SSTATUS_SUM;
     asm volatile (
         "csrrc zero, sstatus, %0"   // D119: 正确语法
@@ -379,7 +381,7 @@ static inline void cosmo_user_access_disable(void) {
 ```c
 // §八 HAL U-Mode 用户态数据流转 (D116 落锤)
 //!
-//! D116: cosmo_copy_from_user / cosmo_copy_to_user 访存指令必须注册到
+//! D116: basal_copy_from_user / basal_copy_to_user 访存指令必须注册到
 //! __ex_table 段. 异常时强制清零 SUM=0 (D115 协同), 注入 EFAULT 至 a0/a1 (D86).
 
 struct exception_table_entry {
@@ -387,9 +389,9 @@ struct exception_table_entry {
     uintptr_t fixup;    // 修复跳转目标
 };
 
-sys_result_t cosmo_copy_from_user(void *kernel_dst, const void *user_src, size_t len) {
+sys_result_t basal_copy_from_user(void *kernel_dst, const void *user_src, size_t len) {
     sys_result_t res = {0, 0, 0};
-    cosmo_user_access_enable();  // D115: SUM=1
+    basal_user_access_enable();  // D115: SUM=1
 
     __asm__ volatile (
         "1:  lb      t0, 0(%2)\n"           // 临界访存, 注册到 __ex_table
@@ -412,7 +414,7 @@ sys_result_t cosmo_copy_from_user(void *kernel_dst, const void *user_src, size_t
         : "t0", "memory"
     );
 
-    cosmo_user_access_disable();  // 正常路径手动关闭; 异常路径 D116 汇编已清零
+    basal_user_access_disable();  // 正常路径手动关闭; 异常路径 D116 汇编已清零
     res.payload.error_pack.error_code = (int32_t)len;  // P1-2: payload.error_pack, P2-2: -14 EFAULT, 0 = OK
     return res;                   // D86: 16B 经 a0/a1 返回
 }
@@ -502,7 +504,8 @@ llvm-objdump -d build/kernel.elf \
 - `12-scheduler.md` § D104 Lazy Save 表 Embedded 行加 "kernel-march=rv64imac 编译期断言"
 - `13-build-pipeline.md` 新增 `make audit-no-fp-kernel` 闸门 + `build_options.kernel_march` 派生
 - `15-phase0-mvp.md` T1.1 升级为 D138 + 新增 T1.24 (no-FP-asm 测试)
-- `20-documentation-gate.md` **新增禁词**: "kernel FP 隐式 allowed" / "FS=Off 默认 by default"
+- `20-documentation-gate.md` **新增禁词**: "kernel FP 隐式 allowed" / "FS=Off 默认 by default" <!-- gate-exempt: D138 -->
+- `16-profile-matrix.md` (R50 D160 索引) — mabi 列 (embedded/qemu_virt/server_compact × lp64/lp64d) 由本 D# 派生, 完整对照表见矩阵 doc
 
 ### 元规则校验
 
@@ -518,7 +521,7 @@ llvm-objdump -d build/kernel.elf \
 
 ### 问题与动机
 
-D117 R34 fix: Tier 2 IPI ACK 1ms timeout 后 `cosmo_panic_abort_fmt(...)` 输出 peer_mask + hart_id, 假设 panic 一定能输出。但 panic 自身可能死锁:
+D117 R34 fix: Tier 2 IPI ACK 1ms timeout 后 `basal_panic_abort_fmt(...)` 输出 peer_mask + hart_id, 假设 panic 一定能输出。但 panic 自身可能死锁:
 
 - **路径 1 (SBI putchar)**: D88 之前使用, RISC-V SBI v2.0 §5.1 Legacy Console Putchar (EID=0x01)。若 OpenSBI 自身 hang (e.g., DTB parse 中), 输出字符排队不到 console, kernel silent。
 - **路径 2 (UART0 MMIO)**: D88 之后使用, 直接 MMIO 写 UART0 THR 寄存器 (QEMU virt 默认 0x10000000)。若 UART0 硬件故障 / 寄存器访问 trap, 死循环。
@@ -534,29 +537,30 @@ panic 路径强制**三通道冗余**:
 2. **通道 2 (UART0 MMIO)**: `early_console_is_uart0_ready()` 检测通过后, 直接 MMIO 写, 兼容 D88 后期
 3. **通道 3 (`sbi_system_reset`)**: 通道 1 + 2 都失败, 调 M-Mode 强制 reset, 保证 kernel 退出 (与 D95 DTB collision 同款 reset 路径)
 
-**递归 panic 防御**: `__cosmo_panic_in_progress` 静态标志 (D127 load/store-only, 用 `__atomic_load_n` + `__atomic_store_n` 不用 RMW), 入口检测若已在 panic 则直接 `sbi_system_reset` 不再尝试输出, 防止 stack overflow。
+**递归 panic 防御**: `__basal_panic_in_progress` 静态标志 (D127 load/store-only, 用 `__atomic_load_n` + `__atomic_store_n` 不用 RMW), 入口检测若已在 panic 则直接 `sbi_system_reset` 不再尝试输出, 防止 stack overflow。
 
 ```c
 /* HANDWRITTEN: tri-end asserts embedded */  // D121 marker
-// kernel/hal/panic.c (D139 完整实现)
+// kernel/hal/panic.c (D139 + D163 完整实现)
 #include <sbi.h>
 #include <stdint.h>
 
 // D139: panic 递归防御 (D127 load/store-only 严格遵守, 禁 RMW)
-static volatile uint8_t __cosmo_panic_in_progress = 0;
+static volatile uint8_t __basal_panic_in_progress = 0;
 
 static inline bool d139_try_enter_panic(void) {
     // D127: load + store 路径, 无 RMW (无 amoswap/cas)
-    uint8_t cur = __atomic_load_n(&__cosmo_panic_in_progress, __ATOMIC_ACQUIRE);
+    uint8_t cur = __atomic_load_n(&__basal_panic_in_progress, __ATOMIC_ACQUIRE);
     if (cur) return false;  // 已在 panic, 不再输出
-    __atomic_store_n(&__cosmo_panic_in_progress, 1, __ATOMIC_RELEASE);
+    __atomic_store_n(&__basal_panic_in_progress, 1, __ATOMIC_RELEASE);
     return true;
 }
 
-void cosmo_panic_abort_fmt(const char *file, int line, const char *fmt, ...) {
+void basal_panic_abort_fmt(const char *file, int line, const char *fmt, ...) {
     if (!d139_try_enter_panic()) {
         // 递归 panic, 直接 reset, 不再尝试输出
-        sbi_system_reset(0, 1, SBI_SRST_SYSTEM_RESET);
+        // D163: fatal stop 路径走 sbi_cold_reboot (a0=1, a1=reason)
+        sbi_system_reset(1, 1);  // (reset_type=cold_reboot, reason=system_failure)
         __builtin_unreachable();
     }
 
@@ -574,8 +578,8 @@ void cosmo_panic_abort_fmt(const char *file, int line, const char *fmt, ...) {
         }
     }
 
-    // 通道 3: 都失败, 强制 reset
-    sbi_system_reset(0, 1, SBI_SRST_SYSTEM_RESET);
+    // 通道 3: 都失败, 强制 reset (D163 cold_reboot 路径)
+    sbi_system_reset(1, 1);  // (reset_type=cold_reboot, reason=system_failure)
     __builtin_unreachable();
 }
 ```
@@ -591,13 +595,56 @@ make test-d139-panic-reset
 ### 传染面
 
 - `06-boot-sequence.md` § early_console_init 添加 `early_console_is_uart0_ready()` 检测函数 (返回 bool)
-- `15-phase0-mvp.md` T1.7 (cosmo_panic_abort C HAL) 升级为 D139 + 新增 T1.25 (panic fail-stop 测试)
-- `20-documentation-gate.md` **新增禁词**: "panic 假定成功" / "panic fall-through 单一路径"
+- `15-phase0-mvp.md` T1.7 (basal_panic_abort C HAL) 升级为 D139 + 新增 T1.25 (panic fail-stop 测试)
+- `20-documentation-gate.md` **新增禁词**: "panic 假定成功" / "panic fall-through 单一路径" <!-- gate-exempt: D139 -->
 
 ### 元规则校验
 
 - 手册: RISC-V SBI v2.0 §5.1 (Legacy Console Putchar, EID=0x01) + §6 (Base Extension)
 - 场景矩阵 (6 格): Panic 在 D88 之前 / Panic 在 D88 之后 / Panic 时 UART0 故障 / Panic 时 SBI firmware hang / 递归 panic / QEMU 注入 peer Hart hang 测试
+
+---
+
+## D163 增补 (R52): SBI SRST `reset_type` 双轨语义 — `sbi_shutdown` vs `sbi_cold_reboot`
+
+> **回链**: R52 立法, 第四节血统缺口登记册收口。`sbi_system_reset(0, 1)` 单一假设不再成立; SBI v2.0 §9.4 三档 reset_type (`0=shutdown / 1=cold_reboot / 2=warm_reboot`) 各自有合法场景, 必须显式分流。
+
+### 立法
+
+```c
+// D163 双轨分流 (HAL FFI 边界)
+// 路径 A: planned shutdown (D154 SYS_SHUTDOWN HAL FFI 路径) <!-- gate-exempt: D154 -->
+static inline void sbi_shutdown(uint32_t reason) {
+    sbi_system_reset(0, reason);  // (reset_type=shutdown, reason)
+    __builtin_unreachable();
+}
+// 路径 B: fatal stop (D95 DTB collision / D136 Step 0 trap / D139 panic / D161 __stack_chk_fail)
+static inline void sbi_cold_reboot(uint32_t reason) {
+    sbi_system_reset(1, reason);  // (reset_type=cold_reboot, reason)
+    __builtin_unreachable();
+}
+```
+
+**调用点分流**:
+- `sbi_shutdown(reason)` ← D154 power-off 路径 (planned, 用户/系统主动)
+- `sbi_cold_reboot(reason)` ← D95/D136/D139/D161 所有不可恢复路径 (fatal, 物理停机+冷启)
+
+### 立法动机 (Windows MVP D-IMPL-05)
+
+MVP 早先全部用 `sbi_system_reset(0, 1)` (单一 shutdown), 配 QEMU `-no-reboot` 时 QEMU 不退出 — `0=shutdown` 期望 firmware 处理 reset, 但 OpenSBI 在 `-no-reboot` 下直接 halt QEMU。MVP 改 `sbi_system_reset(1, 1)` (cold_reboot) 后, QEMU 干净退出。
+
+R52 D163 立法归口: 工具行为驱动偏离不再是 "MVP 自行改的口径", 而是有 D# 背书的合法 spec 行为 — fatal stop 路径全部走 cold_reboot, planned shutdown 才走 shutdown。MVP D-IMPL-05 历史偏差升级为 D163 双轨分流。
+
+### 与 R46 勘误的关系
+
+R46 勘误 ② 把 `sbi_system_reset(0, 1, SBI_SRST_SYSTEM_RESET)` 修订为双参 `(reset_type, reset_reason)`, 删去 `SBI_SRST_SYSTEM_RESET` 常量。R52 D163 在 R46 勘误之上**进一步分流** reset_type, 不冲突, 不替代。
+
+### 传染面
+
+- `06-boot-sequence.md` § D136 Step 0 trap 已升 cold_reboot (R52)
+- `15-phase0-mvp.md` T1.11 SRST 用例分流双轨
+- `16-profile-matrix.md` § 各 profile SRST 默认 (planned shutdown vs fatal stop)
+- `check-docs.sh` 不新增禁词 (D163 是分流语义, 不与既有禁词冲突)
 
 ---
 
@@ -611,11 +658,12 @@ D99 `_start: mv tp, a0` 在 `-bios none` 直启模式下契约仍受 a0 完整�
 
 ```c
 // D141 R46 勘误后实现 (R42 版 sbi_hart_get_id fallback 删除)
-static uint32_t cosmo_get_hart_id(uint32_t a0_hint, const void *dtb) {
+static uint32_t basal_get_hart_id(uint32_t a0_hint, const void *dtb) {
     uint32_t dtb_harts = dtb_count_cpu_nodes(dtb);  // DT 节点扫描
     if (a0_hint >= dtb_harts) {
         // D141: a0 越界 DTB 声明的 hart 数, 直接 SRST
-        sbi_system_reset(SBI_SRST_SYSTEM_RESET, 1);
+        // R52 D163: fatal stop 路径走 cold_reboot (a0=1), 配 -no-reboot 干净退出
+        sbi_system_reset(1, 1);  // (reset_type=cold_reboot, reason=system_failure)
     }
     return a0_hint;  // D141: a0 权威
 }
@@ -669,7 +717,7 @@ bool try_fs_vs_lazy_init(uintptr_t sepc, uint64_t scause, uint64_t sstatus) {
 
 **场景矩阵 (5 格)**: RV64GC+V FS=Off 用户 VLE / RV64GC+V FS=Initial 已设 / **RV64GC 无 V FS=Off 用户 VLE (buggy) → 走真异常** / **RV64IMAC 无 F/D/V FS=Off 用户 fmadd.d → 走真异常** / RV64GC FS=Off 用户 fmul.d → 置 FS=Initial → 重试成功。
 
-**传染面**: `12-scheduler.md` § D104 Lazy Save FS/VS 路径引用 D142; `13-build-pipeline.md` build_options.has_fp_extension / has_v_extension 派生 (D138 联动); `20-documentation-gate.md` 新增禁词 "D118 三条件覆盖所有 RVV 场景"。
+**传染面**: `12-scheduler.md` § D104 Lazy Save FS/VS 路径引用 D142; `13-build-pipeline.md` build_options.has_fp_extension / has_v_extension 派生 (D138 联动); `20-documentation-gate.md` 新增禁词 "D118 三条件覆盖所有 RVV 场景"。 <!-- gate-exempt: D142 -->
 
 ---
 
@@ -694,7 +742,7 @@ D94 Tier 3 增加 `num_harts > 1` 检测, 多 Hart 走 SBI IPI 自旋锁 (与 Ti
         uint64_t deadline = csrr_read(time) + d94_tier2_timeout_ticks;
         while (!ipi_acked(peer_mask)) {
             if (csrr_read(time) > deadline) {
-                cosmo_panic_abort_fmt(...);  // D117 timeout
+                basal_panic_abort_fmt(...);  // D117 timeout
             }
         }
         bool match = (*dest == old_val);
@@ -711,8 +759,8 @@ D94 Tier 3 增加 `num_harts > 1` 检测, 多 Hart 走 SBI IPI 自旋锁 (与 Ti
 }
 ```
 
-**传染面**: `12-scheduler.md` Work-Stealing 联动 + `15-phase0-mvp.md` T1.10 升级 + `20-documentation-gate.md` 新增禁词 "Tier 3 假定单 Hart"。
-**传染面**: `12-scheduler.md` Work-Stealing 联动 + `15-phase0-mvp.md` T1.10 升级 + `20-documentation-gate.md` 新增禁词 "Tier 3 假定单 Hart"。
+**传染面**: `12-scheduler.md` Work-Stealing 联动 + `15-phase0-mvp.md` T1.10 升级 + `20-documentation-gate.md` 新增禁词 "Tier 3 假定单 Hart"。 <!-- gate-exempt: D144 -->
+**传染面**: `12-scheduler.md` Work-Stealing 联动 + `15-phase0-mvp.md` T1.10 升级 + `20-documentation-gate.md` 新增禁词 "Tier 3 假定单 Hart"。 <!-- gate-exempt: D144 -->
 
 ---
 
@@ -762,7 +810,7 @@ static inline bool is_fp_or_vv_opcode(uint32_t instr) {
 
 ```
 
-**传染面**: `12-scheduler.md` § D104 Lazy Save FS/VS 联动 + `20-documentation-gate.md` 新增禁词 "FP CSR 访问假定合法"。
+**传染面**: `12-scheduler.md` § D104 Lazy Save FS/VS 联动 + `20-documentation-gate.md` 新增禁词 "FP CSR 访问假定合法"。 <!-- gate-exempt: D152 -->
 
 ---
 
@@ -775,12 +823,12 @@ static inline bool is_fp_or_vv_opcode(uint32_t instr) {
 R46 裁定 (Brra1n0): THR-empty 状态在 **LSR (offset 5) bit 5 (0x20)**, 不是 MCR (offset 4) bit 0 (DTR)。原代码轮询 DTR 位恒 1, panic 路径自己先死循环。QEMU virt 16550 **按字节访问**, `uint32_t*` 索引错。
 
 ```c
-// kernel/hal/panic.c (D139 R46 勘误后, 完整 panic 三通道)
-void cosmo_panic_abort_fmt(const char *file, int line, const char *fmt, ...) {
+// kernel/hal/panic.c (D139 R46 勘误后, 完整 panic 三通道; R52 D163 升 cold_reboot)
+void basal_panic_abort_fmt(const char *file, int line, const char *fmt, ...) {
     // D139 递归防御 (D127 load/store-only, 禁 RMW)
     if (!d139_try_enter_panic()) {
-        // R46 勘误: SBI SRST 双参 (reset_type, reset_reason), 不存在 SBI_SRST_SYSTEM_RESET 常量
-        sbi_system_reset(0, 1);  // (reset_type=shutdown, reason=system_failure)
+        // R52 D163: fatal stop 路径走 sbi_cold_reboot (a0=1), 不再 shutdown (a0=0)
+        sbi_system_reset(1, 1);  // (reset_type=cold_reboot, reason=system_failure)
         __builtin_unreachable();
     }
 
@@ -798,8 +846,8 @@ void cosmo_panic_abort_fmt(const char *file, int line, const char *fmt, ...) {
         }
     }
 
-    // 通道 3: 都失败, 强制 reset
-    sbi_system_reset(0, 1);  // R46 勘误: 双参, 不带常量
+    // 通道 3: 都失败, 强制 reset (R52 D163 cold_reboot 路径)
+    sbi_system_reset(1, 1);  // (reset_type=cold_reboot, reason=system_failure)
     __builtin_unreachable();
 }
 ```

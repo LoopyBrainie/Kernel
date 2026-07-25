@@ -63,7 +63,7 @@ R40 Q50 立项前, Auto 行写 "mixed / Yes" — 同一字段两种语义并存,
 **传染面清单** (R40 元规则四):
 - `build.zig` § PageAggregationMode 编译器分支 (D109 + D135 联动)
 - `15-phase0-mvp.md` § PageAggregation T1.13 升级 D135 (Auto 模式双 region reporting)
-- `20-documentation-gate.md` 新增禁词: `Auto 模式 mixed padding` / `BlockPool 内部混合 layout` (已入册, R40)
+- `20-documentation-gate.md` 新增禁词: `Auto 模式 mixed padding` / `BlockPool 内部混合 layout` (已入册, R40) <!-- gate-exempt: D135 -->
 
 `build.zig` switches: `-Denable_page_aggregation=true/false` (default `true` for Server, `false` for Embedded).
 
@@ -119,11 +119,11 @@ pub const IsolationMechanism = union(enum) {
 | Phase 1+ Embedded | 1 block request | **D84 SATP VMA** (PTE + VMA 双重映射) |
 | Phase 1+ Server | 1 block request | **D84 SATP VMA** + **D31 PMP** (纵深防御) |
 
-**U-Mode mmap 路径** (D109 协同):
+**U-Mode mmap 路径** (D109 协同, D174 后缀命名漏网补漏):
 
 ```rust
 // D109: U-Mode 申请 1 个 block 时, 由 D31/D84 提供二级隔离
-pub fn mmap_cosmo(fd: u32, offset: u64, len: usize) -> MmapResult {
+pub fn neura_mmap(fd: u32, offset: u64, len: usize) -> MmapResult {
     let block_count = (len + 1535) / 1536;  // D57 1536B ceil
     let page_count = (block_count + 1) / 2;  // D45 2 blocks/page
 
@@ -167,7 +167,7 @@ make test-umode-sparse-cross   # 同时启用 D31 + D84 纵深防御
 - **Option A** (严格 1 block/4KB page) 内存预算 1MB 超出 644KB V2.2 2.67×, 不可接受。
 - **Option C** (禁用 U-Mode Sparse) 违背 D9.2 Scheme Router 必须支持 U-Mode comm 的设计前提, 拒绝。
 
-D109 是 Q25 推荐选项 B 的实现, 接受 "PTE alignment" 命名诚实性 vs 原 "PTE isolation" 营销性的权衡。
+D109 是 Q25 推荐选项 B 的实现, 接受 "PTE alignment" 命名诚实性 vs 原 "PTE isolation" 营销性的权衡。 <!-- gate-exempt: D109 -->
 
 ## D109/Q25 落地约束: PMP region 预算编译期记账
 
@@ -302,7 +302,7 @@ void file_table_init(void) {
 }
 
 // D151 运行时文件操作: 写 mutable_table
-int cosmo_read(int fd, void *buf, size_t len) {
+int neura_read(int fd, void *buf, size_t len) {
     // ... (不变) 但块索引更新写 mutable_table[fd].block_index
     if (new_block_index != mutable_table[fd].block_index) {
         mutable_table[fd].block_index = new_block_index;
@@ -311,7 +311,7 @@ int cosmo_read(int fd, void *buf, size_t len) {
 }
 ```
 
-**传染面**: `14-syscall-api.md` § cosmo_open/read/write 改写 mutable_table + `13-build-pipeline.md` § FILE_TABLE 编译期生成 + `20-documentation-gate.md` 新增禁词 "FILE_TABLE 单一不可变"。
+**传染面**: `14-syscall-api.md` § neura_open/read/write 改写 mutable_table + `13-build-pipeline.md` § FILE_TABLE 编译期生成 + `20-documentation-gate.md` 新增禁词 "FILE_TABLE 单一不可变"。 <!-- gate-exempt: D151 -->
 
 ## initrd file count gate (D105)
 
@@ -371,7 +371,7 @@ D28 + D40 + D65 累计提到"5-step degradation" 3 处, **从未列出 5 个具�
 | 2 | **COMPACT_DIRTY** | 迁移 dirty 块到低索引, 形成连续 free 区间 | step 1 失败 | ~50 行 (搬运 N 个 dirty 块) |
 | 3 | **SPILL_TO_NODE** | 把 dirty 数据写到 NodePool (D61 NOLOAD 占位), 释放 BlockPool | step 2 失败 | ~80 行 (Phase 1 才实现 NodePool) |
 | 4 | **REDUCE_FS_VS** | 强制所有 task FS=Off, 释放 `256B/task × N task` FPU 上下文 | step 3 失败 | ~30 行 (调度器配合) |
-| 5 | **PANIC_FALLBACK** | `cosmo_panic_abort_fmt("D140: BlockPool exhausted after 5-step")` | step 4 失败 | 0 (D139 panic 路径复用) |
+| 5 | **PANIC_FALLBACK** | `basal_panic_abort_fmt("D140: BlockPool exhausted after 5-step")` | step 4 失败 | 0 (D139 panic 路径复用) |
 
 **Per-pool 短路径 (不套用 5 步)**:
 
@@ -404,7 +404,7 @@ pub fn block_alloc_with_degrade() ?[*]RpcUnit {
                 if (block_alloc_scan()) |b| return b;  // 重试 step 1
             },
             .PANIC_FALLBACK => {
-                cosmo_panic_abort_fmt(@src(),
+                basal_panic_abort_fmt(@src(),
                     "D140: BlockPool exhausted after 5-step degradation");
                 unreachable;
             },
@@ -417,14 +417,14 @@ pub fn block_alloc_with_degrade() ?[*]RpcUnit {
 pub fn mac_alloc_with_degrade() ?*MacHeader {
     if (mac_alloc_scan()) |m| return m;
     if (block_alloc()) |b| return @ptrCast(b);  // 借用 BlockPool 前 14B
-    cosmo_panic_abort_fmt(@src(), "D140: MacDmaPool + BlockPool exhausted");
+    basal_panic_abort_fmt(@src(), "D140: MacDmaPool + BlockPool exhausted");
     unreachable;
 }
 
 // IPC 短路径
 pub fn ipc_alloc_with_degrade() ?IpcChannel {
     if (ipc_alloc_after_drop_oldest()) |c| return c;
-    cosmo_panic_abort_fmt(@src(), "D140: IPC channels exhausted");
+    basal_panic_abort_fmt(@src(), "D140: IPC channels exhausted");
     unreachable;
 }
 ```
@@ -446,7 +446,7 @@ make test-d140-blockpool-degrade
 - `14-syscall-api.md` § `SYS_ENOSPC` 返回条件改写 (Phase 1+ 不立即返回, 先 5 步退化)
 - `12-scheduler.md` § context_switch 加 D140 step 4 `force_all_tasks_fs_off()` 实现
 - `15-phase0-mvp.md` T1.10 (sys_atomic_cas_ptr 3-tier) 升级为 D140 + 新增 T1.26 (BlockPool 退化测试)
-- `20-documentation-gate.md` **新增禁词**: "5-step degradation 未定义" / "Pool 退化假定成功"
+- `20-documentation-gate.md` **新增禁词**: "5-step degradation 未定义" / "Pool 退化假定成功" <!-- gate-exempt: D140 -->
 
 ### 元规则校验
 
@@ -488,7 +488,7 @@ pub fn nodepool_init() void {
     // D143: Phase 1+ 启动时预 commit 132 KB 物理连续页
     const nodepool_phys = mmio_alloc_physical(132 * 1024);
     if (nodepool_phys == null) {
-        cosmo_panic_abort_fmt(@src(),
+        basal_panic_abort_fmt(@src(),
             "D143: NodePool commit failed, Phase 1 degrade mode");
     }
     // 映射 nodepool_phys 到 NodePool VMA 范围
@@ -505,7 +505,7 @@ SIZE_PHASE1=$(stat -c%s build/kernel-phase1.elf)
 [ "$SIZE_PHASE1" -gt "$SIZE_PHASE0" ] || { echo "D143 FAIL: Phase 1+ commit 未生效"; exit 1; }
 ```
 
-**传染面**: `02-memory-topology.md` § V2.2 ledger 表增 D143 commit 行; `14-syscall-api.md` § SYS_ENOSPC 返回条件增 NodePool commit 失败路径; `15-phase0-mvp.md` T1.20 升级为 D143 + 新增 T1.28 (NodePool commit 测试); `20-documentation-gate.md` 新增禁词 "NodePool 物理页按需 lazy commit"。
+**传染面**: `02-memory-topology.md` § V2.2 ledger 表增 D143 commit 行; `14-syscall-api.md` § SYS_ENOSPC 返回条件增 NodePool commit 失败路径; `15-phase0-mvp.md` T1.20 升级为 D143 + 新增 T1.28 (NodePool commit 测试); `20-documentation-gate.md` 新增禁词 "NodePool 物理页按需 lazy commit"。 <!-- gate-exempt: D143 -->
 
 ---
 
@@ -531,19 +531,20 @@ SIZE_PHASE1=$(stat -c%s build/kernel-phase1.elf)
 #### 字段自然布局与 sizeof 推导
 
 ```c
-/* HANDWRITTEN: tri-end asserts embedded */  // D121 marker
-// 09-memory-subsystem.md § FILE_TABLE (D151 升级, R46 勘误后)
-typedef struct {
+// [OBSOLETED-by-R47-撤销] (R51-FIX F-3 传染失败修补):
+// 原 R46 84B 自然布局与显式 padding 已被 R47 ctypes 实测反驳 (自然布局 sizeof=80B).
+// 本段历史代码保留作审计档案, 不参与本仓库当前实现.
+// 正确形态见下方: `file_entry_t` 自然 80B (R47 撤销裁定).
+typedef struct __attribute__((deprecated)) {  // 编译期 emit warning
     uint32_t inode;          // 4B @ offset 0
     uint32_t _pad0;          // 4B @ offset 4 (对齐 uint64)
     uint64_t block_index;    // 8B @ offset 8
     uint8_t  flags;          // 1B @ offset 16
     uint8_t  _pad1[7];       // 7B @ offset 17 (对齐 8 字节)
     char     name[60];       // 60B @ offset 24
-} file_entry_t;             // sizeof = 24 + 60 = 84B (R46 自然布局)
-// D151 R46: 50 × 84B = 4200B = 4.2KB (D46 ledger 同步 4KB → 4.2KB)
-_Static_assert(sizeof(file_entry_t) == 84, "D151 R46 natural layout");
-_Static_assert(_Alignof(file_entry_t) == 8, "D151 R46 align");
+} file_entry_t_r46;         // [OBSOLETED-by-R47-撤销]: sizeof = 24 + 60 = 84B (R46 误判)
+// D151 R46 ledger 4KB→4.2KB: [OBSOLETED-by-R47-撤销]
+// _Static_assert(sizeof(file_entry_t_r46) == 84, "R46 误判, R47 撤销")  // 不参与本仓库当前实现
 ```
 
 #### .rodata 模板 + .bss mutable_table 双结构
@@ -567,7 +568,7 @@ void file_table_init(void) {
 }
 
 // D151 运行时文件操作: 写 mutable_table, 不写 FILE_TABLE
-int cosmo_read(int fd, void *buf, size_t len) {
+int neura_read(int fd, void *buf, size_t len) {
     // ... (不变) 但块索引更新写 mutable_table[fd].block_index
     if (new_block_index != mutable_table[fd].block_index) {
         mutable_table[fd].block_index = new_block_index;  // D151: 写 .bss
@@ -616,7 +617,7 @@ readelf -W -s build/kernel.elf | grep FILE_TABLE | grep -q "OBJECT" \
 | Phase 1+ SATP 启用, FILE_TABLE PTE 仍 r/o | ✓ RISC-V PTE r-bit 强制 | ✓ 同, 但 mutable_table 在 .bss 段, PTE r/w |
 | D121 SSOT whitelist 是否含 mutable_table | ❌ 没说, mutable_table 是 .bss 类型不在 SSOT 范围 | ✓ D151: mutable_table 是 file_entry_t 数组 (D121 whitelist 隐式允许) |
 
-**新增禁词**: "FILE_TABLE 单一不可变" / "FILE_TABLE sizeof=80" / "FILE_TABLE 总计 4KB"
+**新增禁词**: "FILE_TABLE 单一不可变" / "FILE_TABLE sizeof=80" / "FILE_TABLE 总计 4KB" <!-- gate-exempt: D151 -->
 
-**传染面**: `09-memory-subsystem.md` § D151 本增补 + `14-syscall-api.md` § cosmo_open/read/write 改写 mutable_table + `13-build-pipeline.md` § FILE_TABLE 编译期生成 (84B 派生) + D46 台账 4KB→4.2KB + `20-documentation-gate.md` 新增禁词三条。
+**传染面**: `09-memory-subsystem.md` § D151 本增补 + `14-syscall-api.md` § neura_open/read/write 改写 mutable_table + `13-build-pipeline.md` § FILE_TABLE 编译期生成 (84B 派生) + D46 台账 4KB→4.2KB + `20-documentation-gate.md` 新增禁词三条。
 

@@ -37,7 +37,7 @@ zig build audit-globals  # checks against whitelist
 ctags -R kernel/hal/c | grep -E '^[a-z_]+ +.*\(\*\)' | diff - audits/allowed_fn_ptrs.txt
 
 # 4. Cross-language FFI: only D74-generated symbols
-nm kernel.elf | grep ' U ' | grep -v '__cosmo_abi_' | grep -q . || {
+nm kernel.elf | grep ' U ' | grep -v '__basal_abi_' | grep -q . || {
     echo "FATAL: Shell links non-SSOT symbol"; exit 1;
 }
 ```
@@ -78,7 +78,7 @@ nm kernel.elf | grep ' U ' | grep -v '__cosmo_abi_' | grep -q . || {
 
 The user-facing API is **unchanged across phases** (D55). The implementation underneath changes, but the C/Rust source code in Shell does not.
 
-> **P3-10 (R47 勘误)**: Phase 1 "ecall → M-Mode → S-Mode" 表述错误。OpenSBI 默认 `medeleg` 把 U-Mode ecall 委托给 S-Mode 直接处理 (RISC-V Privileged Spec §3.1.8), 不经 M-Mode。Phase 1 实际路径:
+> **P3-10 (R47 勘误)**: Phase 1 "ecall → M-Mode → S-Mode" 表述错误。OpenSBI 默认 `medeleg` 把 U-Mode ecall 委托给 S-Mode 直接处理 (RISC-V Privileged Spec §3.1.8), 不经 M-Mode。Phase 1 实际路径: <!-- gate-exempt: D168 -->
 > `U-Mode ecall` → `medeleg[bit 8]` 命中 → `scause=8` 落到 S-Mode trap_entry → Call Gate 派发。无需绕 M-Mode, 也省 50–100 cycle SBI tax (D21)。
 
 ## Shell example (skeleton)
@@ -88,24 +88,37 @@ The user-facing API is **unchanged across phases** (D55). The implementation und
 #![no_std]
 #![no_main]
 
-// D97: 0 unsafe
-use cosmo_kernel::{
+// D97: 0 unsafe (除必要的 FFI 桥接)
+use cortix_kernel::{
     abi::{sys_result_t, sys_call},
     scheme::{open, read, write, close},
 };
 
+// R48 勘误增补: shell_io_pool 由 build/link.zig 在 boot 期从 BlockPool
+//   划分 (1 BlockPool 块 = 1536B, D57 三层不变式锁定), 符号由链接脚本导出.
+//   P2-4 已显式标注 caller 栈缓冲跨 FFI 是错例 (典型形态即 512B 栈数组),
+//   见 14 § "FFI ownership (D103 + P2-4 放宽 source 例外)" WRONG 历史错例.
+extern "C" {
+    static mut __shell_io_pool: [u8; 1536];  // build/link.zig 派生, 1 BlockPool 块
+}
+
 #[no_mangle]
 pub extern "C" fn shell_main() -> ! {
-    // D4: scheme://[node]/path position-transparent request
+    // D4: scheme://[node]/path position-transparent request (path 来自 .rodata 字面量)
     let fd = open(b"scheme://0/initrd/motd\0", 0);
-    let mut buf = [0u8; 512];
-    let n = read(fd, &mut buf);
+    // D103 + P2-4: buf 必须来自静态池, 禁止 caller 栈缓冲
+    let buf: &mut [u8] = unsafe { &mut __shell_io_pool };
+    let n = read(fd, buf);
     write(1, &buf[..n as usize]);  // stdout
     close(fd);
 
     loop { syscall_yield(); }
 }
 ```
+
+### Shell I/O pool 划分说明 (R48 勘误增补)
+
+`__shell_io_pool` 由 build/link.zig 在 boot 期从 BlockPool (D29 + D45 sparse) 划分出 **1 块 (1536 B)** 作为 Shell 全局 I/O 缓冲。该符号在链接脚本中导出 `.bss.shell_io_pool` 段, Shell 在编译期看到的是零大小 extern 声明, 由链接器在最终 ELF 中补全物理地址与容量。Shell 单线程使用, 无并发安全顾虑; 若 Phase 1+ Shell 改多线程, 需进一步按 fd 划分 pool (D103 红线, 详见 14 § FFI ownership 表)。
 
 ## Forbidden third-party loading (D97)
 

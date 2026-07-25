@@ -31,13 +31,30 @@ Firmware Jump (a0=hartid, a1=dtb_phys)
   │   ├── D77: DTB 转储 (Primary Hart only, deferred to Phase B)
   │   ├── D33: 解析 memory nodes → HLCB
   │   ├── D92: csrw sscratch, __hart{N}_stack_top
-  │   └── D82: hlcb.in_kernel_space.store(true)
+  │   └── D82: hlcb.in_kernel_space.store(true)  [OBSOLETED-by-D158 (R51-M5), 托管迁移 .bss HartLocalControl.in_kernel]
   │
   └── Step 2 (kmain+, application ready)
       ├── D88: early_console SBI Stub → dev://uart0 切换
-      ├── D76: cosmo_panic_abort available
+      ├── D76: basal_panic_abort available
       └── D100: UKI Loader writes Active Slot to .boot_meta
 ```
+
+## Boot Banner SSOT (D175)
+
+**单一证据源 (D175)**: Phase 0 boot 成功 marker — U-Mode shell 在 Hart-Local 初始化完成 + .bss 清零 + 控制权移交 shell 后, 必须通过 dev://uart0 打印以下 ASCII 字符串:
+
+```
+NEURA BOOT OK
+```
+
+**字符级约束** (用于 qemu 冒烟断言与 harness verdict 校验):
+- 15 字节 ASCII, 末尾 `\n`
+- 大小写敏感: `NEURA` 全大写, `BOOT`/`OK` 全大写
+- 字节序列: `4E 45 55 52 41 20 42 4F 4F 54 20 4F 4B 0A`
+
+**反例 (R63 D175 入册禁词 `COSMO BOOT OK`)**: R50 时代 brand marker `COSMO BOOT OK` 不得再出现于任何代码 / spec / harness / qemu log. 旧文本若需保留历史叙述, 必须按 D172 围栏外豁免规则处理 (30-open-questions.md 等审计档案豁免; 代码/spec 一律强制迁移). <!-- gate-exempt: D175 -->
+
+**回链**: `15-phase0-mvp.md` § R49-C7 证据补丁段 (1 处 marker 引用) + `tools/spec_lab/` Phase 0 冒烟断言 (实现期落地).
 
 **P3-2 唯一顺序 (R47 增补, supersede R40 D136 fragment)**: Step 0 内禁止重排的 5 条硬序:
 
@@ -58,13 +75,18 @@ Firmware Jump (a0=hartid, a1=dtb_phys)
 .global _start
 _start:
     # ==== D95: Anti-Trampling (D27 magic + total size + overlap) ====
-    lw      t0, 0(a1)             # DTB magic (big-endian 0xd00dfeed)
+    # R49-F2 勘误: lw → lwu (RV64I 标准指令, 不需 A 扩展)
+    #   原因: RV64 lw 对 0xedfe0dd0 做符号扩展 → 0xFFFFFFFF_edfe0dd0,
+    #          与 li 零扩展常量 0xedfe0dd0 比较永远不等 → 静默 SRST
+    #   lwu 零扩展读 32B → t0 = 0x00000000_edfe0dd0, 比较通过
+    #   实测复现: 沙箱二 2026-07-19 排障记录, 调试 4h 才定位到此陷阱
+    lwu     t0, 0(a1)             # DTB magic (big-endian 0xd00dfeed)
     li      t1, 0xedfe0dd0        # little-endian encoding
     bne     t0, t1, .L_fatal_dtb_magic
 
     lw      t0, 4(a1)             # DTB total size (big-endian)
-    # byte-swap t0 (big → little)
-    ... (rev8 sequence)
+    # byte-swap t0 (big → little) — see R51-F5 (D-13) 锚 below for explicit form.
+    # `rev8` (RISC-V Zbb) is forbidden in rv64imac target; must be explicit slli+srli+or.
 
     add     t1, a1, t0            # t1 = dtb_end
     la      t2, _start
@@ -76,6 +98,8 @@ _start:
 .L_dtb_safe:
     # ==== D92: Early Boot Stack ====
     la      t0, __early_boot_stack_top
+    csrw    sscratch, t0
+    la      sp, __early_boot_stack_top
     csrw    sscratch, t0
     la      sp, __early_boot_stack_top
 
@@ -95,7 +119,7 @@ _start:
     # ==== D92 + D107: Hart-Local stack offset (use hartid, NOT time CSR) ====
     # D107 R31 fix: csrr t0, time was wrong — time changes per cycle, would give
     # random stack base. Use hartid (a0/tp) instead, restoring 644KB topology.
-    # P3-1 (R47 勘误): +1 修正 off-by-one — `hartid<<SHIFT` 是区域底 (=上一 hart 的栈顶),
+    # P3-1 (R47 勘误): +1 修正 off-by-one — `hartid<<SHIFT` 是区域底 (=上一 hart 的栈顶), <!-- gate-exempt: D107 -->
     # hart 0 直接越出栈池。改 `base + ((hartid+1)<<SHIFT)`,hart 0 落在 [base, base+SHIFT_SIZE),
     # hart 1 落在 [base+SHIFT_SIZE, base+2*SHIFT_SIZE),依此类推 (栈向低地址增长, 起始 sp = 栈顶)。
     mv      t0, tp                 # t0 = hartid (stable, from D99)
@@ -115,6 +139,83 @@ _start:
     .if ((HLCB_SIZE & (HLCB_SIZE - 1)) != 0)
     .err
     .endif
+
+# ==== R49-F3 勘误: HLCB_SIZE=1 单 Hart 边界条款 ====
+# 公式 `((tp+1) & (HLCB_SIZE-1)) << SHIFT` 在 HLCB_SIZE=1 时退化为:
+#   (tp+1) & 0 = 0 → 0 << SHIFT = 0
+# Hart 0 用此公式得 sp = __hart_stack_base + 0, 错用栈底 (而非栈顶)
+# 后果: sp 落在栈区域底, 首次 push 即触发 overflow
+# 实测复现: 沙箱二 2026-07-19 HLCB_SIZE=1 单 Hart 精简构建, 表现为 hart_stack_base/top 同址
+# 病理同 F1/F2: "frozen 草图在边界条件烂掉" 的同一病型, 位运算 fallback 在 HLCB_SIZE=1
+# 的边界非法, spec 立法须显式拒绝该 fallback 而非依赖运行时 luck.
+
+# build.zig 编译期立法 (R49-F3 必须落地, 否则单 Hart 永远 panic):
+```zig
+// R49-F3 勘误: HLCB_SIZE=1 单 Hart 边界条款 — 禁位运算 fallback, 链接符号兜底
+pub const HART_STACK_TOP: u32 = blk: {
+    if (HLCB_SIZE == 1) {
+        @compileError("R49-F3: HLCB_SIZE=1 禁位运算 fallback, 链接符号 __hart0_stack_top");
+    }
+    break :blk @as(u32, HLCB_SIZE);  // 正常路径返回 HLCB_SIZE, 实际 sp 推导走 asm 路径
+};
+```
+
+# ==== R51-M5 (D-16): HLCB 删除 in_kernel_space + .bss 8B RR 托管 ====
+# R47 P1-1 (R48-1) extern struct 修复后, HLCB layout (D82) 删除 in_kernel_space 字段 (64B 严守).
+# 托管方案: .bss 单独 8B Hart-Local Control Block 用于 RR 调度 (每个 Hart 一份).
+# 同步: D107 (per-Hart range 锚定) + D150 (跨 Hart SBI RFENCE 同步).
+const HartLocalControl = packed struct(u64) {
+    in_kernel: u1,           // R51-M5: 与 R37 D128 一致, 不进 trap 热路径
+    reserved: u63 = 0,
+};
+var hart_local_control: [MAX_HARTS]HartLocalControl = [_]HartLocalControl{.{ .in_kernel = 0 }} ** MAX_HARTS;
+```
+
+# ==== R51-M2 (D-07) HLCB layout 锚点变量 ====
+# **锚点变量必须 .bss 零初始化**, Zig 形态 `var shim_state: ShimState = .{}` 显式零构造;
+# 不允许 .rodata const, 因为 Phase 0 runtime 需写 .bss 跨端共享状态 (D113 Shim cross-driver).
+# spec_lab 双向断言 R51-M2-bss-anchor.{sh,_negative.sh}:
+#   正向: 编译 zig 形态 `= .{}` 验证零构造编译通过
+#   反向: 改 `const` 期望编译失败 (comptime assert)
+const ShimState = extern struct {
+    cross_driver: u32 = 0,    // R51-M2 锚: 必须 .{} 零构造
+    padding: u32 = 0,
+};
+var shim_state: ShimState = .{};  // .bss 锚点 (R51-M2, D155)
+
+# ==== R51-F5 勘误: DTB 大端 → 小端 byte-reverse 必须显式 slli+srli ====
+#   原因: rv64imac target (D138) 没有 Zbb 扩展, `rev8 t0, t0` 在链接期 illegal
+#         (参照 R47 P3-4 jalr ra, t0 错误归因同源 — 假设了未启用扩展)
+#   反例: `rev8 t0, t0` (R47 错误形态)
+#   正例: 显式 8-step byte-reverse (R51-F5 锚, 下面的 ```asm fence)
+#   spec_lab 双向断言: R51-F5-rev8.sh (正向) + R51-F5-rev8_negative.sh (反向).
+
+```asm
+# ==== R51-F5 (D-13) byte-swap t0 (big → little) ====
+# Explicit 8-step permutation; no `rev8` mnemonic (rv64imac = no Zbb).
+# Back-link: 06 第 70 行 DTB total size 字段后, 该处用占位注释指向本围栏.
+
+slli    t1, t0, 56             # byte 0 → byte 7 位置
+srli    t2, t0, 56             # byte 7 → byte 0 位置
+or      t1, t1, t2             # t1 = bits[63:56] | bits[7:0]
+slli    t2, t0, 40             # byte 1 → byte 6 位置
+srli    t3, t0, 48             # byte 6 → byte 1 位置
+or      t1, t1, t2
+or      t1, t1, t3
+slli    t2, t0, 24             # byte 2 → byte 5 位置
+srli    t3, t0, 40             # byte 5 → byte 2 位置
+or      t1, t1, t2
+or      t1, t1, t3
+slli    t2, t0, 8              # byte 3 → byte 4 位置
+srli    t3, t0, 32             # byte 4 → byte 3 位置
+or      t1, t1, t2
+or      t1, t1, t3             # t1 = t0 byte-reversed (R51-F5 锚)
+# Note: 上述 12 行 raw 形式是 spec 草图; 实际实现可按 5 步合并, 但任何形式不得用 rev8.
+```
+
+# Step 0 单 Hart 实现须走链接符号分支:
+#   la      sp, __hart0_stack_top    # R49-F3: HLCB_SIZE=1 专用路径
+#   jr      t0
 
 # ==== D95: Fatal handlers ====
 .L_fatal_dtb_magic:
@@ -161,8 +262,12 @@ pub fn kmain(hart_id: u16) void {
     asm volatile ("csrw sscratch, %[t]"
         : : [t] "r" (@intFromPtr(stack_top)));
 
-    // D82: defense-in-depth
-    hlcb_table[hart_id].in_kernel_space.store(true, .SeqCst);
+    // D82: defense-in-depth  [OBSOLETED-by-D158 (R51-M5)]
+    // 字段已从 HLCB struct 删除 (R47 P1-1 extern struct 64B 严守),
+    // 托管迁移到 .bss 单独 HartLocalControl.in_kernel 字段 (D158).
+    // 此行原 `hlcb_table[hart_id].in_kernel_space.store(true, .SeqCst)` 不可编译.
+    // R51-FIX (F-2 传染失败修补): 标注 [OBSOLETED-by-D158] 同步 D158 治理.
+    hart_local_control[hart_id].in_kernel = 1;
 
     // D88: switch from SBI Stub to dev://uart0
     early_console_init();
@@ -174,7 +279,7 @@ pub fn kmain(hart_id: u16) void {
 
 | Subsystem | Decision | When ready |
 |-----------|----------|------------|
-| `cosmo_panic_abort` | D76 | Immediately after D88 |
+| `basal_panic_abort` | D168 | Immediately after D88 |
 | `dev://uart0` | D25 | After D88 |
 | Scheme Router | D9.2 | After HLCB ready |
 | UKI Loader → boot_meta | D100 | Pre-kernel jump |
@@ -192,8 +297,8 @@ pub fn kmain(hart_id: u16) void {
 //! 注入 EFAULT (D89 错误码 -14, P2-2 错误码恒负立法) 至 a0/a1 (D86 16B 兼容).
 //! D148: 嵌套 fixup 路径泛化为 "S-Mode fault + SUM=0 ⇒ 致命" — 若进入修复桩时
 //! sstatus.SUM 已经是 0 (上一轮 fixup 已被强制清零却再次触发), 直接 panic.
-.global cosmo_do_user_fault_fixup
-cosmo_do_user_fault_fixup:
+.global basal_do_user_fault_fixup
+basal_do_user_fault_fixup:
     // a0 = current_task_context_ptr, a1 = target_fixup_address
     ld      t0, CONTEXT_SSTATUS_OFFSET(a0)
     li      t1, (1 << 18)                       // SSTATUS_SUM
@@ -214,7 +319,7 @@ cosmo_do_user_fault_fixup:
 .L_nested_fixup_fatal:
     // D148: SUM=0 二次 fixup, 触发 panic 路径 (D139)
     // 这是 fail-safe 防御: 任何 SUM=0 上 Page Fault 必非合规路径
-    j       cosmo_oops_panic
+    j       basal_oops_panic
 ```
 
 **R44 D148 立法注**: SUM-state-machine 单触发语义 — 每次 Page Fault 必须**先**触发 fixup,**fixup 内部**强制清 SUM;若再次 Page Fault 且 SUM=0, 表明 fixup 嵌套或 SUM 清零漏判, **直接 panic 不再尝试 fixup**。这是 fail-fast 防御, 避免死循环 drain 内存。
@@ -245,7 +350,7 @@ trap_handler:
     ld      t5, 8(t3)                           // D112: fixup (8B) 替代 lwu (4B 错位)
     mv      a0, sp                              // current_task_context_ptr
     mv      a1, t5                              // fixup address
-    call    cosmo_do_user_fault_fixup
+    call    basal_do_user_fault_fixup
     sret                                        // 返回修复点
 .L_extable_continue:
     bltu    t0, t4, .L_extable_low
@@ -387,19 +492,23 @@ R37 D128 trap_entry 用 `slli t4, tp, 6` 索引 HLCB, 但 Step 0 期间 HLCB 仍
 ### D136 立法
 
 ```c
-// trap_entry (D136 升级, 勘误后)
+// trap_entry (D136 升级, R48 勘误增补: 命名常量同源派生)
+//   R47 bug: 原 trap_entry 用裸偏移数读 sscratch_initialized, 实际命中 hart_id:u16
+//   (offset 24), Hart 0 的 hart_id=0 → beqz 恒真 → 首 trap 必 panic (.L_step0_trap).
+//   R48 修复: 偏移统一由 build/link.zig asm-side 常量派生,
+//   与 05 extern struct comptime @offsetOf 同源 (D107 size gate + P1-1 layout).
 trap_entry:
     // D136: Step 0 盲区防御, 先检查 HLCB 是否初始化
     la      t3, __hlcb_table
-    slli    t4, tp, 6                    # HLCB 64B (D107 size gate)
+    slli    t4, tp, HLCB_STRIDE_SHIFT       # HLCB 64B stride (P1-1, 2^SHIFT)
     add     t3, t3, t4
-    lb      t5, 24(t3)                   # HLCB.sscratch_initialized offset (D82)
-    beqz    t5, .L_step0_trap            # D136: 未初始化 → SBI SRST halt
+    lb      t5, HLCB_SSCRATCH_INIT(t3)      # sscratch_initialized @56 (P1-1; R31 题面 @32)
+    beqz    t5, .L_step0_trap               # D136: 未初始化 → SBI SRST halt
 
     // D128 (R37): 判据回归 sp
     mv      t0, sp
-    ld      t1, 32(t3)
-    ld      t2, 40(t3)
+    ld      t1, HLCB_KERNEL_STACK_BASE(t3)  # @offsetOf=32 (D107)
+    ld      t2, HLCB_KERNEL_STACK_TOP(t3)   # @offsetOf=40 (D107/D64)
     bltu    t0, t1, .L_user_mode_trap
     bgeu    t0, t2, .L_user_mode_trap
     j       .L_trap_push_context
@@ -412,9 +521,10 @@ trap_entry:
     // D136 勘误 ②: SBI SRST 参数语义 (RISC-V SBI v2.0 §9.4)
     //   a0 = reset type: 0=shutdown / 1=cold reboot / 2=warm reboot
     //   a1 = reason:     0=none / 1=system failure
+    // R52 D163: fatal stop 路径走 cold_reboot (a0=1), 与 D95/D139 路径同款
     li      a7, SBI_EXT_SRST
     li      a6, SBI_SRST_SYSTEM_RESET
-    li      a0, 0                        // reset_type = shutdown
+    li      a0, 1                        // reset_type = cold_reboot (D163 fatal stop)
     li      a1, 1                        // reason = system failure
     ecall
 1:  j      1b
@@ -476,7 +586,7 @@ trap_handler:
     csrc    sie, t0
     csrr    a0, scause
     csrr    a1, stval
-    cosmo_panic_abort_fmt(__FILE__, __LINE__,
+    basal_panic_abort_fmt(__FILE__, __LINE__,
         "D137 FAIL: PLIC IRQ pending (scause=%ld stval=0x%lx) but no driver. \
          Implement Phase 1 IMSIC (D32/D83).", a0, a1)
     j       .L_normal_trap
@@ -517,13 +627,13 @@ D99 `_start: mv tp, a0` 假设 OpenSBI 标准引导, a0 = Hart ID。但在 `-bio
 
 ### D141 立法
 
-D99 拆为两路: (1) `_start: mv tp, a0` 保留快速路径; (2) `cosmo_get_hart_id(a0_hint)` 探测 SBI HSM 扩展, 支持则 `sbi_hart_get_id`, 否则信任 a0。
+D99 拆为两路: (1) `_start: mv tp, a0` 保留快速路径; (2) `basal_get_hart_id(a0_hint)` 探测 SBI HSM 扩展, 支持则 `sbi_hart_get_id`, 否则信任 a0。
 
 ```c
 // kernel/hal/riscv/hart_id.c (D141 完整实现)
 #include <sbi.h>
 
-uint32_t cosmo_get_hart_id(uint32_t a0_hint) {
+uint32_t basal_get_hart_id(uint32_t a0_hint) {
     if (sbi_probe_extension(SBI_EXT_HSM) > 0) {  // 0x48534D = 'HSM'
         register uintptr_t hart_id asm("a0");
         register uintptr_t err asm("a1");
@@ -550,7 +660,7 @@ done
 # 期望 2/2 PASS
 ```
 
-**传染面**: `08-risc-v-hal.md` Hart ID 章节加 D141 SBI HSM 实现; `15-phase0-mvp.md` T1.5 升级为 D141 + 新增 T1.27 (bios=none 测试); `20-documentation-gate.md` 新增禁词 "Hart ID 假定 a0"。
+**传染面**: `08-risc-v-hal.md` Hart ID 章节加 D141 SBI HSM 实现; `15-phase0-mvp.md` T1.5 升级为 D141 + 新增 T1.27 (bios=none 测试); `20-documentation-gate.md` 新增禁词 "Hart ID 假定 a0"。 <!-- gate-exempt: D141 -->
 
 ---
 
@@ -569,19 +679,19 @@ done
 // kernel/hal/riscv/hart_id.c (D141 R46 勘误后)
 #include <sbi.h>
 
-uint32_t cosmo_get_hart_id(uint32_t a0_hint) {
+uint32_t basal_get_hart_id(uint32_t a0_hint) {
     // R46: a0 是权威来源, 不探测 SBI HSM (HSM 无 get_id)
     // D141 正身: 运行时断言 a0 < num_harts(DTB)
     uint32_t num_harts = dtb_get_num_harts();
     if (a0_hint >= num_harts) {
-        cosmo_panic_abort_fmt(__FILE__, __LINE__,
+        basal_panic_abort_fmt(__FILE__, __LINE__,
             "D141 FAIL: Hart ID %u >= num_harts %u (DTB)", a0_hint, num_harts);
     }
     return a0_hint;
 }
 
 // D141 -bios none 多 Hart 同启: 非 boot Hart 路由 park 循环
-void cosmo_park_until_hart0_done(uint32_t my_hart_id) {
+void basal_park_until_hart0_done(uint32_t my_hart_id) {
     if (my_hart_id == 0) return;  // Hart 0 不 park
     while (!hlcb_table[0].sscratch_initialized.load(SeqCst)) {
         wfi();  // 等 Hart 0 完成 Step 0–1
@@ -589,7 +699,7 @@ void cosmo_park_until_hart0_done(uint32_t my_hart_id) {
 }
 ```
 
-**R46 新增禁词**: "SBI HSM hart_get_id" / "Hart ID 探测 SBI 兜底" / "Hart ID a0 不可信时探测 SBI"
+**R46 新增禁词**: "SBI HSM hart_get_id" / "Hart ID 探测 SBI 兜底" / "Hart ID a0 不可信时探测 SBI" <!-- gate-exempt: D141 -->
 
 **传染面**: `08-risc-v-hal.md` § D141 加 platform boot protocol 表占位 (BROM 直启逐平台登记); `15-phase0-mvp.md` T1.5 升级 + 新增 T1.27 (Hart ID DTB 校验测试); `20-documentation-gate.md` 新增上述禁词。
 

@@ -1,0 +1,25 @@
+# =============================================================================
+# toolchain.lock — Wriggly-Octopus 工具链版本区间锁 (R49-GOV / 本轮立法)
+# =============================================================================
+# 格式:  <tool> = [<下界: spec 现值>, <上界: 实测已验证>]
+#   下界 = docs/ + 沙箱三 toolchain.lock 现行锁定值 (spec 立法值, 不得低于此)
+#   上界 = mvp/phase0-final-windows-20260722/artifacts/tool_versions.txt 实测通过值
+#   区间语义 = 主机工具版本落在 [下界, 上界] 闭区间内即视为兼容;
+#              越界须走 30 号文 R49-GOV.2 追认流程, 不得静默使用.
+# 权威性: docs/05-call-gate.md / docs/13-build-pipeline.md / docs/15-phase0-mvp.md
+#         均引本文件为"版本锁定"权威源 (R51-F1 / D-01). 本文件是那些引用的落地实体.
+# 校验: docs/ci/check-toolchain.sh (格式门 — 验四工具区间锁齐全).
+# =============================================================================
+
+zig    = [0.15.2, 0.16.0]
+qemu   = [7.2.22, 11.0.0]
+rustc  = [1.88.0, 1.97.1]
+llvm   = [18.1.8, 22.1.8]
+
+# --- 构建 / 审计 profile (D138 / D-02, 两者不得混淆) ---
+rust_target_build = riscv64imac-unknown-none-elf     # lp64 软浮点, zig build 产物 + qemu_virt 启动
+rust_target_audit = riscv64gc-unknown-linux-gnu      # lp64d, 仅 crate-resolution 审计, 非构建输出
+
+# --- 未冻结具体版本 (P0 普查, 仅记来源与实测) ---
+bash   = ">=5.2"     # 实测 GNU bash 5.3.9 (cygwin, Git Bash 捆绑) — 门禁脚本运行时
+python = ">=3.11"    # 实测 3.14.6 — translate_abi.py (pathlib + dataclasses)

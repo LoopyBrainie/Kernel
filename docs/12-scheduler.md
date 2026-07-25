@@ -178,7 +178,7 @@ done
 
 **场景矩阵 (4 格)**: 多 Hart 全局 coherence + Work-Stealing / 多 Hart 无 coherence + Work-Stealing (D111 拒绝, D145 降级) / 多 Hart 无 coherence + Pin-Binding (D145 实现 + task_affinity 显式) / 单 Hart + RR (Phase 0 默认)。
 
-**传染面**: `08-risc-v-hal.md` Tier 2 联动 + `15-phase0-mvp.md` T1.20 (PMP) + `20-documentation-gate.md` 新增禁词 "Pin-Binding alternative 假定实现" / "运行时随机 Hart 绑定"。
+**传染面**: `08-risc-v-hal.md` Tier 2 联动 + `15-phase0-mvp.md` T1.20 (PMP) + `20-documentation-gate.md` 新增禁词 "Pin-Binding alternative 假定实现" / "运行时随机 Hart 绑定"。 <!-- gate-exempt: D145 -->
 
 ---
 
@@ -227,7 +227,7 @@ static int debug_audit_read_in_kernel_space(int peer_hart) {
 }
 ```
 
-**新增禁词**: "SBI RFENCE 用作数据一致性原语" / "跨 Hart 偷任务前 SBI RFENCE" / "remote_fence_vma 用于数据 cache 同步"
+**新增禁词**: "SBI RFENCE 用作数据一致性原语" / "跨 Hart 偷任务前 SBI RFENCE" / "remote_fence_vma 用于数据 cache 同步" <!-- gate-exempt: D150 -->
 
 **传染面**: `08-risc-v-hal.md` § D94 Tier 2 联动 + `20-documentation-gate.md` 新增禁词三条。
 
@@ -247,14 +247,14 @@ typedef struct {
 
 static inline void save_context(int task_id, uint64_t prev_sstatus) {
     // D104: only save if dirty
-    if (cosmo_hal_fs_is_dirty(prev_sstatus)) {
+    if (basal_hal_fs_is_dirty(prev_sstatus)) {
         fp_context_t *fp = &task_table[task_id].fp_ctx;
         asm volatile ("fsd f0,  0(%0); fsd f1,  8(%0); ..." ::
                          "r"(fp) : "memory");
         // 32 × 8B = 256B save
         // After save: set FS = Clean (0b10)
     }
-    if (cosmo_hal_vs_is_dirty(prev_sstatus)) {
+    if (basal_hal_vs_is_dirty(prev_sstatus)) {
         vector_context_t *v = &task_table[task_id].vec_ctx;
         // 32 × vlenb save (1KB - 128KB depending on VLEN)
         // After save: set VS = Clean (0b10)
@@ -293,7 +293,7 @@ static inline void context_switch(int next_task_id) {
 ## Cross-references
 
 - **Memory Subsystem** (09): task contexts stored in HLCB/task_table
-- **HAL** (08): provides `cosmo_hal_fs_is_dirty` / `cosmo_hal_vs_is_dirty`
+- **HAL** (08): provides `basal_hal_fs_is_dirty` / `basal_hal_vs_is_dirty`
 - **Build Pipeline** (13): `-Dsched=rr|worksteal` selection
 - **Documentation Gate** §二十.7: see gate catalog for forbidden phrases (R30 D104)
 

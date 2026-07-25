@@ -65,7 +65,8 @@ comptime {
 }
 ```
 
-**传染面**: `13-build-pipeline.md` build_options.rpc_align 派生 + `15-phase0-mvp.md` T1.2 升级 + `20-documentation-gate.md` 新增禁词 "RpcUnit align 统一 64B"。
+**传染面**: `13-build-pipeline.md` build_options.rpc_align 派生 + `15-phase0-mvp.md` T1.2 升级 + `20-documentation-gate.md` 新增禁词 "RpcUnit align 统一 64B"。 <!-- gate-exempt: D146 -->
+- `16-profile-matrix.md` (R50 D160 索引) — RpcUnit align (D71) / cache line profile (D48) 跨 profile 对照见矩阵 doc
 - **Header field bit-layout** (R25 D86/D89):
   - bit 31: `is_error` (0 = success, 1 = failure)
   - bits 16-30: `subsystem_hint` (top subsystem for fast path)
@@ -124,7 +125,7 @@ P1-2: 全库 sys_result_t 统一为 `{header: u32, reserved: u32, payload: union
 **旧形态** `{code:u32, status:u32, value:u64}` **列为禁词** (D86 + P1-2), 任何文档残留字面量必须在 R47 勘误增补中消除。`res.code` / `res.status` 字段名一律改为 `res.header` (bit 31 = is_error), `res.is_error` 不存在 (改 `res.header & (1<<31)` 判定)。
 
 ```c
-// kernel/include/sys/abi.h (D86 + D89 + P1-2 canonical)
+// basal/include/sys/abi.h (D86 + D89 + P1-2 canonical)
 #include <stdint.h>
 
 /* P2-1 D90 carve-out: error_pack 是 union 内单层 scalar-only struct, 唯一豁免 */
@@ -150,7 +151,7 @@ _Static_assert(alignof(sys_result_t) == 8,  "FATAL: 8B align");
 ```rust
 // arch/riscv64/abi.rs (D74 auto-generated)
 #[repr(C, align(8))]
-pub struct sys_result_payload_t {
+pub union sys_result_payload_t {
     pub value: u64,
     pub error_pack: sys_error_pack_t, // P1-2 + P2-1 D90 carve-out: 唯一豁免
 }
@@ -170,11 +171,29 @@ const _: () = {
 ```
 
 ```zig
-// kernel/include/sys/abi.zig (SSOT)
-pub const sys_result_t = extern struct { code: u32, status: u32, value: u64 };
+// basal/include/sys/abi.zig (SSOT, R48 勘误增补: 与同文件 C/Rust frozen 形态一致)
+//   旧三字段 (code/status/value) 形态已被 P1-2 废弃, 详见 04 § "Three-end assert templates"
+pub const sys_result_t = extern struct {
+    header: u32,    // P1-2: bit 31 = is_error (D89), bits 0-30 = flags/subsystem_hint
+    reserved: u32,  // P1-2: reserved for future flag expansion
+    payload: sys_result_payload_t,  // 8B union{value: u64 | error_pack}
+};
+
+pub const sys_result_payload_t = extern union {
+    value: u64,                 // D56 success: fd, block id, length
+    error_pack: extern struct { // Q22 closure (D89)
+        remote_node_id: u16,    // 0xFFFF = local
+        subsystem_id: u16,      // SUB_KERNEL / SUB_FILE_SERVICE / ...
+        error_code: i32,        // POSIX-compatible negative
+    },
+};
+
 comptime {
     std.debug.assert(@sizeOf(sys_result_t) == 16);
     std.debug.assert(@alignOf(sys_result_t) == 8);
+    std.debug.assert(@offsetOf(sys_result_t, "payload") == 8);
+    std.debug.assert(@sizeOf(sys_result_payload_t) == 8);
+    std.debug.assert(@alignOf(sys_result_payload_t) == 8);
 }
 ```
 
@@ -193,21 +212,23 @@ D74 SSOT 白名单 Phase 0 冻结, 仅 5 struct 由 `translate-abi.py` 自动生
 
 | 白名单 struct | size | SSOT 文件 |
 |---------------|------|-----------|
-| `sys_result_t` | 16B | `kernel/include/sys/abi.zig` |
-| `sys_result_payload_t` | 8B | `kernel/include/sys/abi.zig` |
-| `RpcUnit` | 1536B | `kernel/include/sys/abi.zig` |
-| `NetworkFrame` | 1536B | `kernel/include/sys/abi.zig` |
-| `block_t` | 1536B | `kernel/include/sys/abi.zig` |
+| `sys_result_t` | 16B | `basal/include/sys/abi.zig` |
+| `sys_result_payload_t` | 8B | `basal/include/sys/abi.zig` |
+| `RpcUnit` | 1536B | `basal/include/sys/abi.zig` |
+| `NetworkFrame` | 1536B | `basal/include/sys/abi.zig` |
+| `block_t` | 1536B | `basal/include/sys/abi.zig` |
 
 **D121 落地约束 ② (R35 补强)**: 白名单外类型必须手写 + 内嵌三端编译期断言块 (size/align/offset)。手写 + 无断言 = 熔断。
 
 **D121 落地约束 ①**: 白名单 Phase 0 冻结, 新增条目必须挂决策号, 禁止静默扩展。
 
+**R53 D165 回链 (命名法 SSOT 互不冲突)**: 本节 D121 5 struct (`sys_result_t` / `sys_result_payload_t` / `RpcUnit` / `NetworkFrame` / `block_t`) 在 `docs/` 任何位置出现时不得携带 `neura_` / `basal_` / `cortix_` / `synapse_` 任一前缀字面串 (D165 反向锚定, Linux 内核惯例)。FFI 规则决定 *什么能跨语言传*, 命名 SSOT 决定 *类型/函数叫什么*, 两者正交。详见 `docs/00-naming-taxonomy.md` § 3 (D165 跨语言无前缀规则)。
+
 **5-Layer Defense L1 描述重写** (D121 补强):
 - 旧 L1: "SSOT auto-generation" — 有 L1 漏检风险 (手写文件未覆盖)
 - 新 L1: "SSOT diff (白名单 5 struct) ∪ compile-time assert (全体跨三端类型)" — 双道防御网, 消除「L1 有洞」模糊表述
 
-**Handwritten 头文件 marker** (D121 落地约束 ②): call_gate.h / `cosmo_atomic_cas_ptr.h` 等手写文件头部加 `/* HANDWRITTEN: tri-end asserts embedded */`, doc-gate `make audit-marker-assert-cooccur` 机检 marker 与三端 assert 块共现。
+**Handwritten 头文件 marker** (D121 落地约束 ②): call_gate.h / `basal_atomic_cas_ptr.h` 等手写文件头部加 `/* HANDWRITTEN: tri-end asserts embedded */`, doc-gate `make audit-marker-assert-cooccur` 机检 marker 与三端 assert 块共现。
 
 ## Build pipeline integration
 

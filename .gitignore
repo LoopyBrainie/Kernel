@@ -1,0 +1,12 @@
+mvp
+# spec_lab 抽取产物 (R49-LAB): anchor → fence 抽出的临时文件, 由 run_all / run_negative 重新生成
+tools/spec_lab/extracted/
+
+# R49-GOV.6 / 毕业搬家预备: 根级构建产物忽略 (侧分支曾误提 zig-out/bin/kernel.elf, 根不许重演)
+#   根锚定 (前导 /) — 不波及其它分支 un-ignore 的 mvp/ 子树
+/zig-out/
+/.zig-cache/
+# 根级 artifacts/: 判据落盘 (*.verdict) 入库, 构建二进制忽略
+/artifacts/*.elf
+/artifacts/*.bin
+/artifacts/*.o

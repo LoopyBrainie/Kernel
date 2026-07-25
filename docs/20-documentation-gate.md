@@ -26,6 +26,7 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | Round | New | Cumulative | Note |
 |-------|-----|------------|------|
 | R12 文字校准 | 6 | 6 | 基线 |
+| R12 文字校准 | 6 | 6 | 基线 |
 | R13 V2.2 topology | 1 | 7 | |
 | R14 §十.6 文字 | 1 | 8 | |
 | R16 1536B network | 3 | 11 | |
@@ -44,20 +45,64 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | R29 S-Mode mhartid + UKI ELF + link-time | 3 | 54 | |
 | R30 Page-Aggregation + FFI + FS/VS + initrd + Trap | 5 | 59 | |
 | R31 多核 + 多协议族 + PTE alignment | 6 | 65 | D107/D108/D109 + rename/PTE 替换 |
-| R32 错误码 + ex_table + ELF gate | 10 | 75 | D110-D116 + R33/R34 衍生 |
+| R32 错误码 + ex_table + ELF gate | 7 | 72 | D112/D113/D114 (BlockPool 256 + Shim L3 + Sv39 fence.vma + lwu ex_table/fixup + awk→llvm-readobj) |
+| R33 D115 SUM 弃用 + D116 ex_table 必经 | 2 | 74 | D115 动态修补页表层弃用 + D116 异常修复必经 ex_table |
+| R34 D119 csrs/csrc vs csrrs/csrrc | 1 | 75 | D119 (csrs/csrc 立即数, csrrs/csrrc 寄存器) |
+| R35 (无新增禁词) | 0 | 75 | — |
+| R36 (无新增禁词) | 0 | 75 | — |
 | R37 stride gate / RMW / sp 判据 | 2 | 77 | D126/D127 (D128 无新禁词) |
 | R38 a7 防 clobber / FP+VV 解码 | 4 | 81 | D129/D130 |
 | R39 .balign 8B / ledger 双轨 / UKI ELF PHDR | 5 | 86 | D132/D133/D134 |
 | R40 PTE per-region / Step0 trap / PLIC 缺席 | 5 | 91 | D135/D136/D137 |
 | R41 arch 显式 / Panic 多通道 / 5 步退化 | 6 | 97 | D138/D139/D140 |
-| R42 Hart ID a0 权威 / FP+V 独立 / NodePool commit | 7 | 104 | D141/D142/D143 (含 R46 反杜撰) |
+| R42 Hart ID a0 权威 / FP+V 独立 / NodePool commit | 7 | 104 | D141/D142/D143 (含 R46 反杜撰: SBI HSM hart_get_id 反例) |
 | R43 Tier3 IPI / Pin-Binding / Cache line profile | 3 | 107 | D144/D145/D146 |
 | R44 fence.i / SUM=0 / CPIO S_ISREG | 3 | 110 | D147/D148/D149 |
 | R45 跨 Hart SBI RFENCE / FILE_TABLE / FP CSR 0x73 | 4 | 114 | D150/D151/D152 |
-| R47 P1-5 撤销 D151 84B 裁定 | 3 | **117** | sizeof/file_entry 84B → 80B |
-| **Total** | — | **117** | `${#FORBIDDEN[@]}` 派生 |
+| R46 (无独立禁词) | 0 | 114 | R46 修正条目计入 R42 (R42/R46 双标) |
+| R47 P1-5 撤销 + P3-* 勘误增补 | 15 | 129 | P1-5 撤销 D151 84B 裁定 (3 条) + P3-1~P3-11 勘误增补 (12 条) |
+| R48 F3 sys_result_t 形态统一 | 4 | **133** | uint32_t code / code: u32 / status: u32 / struct sys_result_payload_t (终验补 1) |
+| R51 F1 Zig 版本字面量 | 1 | **134** | host Zig 0.16 (D-01: Zig ≥0.15 toolchain.lock 锁定) |
+| R51 F2 toolchain audit vs build profile 分立 | 1 | **135** | rustup.*lp64d.*构建 (D-02: 审计=lp64d, 构建=D138 imac lp64) |
+| R51 F3 dispatcher 命名锚 (D153) | 1 | **136** | cosmo_core_syscall_dispatcher (D153: 旧名被 syscall_stubs.rs 替代) |
+| R51 F4 700KB 量纲澄清 (D-10) | 1 | **137** | ≤700KB 物理跨度 (700KB 是 ELF 文件大小) |
+| R51 F5 rev8 禁 Zbb 假设 (D-13) | 1 | **138** | rev8.*builtin (rv64imac 无 B/Zbb) |
+| R51 M1 SYS_SHUTDOWN 路径冻结 (D154) + R66-3 改真 | 1 | **139** | SYS_SHUTDOWN (R66-3 改真: 原惰性 27 字面 `SYS_SHUTDOWN.*typed-syscall` 0 真命中; 改纯字符串必抓, 6 行靠 D154 marker 白名单兜底: 03:297 D154 立法 / 03:312 D163 纯引用 / 03:392 enacted 注释 / 08:616 HAL 注释 / 14:185 + 14:316 syscall 编号表) |
+| R51 M2 锚点变量 .bss 零构造 (D155) | 1 | **140** | ShimState.*const (锚点变量禁 const) |
+| R51 M3 error_pack 三字段冻结 (D156) | 1 | **141** | node=0x%04X\\? (三字段必齐, 缺任一字段视为漂移) |
+| R51 M4 ledger 上限固化 (D157) | 1 | **142** | bss.*16384 (bss 上限 8KB, 不可放宽) |
+| R51 M5 HLCB 字段托管 .bss (D158) | 1 | **143** | in_kernel_space:.*AtomicBool (字段已移 .bss) |
+| R51 M6 size-csv LLVM 18 命令 (D133 扩) | 1 | **144** | llvm-readobj.*--syms.*--json (LLVM 18 必须 --elf-output-style=JSON) |
+| R51 M7 ReleaseSmall strip 显式 (D159) | 1 | **145** | ReleaseSmall.*默认.*strip (必须 -Dstrip=false) |
+| R50 GOV.4 三词入册 + 矩阵 D160 配套 | 4 | **149** | spec_lab 副本 / frozen 等同于已写 / R49 草图烂掉靠 reviewer 眼 (R49-GOV.4 R50 入册) + rpc_unit_t = 256B (D160 矩阵: endpoint_compact=256B 未立法) |
+| R52 第四节血统缺口登记册收口 (D161/D162/D163) | 1 | **150** | -fno-stack-protector (D161: C HAL 栈保护器必启 -fstack-protector-strong, 严禁 -fno-stack-protector 出现于 docs/) |
+| R53 Naming Taxonomy SSOT 立法 (D164/D165/D166/D167) | 4 | **154** | neura_sys_result_t / basal_sys_result_t / cortix_sys_result_t / synapse_sys_result_t (D165: 跨语言公共符号不加组件前缀, 4 反向锚, Linux 内核惯例; 与 D121 5 struct 白名单 + D171 neura_ syscall 前缀三向正交) |
+| R59 neura_ syscall API 立法 (D171) + R60 命名迁移最终封口 (D172) | 14 | **168** | cosmo_open / cosmo_read / cosmo_write / cosmo_close / cosmo_seek / cosmo_stat / cosmo_yield / cosmo_ping / cosmo_rpc_send / cosmo_pte_map_6arg / cosmo_ipc_send_6arg / cosmo_open_stub / cosmo_pte_map_6arg_fn / cosmo_node_id (13 条 D171 派生禁词 + 1 条 D172 元规则: 历史引用豁免策略; R60 收口统一入册, EXPECTED_TOTAL 154→168; R58 因 Q69 阻塞跳过, Phase 1 待启) |
+| R58 补执行 (D173 Q69 豁免) — cortix_kernel crate 名迁移 | 1 | **169** | cosmo_kernel (D173 派生禁词; Q69 Rust crate 拓扑阻塞由 D173 正交论证豁免: crate 命名空间标识 vs 运行时数据流 fd 0/1/2 路由; R58 补执行在 R60 之后追加, EXPECTED_TOTAL 168→169; 实际传染面 1 文件 1 行 `07-shell-architecture.md:92 use cosmo_kernel` → `use cortix_kernel`) |
+| R61 D171 增补 — syscall 编号表 11-15 (HAL-暴露型 syscall 入口) | 5 | **174** | cosmo_copy_from_user / cosmo_copy_to_user / cosmo_atomic_cas_ptr / cosmo_hal_set_next_timer / cosmo_hal_fs_is_dirty (R59 计划文件 §1.2 漏列的 5 个 syscall 入口; R61 在 R58 补之后追加, EXPECTED_TOTAL 169→174; syscall 0x0B-0x0F 编号表 5 行 `cosmo_*` → `neura_*`; 接口层剥离 HAL 限定符 `hal_` (例 `neura_set_next_timer` 非 `neura_hal_set_next_timer`); 30-open-questions.md line 2400/2404 stale cross-ref 同步) |
+| R62 D174 — mmap 后缀命名补漏 + GOV.5 收官同步状态头纪律 | 1 | **175** | mmap_cosmo (R62 收口后缀形态 `_cosmo` 漏网修补: 18 条现有禁词仅前缀 `cosmo_*` 字面匹配, 不覆盖后缀 `*_cosmo`; R62 入册 `mmap_cosmo` 同名符号, 改名 `neura_mmap` 同 D171 syscall API 命名法; 同步 D174 立 GOV.5 收官同步状态头纪律, 传染面 09:126 + 30:1144 rename, 03/SPEC/00 状态头三件套自身示范同步; EXPECTED_TOTAL 174→175) |
+| R63 D175 — 门禁盲区补漏 + SPEC.md 扫描面立法 + boot banner SSOT | 1 | **176** | COSMO BOOT OK (R63 三目标收口: (a) check-d-backlinks 正则扩 D170-D199, floor 35→49, 文案三处同步; (b) SPEC.md 纳入禁词门扫描面, 触发 4 处实质改名 (SPEC.md:68/307 PTE isolation→PTE alignment, SPEC.md:147/179 cosmo_panic_abort→basal_panic_abort) + 09:122 D174 标签新增; (c) boot banner SSOT 立 `NEURA BOOT OK` 于 06-boot-sequence.md § Banner SSOT 段, 15:363 回链. GOV.5 三件套→四件套 (+README.md); EXPECTED_TOTAL 175→176) |
+| R64 D176 — AUDIT_LINE_FILTER 行内化立法 (0 新增禁词, GOV class 2) | 0 | **176** | AUDIT_LINE_FILTER (`docs/ci/check-docs.sh:296`) → 行内豁免标记机制 (D176 §1.1 marker `<!-- gate-exempt: R##-?D###[,D###...] -->`); D-ref 校验挂入 check-d-backlinks.sh §2b (R64 即生效, 存在性规则不限状态, 解析三种 marker 形态仅取 D### 部分, R## 前缀不校验); 主门禁 R64 行为不变 (extract_gate_exempt_markers() 仅抽 sidecar 到 `tools/spec_lab/extracted/gate-exempt-markers.txt`); 新断言 R64-gate-exempt-count (R64=0 fail-closed, R65≥50 marker 注入, R66 末态保留); 3-Round 迁移路径: R64 立法+骨架 / R65 删 184 死码+全量 50 行 marker+30 文件级 frontmatter / R66 行为等价切换 + AUDIT_LINE_FILTER 退役; EXPECTED_TOTAL 不变 176 |
+| R66-3 D176 enacted 收官末态 — 行内化切换 + S1 改真 + 锚定根治 + D-A 归档 + 死代码 purge | 0 | **176** | 6 子项: (a) `grep -c 'AUDIT_LINE_FILTER' = 0` (4 处字面量全数 → 中性 "中央行级豁免正则"); (b) S1 改真 惰性 27 字面 `SYS_SHUTDOWN.*typed-syscall` 0 真命中 → 纯字符串 `SYS_SHUTDOWN`, 6 行靠 D154 marker 白名单兜底 (03:297 D154 立法 / 03:312 D163 纯引用 / 03:392 enacted 注释 / 08:616 HAL 注释 / 14:185 + 14:316 syscall 编号表); (c) 行号尾冒号锚定 `path:lineno:` 根治前缀碰撞潜伏病 (新 R66-3-prefix-collision-canary Part A 3596 行 100% 锚定 + Part B 三碰撞候选 3/3 未 false豁免); (d) D-A 显文记载归档 (R51 双轨防线 `[OBSOLETED-by-...]` 锚执行机制随中央正则退役, 安全性质由 D176 marker 机制构造性保持, 校验强度严格更高 — 自由文本锚 → 机器验 D### 存在性 CI 强制); (e) 死代码 purge (R66-real-forbidden-hit_negative.sh patch 块全删, 直接调门禁); (f) R66-3 新增 3 金丝雀 (R66-3-prefix-collision + S1-sys-shutdown-real-hit + S1-sys-shutdown-marker-pass) + 2 既有 S1 canary 守约 (S1-real-hit 抓裸 SYS_SHUTDOWN exit 1, S1-marker-pass 抓带 D154 marker 注入 exit 0); sidecar count R66-1=48 → R66-3=54 (+5 SYS_SHUTDOWN 合规白名单 + 1 enacted note marker); EXPECTED_TOTAL=176 不变 (S1 是置换非新增) |
+| **Total** | — | **176** | `${#FORBIDDEN[@]}` 派生 (R63 自校: N 必须 == 176; R64 立法 0 新增禁词, 不变) |
 
 (*Cumulative counts in this table are best-effort documentation; the canonical count is `${#FORBIDDEN[@]}` in the script.*)
+
+## GOV.5 收官同步状态头检查单 (R62-D174 派生, 硬性签发前提)
+
+> **触发场景**: 每个 R##-FINAL commit 收口时 (硬性签发前提, R51 迭代协议扩展)。任何 R## 收口批次自身须同时满足以下"收官同步"三件套; 不闭环即视为状态头断档 (与 R50/R60 时代 README/索引断档同类), 不应标 closed。
+
+| 子项 | 权威源 (grep 必须命中) | 触发条件 |
+|------|------------------------|----------|
+| ① `docs/03-design-decisions.md` 标题 + 状态行 | `^# 03 · Design Decisions \(D1-D<上限> Full Table\)` + `^\*\*Status\*\*:` 状态行 (含 R52-R<当前 R##>) | 标题 D# 上限 + 状态行 R## 终值 |
+| ② `SPEC.md` 状态头 | `^\*\*Status\*\*: D1-D<上限> frozen \(R31-R<当前 R##> RATIFIED\); 0 open questions$` | D# 上限 + R## 终值 |
+| ③ `docs/00-naming-taxonomy.md` status 头 | `^\*\*Status\*\*: Frozen.*R<最近 R##>` | status 头 R## 最近值 |
+
+> **R62 自身示范**: D174 立法 + 三件套同步已写入本批次 commit。R50 era README 断档 (R50 后 03 标题停在 D1-D160) + R60 era SPEC.md 断档 (R60 后 SPEC.md 状态头停在 D1-D167 R31-R53) + R60 era 03 status 行止于 R50 — 三断档 R62 一次性补齐。
+>
+> **R63 升级三件套→四件套**: D175 立法后, GOV.5 检查单扩展为四件套 — ① `03-design-decisions.md` 标题 + 状态行, ② `SPEC.md` status 头 (R63 起纳入禁词门扫描面, 不能再用 README 替代), ③ `00-naming-taxonomy.md` status 头, ④ `README.md` + `docs/README.md` 标题/范围 (`Wriggly-Octopus` → `Neur-Aegis`, `D1-D160` → `D1-D174`)。理由: R62 三件套恰好漏掉 README 这条 R50 断档的老伤口; D174(b) 立法的"自身示范"commit message 自称同步, 但实际漏改 `00-naming-taxonomy.md` — 该遗漏由 R62-HOTFIX 立即补齐, 并促使 R63 立 D175 显式把 README 列入四件套。
+>
+> **下次收口 R## 必须**: commit message 显式列出四件套同步 (例 `R64-FINAL: ... + 03/SPEC/00/README 状态头同步`)。README 双陈旧已由 R63-HOTFIX 手动 sync, 但仍须 R##-FINAL 持续盯守 (R63 起纳入 GOV.5 检查单硬约束)。
 
 ## What each forbidden word defends against
 
@@ -126,6 +171,71 @@ where `N` is derived live from the array length. The script enforces a **lower f
 | `ip_family 字段偏移可调整` | R31 | D108 Phase 0 冻结 network_frame_t.ip_family offset==8 |
 | `lwu ex_table` / `lwu fixup` | R32 | D112 统一 ld (8B) 读 exception_table_entry |
 | `awk.*readobj` 配合 `print \$5` | R32 | D113 check_elf_sizes.sh 改用 llvm-readobj --syms --json + jq |
+| `uint32_t code` | R48 | F3 sys_result_t 旧 C 形态 (P1-2 后改 header/reserved/payload union) |
+| `code: u32` | R48 | F3 sys_result_t 旧 Rust 形态 (P1-2 后改 header/reserved/payload union) |
+| `status: u32` | R48 | F3 sys_result_t 旧 Zig 形态 (P1-2 后改 reserved) |
+| `动态修补页表层 U-Mode 数据流转` | R33 | D115 弃用, 统一 sstatus.SUM 搭便车 |
+| `绕过 .fixup 异常表` | R33 | D116 异常修复必经 ex_table |
+| `csrs sstatus 寄存器` | R34 | D119 csrs/csrc 立即数, csrrs/csrrc 寄存器 |
+| `对 HLCB 字段使用 RMW 原子操作` | R37 | D127 load/store-only 红线 (Tier 3 RV64IMC 无 A 扩展) |
+| `stride 期望值未感知 profile` | R37 | D126 期望必须按 profile×layout 派生 (D49 双行制) |
+| `syscall number 隐式 a7 约定` | R38 | D129 a7 必须 stub asm! 块内写入 |
+| `7 参数 C 签名落 a7` | R38 | D129 a7 防 clobber (RISC-V ABI 第 7 参数落 a6, 不是 a7) |
+| `FP/RVV 解码器运行时假设合法` | R38 | D130 解码器必须全主码覆盖 (RISC-V Unprivileged Spec §25) |
+| `FMADD 族漏检` | R38 | D130 0x43-0x4F 主码必须显式 |
+| `.balign 4 + ld 8B 混用` | R39 | D132 8B ld 需 8B 自然对齐 (.balign 3) |
+| `ledger 阶段尚未精确划子段` | R39 | D133 双轨制 ledger 必须公开 (R48 已落 ceiling/named/headroom 三量纲) |
+| `把 (估) 喂断言` | R39 | D133 实测与立法上限分立 |
+| `Locates ... segment 策略未定义` | R39 | D134 UKI Loader 必须明确查找策略 |
+| `UKI Loader 段查找含糊` | R39 | D134 取最后一个 PT_LOAD 包含 `__boot_meta_start` 的段 |
+| `Auto 模式 mixed padding` | R40 | D135 Auto 单点默认, per-region 解耦 |
+| `BlockPool 内部混合 layout` | R40 | D135 pool 内部 layout 必须单值 |
+| `Step 0 期间 trap 不可恢复` | R40 | D136 Step 0 trap → SBI SRST halt (D139 panic 路径) |
+| `PLIC silently ignored` | R40 | D137 PLIC 缺席必须 panic, 禁 silently |
+| `无外部中断 trap handler 路径` | R40 | D137 trap_handler 显式 panic 路径 |
+| `kernel FP 隐式 allowed` | R41 | D138 arch 字符串 + feat disable 显式 |
+| `FS=Off 默认 by default` | R41 | D138 FS 状态由 sstatus 显式管理 |
+| `panic 假定成功` | R41 | D139 多通道冗余 + fail-stop |
+| `panic fall-through 单一路径` | R41 | D139 多通道 + 物理停机 |
+| `5-step degradation 未定义` | R41 | D140 BlockPool 5 步退化定义定型 |
+| `Pool 退化假定成功` | R41 | D140 退化路径必须走 panic, 不允许 silent fallback |
+| `Hart ID 假定 a0` | R42 | D141 a0 权威, DTB num_harts 兜底 (R46 反杜撰) |
+| `禁止 -bios none` | R42 | D141 park 路由 (Hart 1+ 等 Hart 0) |
+| `SBI HSM hart_get_id` | R42/R46 | D141 HSM 无此函数 (HSM fid 0 = hart_start), R46 反杜撰纪律 |
+| `Hart ID 探测 SBI 兜底` | R42/R46 | D141 a0 权威 + DTB num_harts 兜底, 禁探测 SBI |
+| `D118 三条件覆盖所有 RVV 场景` | R42 | D142 RVV 需独立检查 (FP 与 RVV 各自触发条件) |
+| `NodePool 物理页按需 lazy commit` | R42 | D143 禁止 lazy commit, 一次性预留 |
+| `NodePool commit 假定成功` | R42 | D143 commit 走 panic 守门, 不允许假定成功 |
+| `Tier 3 假定单 Hart` | R43 | D144 num_harts>1 走 IPI 自旋锁, 禁假定单 Hart |
+| `Pin-Binding alternative 假定实现` | R43 | D145 task_affinity 显式绑定, 禁假定默认实现 |
+| `RpcUnit align 统一 64B` | R43 | D146 profile 派生 align 64/128 (Server profile 128B) |
+| `fence.i 全局自动` | R44 | D147 Step 0 顶部单条 + 链接期 W^X 校验 (R46 勘误: fence.i 非特权) |
+| `SUM 状态机假定单一` | R44 | D148 S-Mode fault + SUM=0 ⇒ 致命 (二次 fixup panic) |
+| `initrd 计 entry 数` | R44 | D149 S_ISREG only, 目录/symlink 不计 entry |
+| `in_kernel_space 跨 Hart 假定可见` | R45 | D150 IPI + CMO/Zicbom 一致性 |
+| `SBI RFENCE 用作数据一致性原语` | R45/R46 | D150 SBI RFENCE 无数据一致性 (只指令缓存) |
+| `FILE_TABLE 单一不可变` | R45 | D151 R46 双结构 .rodata + .bss mutable_table |
+| `FP CSR 访问假定合法` | R45 | D152 0x73 必须二次解码: funct3≠0 且 CSR∈{fflags,frm,fcsr} |
+| `FILE_TABLE 4.2KB` | R47 | D151 撤销 (ctypes 实测: sizeof 自然布局 80B, 50×80B=4 KB) |
+| `sizeof.*file_entry.*84` | R47 | D151 撤销 (实测 80B, 非 84B) |
+| `file_entry_t 自然 84B` | R47 | D151 撤销 (实测 80B) |
+| `static __thread work_queue_t` | R47 | P3-3 TLS tp 冲突, 改全局数组 |
+| `csrr menvcfg` | R47 | P1-4 S-Mode illegal, 改 DTB/trap-probe (menvcfg 仅 M-Mode 合法) |
+| `jr t0                  # jump` | R47 | P3-4 syscall 必须 jalr ra, t0 (jr 丢 ra) |
+| `task_table\[next\].active` | R47 | P3-5 rr_pick_next 终止条件修复 |
+| `& 0x3  // FS == 0b11` | R47 | P3-6 basal_hal_fs_is_dirty 名实一致 (改 ==0x3) |
+| `.\[\]\?\.[]\?` | R47 | P3-7 jq 3-level 路径修补 |
+| `SSTATUS_MXR & (1 << 19)` | R47 | P3-8 恒假断言 (改 ALLOWED_MASK) |
+| `csrs/csrc 接受立即数, csrrs/csrrc 接受寄存器` | R47 | P3-9 D119 立法颠倒 (csrs/csrc 立即数 vs csrrs/csrrc 寄存器) |
+| `ecall → M-Mode → S-Mode` | R47 | P3-10 medeleg 直委派 S-Mode (不经 M-Mode) |
+| `22KB 缺口` | R47 | P3-11 R48: 改 D49 双行制, 已命名子段 581.5 KB + 余量 62.5 KB = ceiling 644 KB, 此禁词保留防 R47 伪闭合回归 |
+| `hartid<<SHIFT` | R47 | P3-1 off-by-one, 改 `(hartid+1)<<SHIFT` |
+| `struct sys_result_payload_t` | R48 | F3 Rust payload 必须 union 不是 struct (终验抓出: 两个 8B 字段在 struct = 16B, size_of==8 断言永远熔断) |
+| `spec_lab 副本` | R49-GOV.4 (R50) | D160 矩阵: 断言目录下出现代码副本, 不是抽取得到 (frozen = 编译过的) |
+| `frozen 等同于已写` | R49-GOV.4 (R50) | D160 矩阵: frozen 必须经 runner 验证, 不靠手写 |
+| `R49 草图烂掉靠 reviewer 眼` | R49-GOV.4 (R50) | D160 矩阵: 必须机器 enforced, R50 check_goal_manifest.sh 落地 |
+| `rpc_unit_t = 256B` | R50/D160 | 矩阵立法: endpoint_compact=256B 未立法, 任何现行 RpcUnit 形态暗示 256B 即熔断 (Q78 OPEN) |
+| `-fno-stack-protector` | R52 D161 | C HAL 栈保护器必启 -fstack-protector-strong; v2.1 §3.2 防御静默消失的反向锁 |
 
 ## How to add a new forbidden word
 
@@ -137,21 +247,47 @@ where `N` is derived live from the array length. The script enforces a **lower f
 6. Migrate any existing docs that use the word
 7. Verify gate passes again
 
-## D# 回链机检 (P0-5 / R47)
+## D# 回链机检 (P0-5 / R47 / R50 扩)
 
 每个 D126+ 决策号必须在其 contagion 目标文档（subsystem spec 文件）中可被 `grep` 命中；空回链 = 传染未闭环 = 闸门熔断。脚本：`docs/ci/check-d-backlinks.sh`。
 
 ```bash
 $ bash docs/ci/check-d-backlinks.sh
-✓ check-d-backlinks passed (27 D126-D152 tags, all back-linked)
+✓ check-d-backlinks passed (35 D126-D160 tags, all back-linked, canary self-test OK)
 ```
 
-规则（R47 立法）：
+规则（R47 立法 / R50 扩 D160+）：
 - D# 来源：`docs/03-design-decisions.md` status table（`| D### | class | ACTIVE|...` 行）
-- 排除文件（数据载体，搜索时跳过）：`03-design-decisions.md`、`20-documentation-gate.md`、`30-open-questions.md`、`ci/check-docs.sh`、`ci/check-d-backlinks.sh`
+- 排除文件（数据载体，搜索时跳过）：`03-design-decisions.md`、`20-documentation-gate.md`、`30-open-questions.md`、`ci/check-docs.sh`、`ci/check-d-backlinks.sh`、`ci/check_goal_manifest.sh`
 - 词边界匹配：`(^|[^0-9])D###([^0-9]|$)` 防 D1260 等子串假阳
 - 失败模式：熔断并打印缺失 D# 列表
-- 自验证：`${#D_TAGS[@]} ≥ 27`（D126-D152 全集），不足即 FATAL exit 2
+- 自验证：`${#D_TAGS[@]} ≥ 35`（D126-D160 全集 = R37-R45 27 + R51 7 + R50 1），不足即 FATAL exit 2
+
+### §2b: 行内豁免标记 D-ref 校验 (R64-D176, R64 即生效; R64-HOTFIX 独立排除集 + EOL $ 锚 + SPEC.md; R65-α F4 表格行支持 + F3 注释跨度收紧)
+
+D176 §1.4 行内豁免标记机制配套反伪: `docs/**/*.md` + `SPEC.md` 中所有 `<!-- gate-exempt[: -file]: ... -->` 标记的 D### ref 必须**在 03-design-decisions.md D-table 中存在** (**不限状态**, ACTIVE / DEPRECATED / SUPERSEDED 均合法).
+
+- **三种 marker 形态都校验**: 单 D (`D175`) / R##-D### (`R63-D175`, R## 前缀不校验) / 多 D 逗号分隔 (`D172,D175`) / 文件级 `<!-- gate-exempt-file: desc (D121,D153) -->`
+- **存在性规则**: D999 没立过法 → 必假 → fail. 活性 (status=ACTIVE) 会误伤合法 DEPRECATED 历史叙述豁免 (R47 撤销行 / R48 旧 sys_result_t 形态叙述 / R51-F5 asm rv64imac 注释 都标 DEPRECATED)
+- **R64 行为**: 作用于空集 (R64 无 marker) 必过 (fail-closed skeleton); **R65 起防伪洞实时生效**, 任何不存在的 D### 立即 fail, `R51-D1722` 类手写拼写错误不过夜
+- **R64-HOTFIX F1 修复**: §2b **不复用** §1 EXCLUDE_GREP (后者排除 03/20/30 是 ledger 数据载体合理, §2b 排除则 49 个 marker + 文件级声明全成校验盲区). §2b 改用**独立排除集** (仅排 ci/ 脚本: `check-docs.sh / check-d-backlinks.sh / check_goal_manifest.sh / check-toolchain.sh`, 其中 marker 形式是叙述性提及非真实落盘). 实证: `docs/03-design-decisions.md` 伪造 `<!-- gate-exempt: D999 -->` 必须被 §2b 抓到 (修复前 exit 0 静默通过漏洞, 修复后 exit 1).
+- **R64-HOTFIX F1 EOL $ 锚 + SPEC.md**: 与抽取器同款正则 `<!-- gate-exempt(-file)?:.*-->[[:space:]]*$` (强制 `-->` 收尾当前行), 排除 markdown 反引号包裹 / 括号后接 / 斜杠后接 narrative 提及. 同步扫描 `SPEC.md` (与抽取器一致, 防"抽出但永不校验" 脱钩).
+- **R65-α F4 修复 (表格行末单元格)**: 正则扩为 `<!-- gate-exempt(-file)?:.*-->[[:space:]]*\|?[[:space:]]*$` (单字符 `\|?` 允许 `-->` 后接 ` |`). R65 计划 49 marker 落 03 立法表 D-table 行末单元格, F4 修复后形貌合规. narrative 形式 (反引号 / 括号 / 斜杠 等非空白非 `|` 字符) 仍被 `$` 锚点排除.
+- **R65-α F3 修复 (D-ref 注释跨度收紧)**: 提取 D### 时**先**用 `<!-- gate-exempt(-file)?:.*?-->` 非贪婪抽出 marker 体, **再**用 `\bD[0-9]+\b` 取 D 号. 防 narrative 行同句出现未立法 D 号 (如 "D97 草案撤回") 误报.
+- **R65-α 演示前缀规约**: 文档示例使用 `<!-- gate-exempt-DEMO: ... -->` / `<!-- gate-exempt-file-DEMO: ... -->` (regex `<!-- gate-exempt(-file)?:` 不匹配 `-DEMO:` / `-file-DEMO:` 后缀). 真 marker 必须严格使用 `<!-- gate-exempt: ... -->` / `<!-- gate-exempt-file: ... -->`, 不可用 `-DEMO` 后缀逃避防伪.
+- **解析实现**: `grep -rnE --exclude=ci/...'<!-- gate-exempt(-file)?:.*-->[[:space:]]*\|?[[:space:]]*$' docs/ SPEC.md` → 每行 `grep -oE '<!-- gate-exempt(-file)?:.*?-->' | grep -oE '\bD[0-9]+\b'` → `grep -qE "\| $ref \|" $LEDGER`
+- **失败模式**: 熔断并打印 `[ERROR] gate-exempt D-ref 不存在: <ref>` + 修复指引 (1) 修笔误; (2) 若真需新 D#, 在 03-design-decisions.md D-table 添加 (可标 DEPRECATED)
+- **金丝雀实证**:
+    - `R64-gate-exempt-d999-in-03_negative.sh` — 副本 03 末行追加 `<!-- gate-exempt: D999 -->` → check-d-backlinks 必须 exit 1 (F1 漏洞复发即 RC=0 → 断言 FAIL)
+    - `R64-gate-exempt-narrative-canary.sh` — 副本注入三种 narrative 形式 → check-d-backlinks 必须 exit 0 (EOL $ 锚失效即 RC=1 → 断言 FAIL)
+    - **`R64-gate-exempt-table-row-canary_negative.sh` (R65-α 立)** — 副本 03 D-table 行末单元格追加 `... <!-- gate-exempt: D999 --> |` → check-d-backlinks 必须 exit 1 (F4 漏洞复发即 RC=0 → 断言 FAIL)
+- **R65-γ (c-4) FILE 模式首实例**: `docs/30-open-questions.md` 文件头 frontmatter `<!-- gate-exempt-file: 30-open-questions.md 审计档案段 (D153,D154,D155,D156,D157,D172) -->` — 当前在 `--exclude=` 数据载体清单中, 主门禁 0 行为变化 (gate grep 根本不看 30); §2b 抽 marker 验存在性 (D153-D157 全部 ACTIVE, D172 元规则反向锚 ACTIVE); R66 切换时该 frontmatter 是 FILE 模式展开函数的测试床 (整文件豁免展开 → 与 AUDIT_LINE_FILTER 当时覆盖 30 的模式等价). D# 列表严格自律: 仅写 30 文件头部直接提及或本 frontmatter 直接对应的 D# (D153-D157 R51 M 桶 12 锚 + D172 自身元规则反向锚), 不堆砌 ledger 全集.
+
+```bash
+$ bash docs/ci/check-d-backlinks.sh
+✓ check-d-backlinks passed (50 D126-D175 tags, all back-linked, canary self-test OK)
+# (R64 起 D126-D175 = 50: R37-R50 [35] + R52-R62 命名迁移 [14] + R63 扫描面 [1])
+```
 
 ## Cross-references
 

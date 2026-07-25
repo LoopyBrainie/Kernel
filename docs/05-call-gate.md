@@ -35,10 +35,12 @@ Phase 0 has no MMU, so Shell and Kernel share S-Mode. The Call Gate is a 5-file 
 
 ## 5-file implementation (D56 + D62 + D73 + D82)
 
+**R51 D153 命名锚**: Rust 侧 `cosmo_core_syscall_dispatcher.rs` 重命名为 `syscall_stubs.rs` (D129 stub asm! 块角色明示); Zig 侧 `syscall_dispatch.zig` 是 call gate 入口唯一合法名, **不改名**. 文档中裸名 `dispatcher`(无角色前缀) 视为未锚命名. <!-- gate-exempt: D153 -->
+
 ```
 kernel/arch/riscv64/call_gate/
-├── syscall_dispatch.zig     # Zig dispatcher (entry after call)
-├── cosmo_core_syscall_dispatcher.rs  # Rust central dispatcher
+├── syscall_dispatch.zig     # Zig call gate entry (D56, 不改名)
+├── syscall_stubs.rs         # Rust per-syscall stubs (D129 asm! 块, D153 重命名裁决)
 ├── call_gate.h              # C HAL: register convention + C-ABI assertions
 ├── entry_call_gate.S        # Assembly stub: call + global var
 └── HLCB.zig                 # Hart-Local Control Block (D82)
@@ -51,25 +53,38 @@ kernel/arch/riscv64/call_gate/
 # Use `call` to dispatcher via global function pointer
 
 .section .text
-.global cosmo_call_gate
-cosmo_call_gate:
+.global basal_call_gate
+basal_call_gate:
     # D82: HLCB.in_kernel_space.store(true) — see C wrapper
-    la      t0, __cosmo_dispatcher_ptr
+    la      t0, __basal_dispatcher_ptr
     ld      t0, 0(t0)
-    jalr    ra, t0                 # P3-4 (R47 勘误): syscall 必须可返回, 改 jalr ra, t0
-                                   # 原 jr t0 丢弃 ra, dispatcher 返回时跳回垃圾地址 (Phase 0 单 Hart 触发 panic)
+    jr      t0                     # R49-F1 勘误: 改回 jr t0 尾调用, 删 P3-4 错误归因
+                                   #   - Phase 0 单 Hart 无上下文切换, ra 全程 = Rust 调用点
+                                   #   - jr 尾调用后 dispatcher ret 直接回到 Rust 调用点, 天然可返回
+                                   #   - RISC-V ABI §18.2: ra 是 caller-saved, jr 不承诺保留,
+                                   #     但 Phase 0 单 Hart 下没有任何调用方会读 ra, 安全
+                                   #   - Phase 1+ 多 Hart 调度介入后才需 jalr ra, t0 + context_save
+                                   # P3-4 (R47 增补, 已废) 的 "原 jr t0 丢弃 ra → panic"
+                                   #   系错误归因: 实测单 Hart 下 jr 不死循环, jalr+ret 才死循环
+                                   #   (沙箱二 2026-07-19 O1 排障记录复现), 此处勘误归因
+                                   #   (Brra1n0 再次认领: R47 注释依据事实读反)
 ```
 
 ### HLCB (D82)
 
+<!-- R31 题面: superseded by P1-1 extern struct + 24B padding header. 保留供审计比对; 当下生效形态见下方 "HLCB layout — extern struct + 显式 padding (P1-1 修复)" 段。 -->
 ```zig
-// Hart-Local Control Block: per-Hart state
+// Hart-Local Control Block: per-Hart state (R31 题面, SUPERSEDED by P1-1 extern struct)
+//   - sizeof == 40B (自然布局, 无 padding header)
+//   - kernel_stack_base 字段在 R31 题面中本不存在; D107 立法要求 per-Hart range check,
+//     但 R31 题面无法表达 kernel_stack_base @32, 必须扩字段, 故触发 P1-1 重做布局
+//   - sscratch_initialized @32 (R31 题面), P1-1 extern struct 后迁移到 @56
 pub const HLCB = struct {
     hart_id: u16,
     in_kernel_space: AtomicBool,  // D82: defense-in-depth
     kernel_stack_top: [*]u8,
     user_stack_top: [*]u8,
-    sscratch_initialized: AtomicBool,  // D92
+    sscratch_initialized: AtomicBool,  // D92, @offsetOf=32 in R31; @offsetOf=56 in P1-1
 };
 
 pub var hlcb_table: [HLCB_SIZE]HLCB = undefined;
@@ -161,6 +176,15 @@ pub const HLCB_STRIDE_SHIFT: u8 = 6;                 // 2^6 = 64B/HLCB entry
 pub const HLCB_KERNEL_STACK_BASE = asm {
     "@offsetOf(HLCB, 'kernel_stack_base')"          // emits 32 (32 位偏移)
 };
+pub const HLCB_KERNEL_STACK_TOP = asm {
+    "@offsetOf(HLCB, 'kernel_stack_top')"           // emits 40
+};
+pub const HLCB_USER_STACK_TOP = asm {
+    "@offsetOf(HLCB, 'user_stack_top')"             // emits 48
+};
+pub const HLCB_SSCRATCH_INIT = asm {
+    "@offsetOf(HLCB, 'sscratch_initialized')"       // emits 56 (P1-1 迁移; R31 题面 @32)
+};
 // (asm-side offsets 必须与 comptime offsetOf 在 build 时一致, 任一不匹配 = build ABORT)
 ```
 
@@ -168,8 +192,8 @@ pub const HLCB_KERNEL_STACK_BASE = asm {
 
 **Host 验证方法** (P1-1 强制):
 ```bash
-# 1. 用 host Zig 0.16 跑 @offsetOf 与 @sizeOf 自检
-zig run -e 'const H = @import("kernel/include/sys/abi.zig").HLCB;
+# 1. 用 host Zig ≥0.15 (由 toolchain.lock 锁定) 跑 @offsetOf 与 @sizeOf 自检
+zig run -e 'const H = @import("basal/include/sys/abi.zig").HLCB;
            std.debug.assert(@sizeOf(H) == 64);
            std.debug.assert(@offsetOf(H, "kernel_stack_base") == 32);
            ...'
@@ -181,12 +205,12 @@ actual=$(llvm-readobj --symbols --json build/kernel.elf | \
 [ "$actual" -eq 32 ] || { echo "P1-1 FAIL: hlcb_kernel_stack_base offset $actual ≠ 32"; exit 1; }
 ```
 
-**传染面清单** (P1-1 元规则):
-- `06-boot-sequence.md` § D107 trap_entry asm 同步 (offset 32/40, 步长 64B)
+**传染面清单** (P1-1 元规则, R48 勘误增补):
+- `06-boot-sequence.md` § D107 trap_entry asm 同步 (kernel_stack_base/top 偏移 32/40, 步长 64B) + D136 sscratch_initialized 同步 (偏移 56, P1-1 extern 后从 R31 题面 @32 迁移, R48 消除硬编码)
 - `08-risc-v-hal.md` § HLCB 访问代码同步
 - `12-scheduler.md` § Hart-Local 引用同步
 - `30-open-questions.md` R37 D127/D128 段同步 (trap_entry sp 判据 + RMW 约束)
-- 旧题面(natural struct, sizeof=40, kernel_stack_base@16) **保留并显式标注** `<!-- R31 题面: superseded by P1-1 extern struct + 24B padding header -->`
+- 旧题面(natural struct, sizeof=40, kernel_stack_base@16) **保留并显式标注** `<!-- R31 题面: superseded by P1-1 extern struct + 24B padding header -->` (R48 勘误增补: 该 HTML 注释现贴于 05 § HLCB (D82) 旧题面代码块正上方, 不再仅存于本传染面自述句)
 
 **Cost / Benefit**:
 
