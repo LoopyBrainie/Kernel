@@ -17,7 +17,7 @@
 set -euo pipefail
 
 SIDECAR="$PWD/tools/spec_lab/extracted/gate-exempt-markers.txt"
-EXPECTED_FLOOR=39  # γ(c-2) commit 后实测 (26 - 1 撤 + 1 修 + 13 跨文件); γ(c-3/4) 推进时 bump
+EXPECTED_FLOOR=47  # γ(c-3) commit 后实测 (39+8 = 47); γ(c-4) 推进时 bump
 
 # 验证 1: sidecar 存在
 if [[ ! -f "$SIDECAR" ]]; then

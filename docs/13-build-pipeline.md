@@ -12,7 +12,7 @@ The build pipeline is a 3-stage `build.zig` chain that (1) compiles each languag
 
 **R53 D167 回链 (命名变更纪律 5 步闭环)**: 本节涉及 SSOT 路径迁移 D74 (`kernel/include/sys/abi.zig`) → D170 (`basal/include/sys/abi.zig`, R54 收口)。任何代号 / 目录 / 前缀变更须经 5 步闭环: (1) D## 立法, (2) 1X 子系统文档回链, (3) 禁词 census 同步, (4) 分批迁移 (D166 范式), (5) spec_lab 断言脚本同步。详见 `docs/00-naming-taxonomy.md` § 11 (D167 命名变更纪律)。
 
-**R51-F1 (D-01)**: Host Zig version is `Zig ≥0.15`, locked by `toolchain.lock` (not by `host Zig 0.16` — that version does not exist). The forbidden-word list enforces this: literal `Zig 0.16` / `host Zig 0.16` are banned. Back-link: `05-call-gate.md:193`.
+**R51-F1 (D-01)**: Host Zig version is `Zig ≥0.15`, locked by `toolchain.lock` (not by `host Zig 0.16` — that version does not exist). The forbidden-word list enforces this: literal `Zig 0.16` / `host Zig 0.16` are banned. Back-link: `05-call-gate.md:193`. <!-- gate-exempt: D153 -->
 
 **R51-F2 (D-02)**: Toolchain audit vs build profile — **two distinct profiles must not be conflated**:
 - `rustup target add riscv64gc-unknown-linux-gnu` (lp64d, hard-float) is the **toolchain audit** profile used by Rust cargo for crate-resolution audits. It is **not** a build output.
@@ -72,12 +72,12 @@ The translator walks the Zig SSOT, generates matching `#[repr(C, align(N))]` Rus
 zig build -Dcflags_c_hal="-fstack-protector-strong -Wstack-usage=2048 -Werror=stack-usage"
 ```
 
-**禁止形态**: `-fno-stack-protector` 严禁出现于 `docs/` (R52 D161 forbidden-word, 见 `check-docs.sh` 末段)。Windows MVP 早先用 `-fno-stack-protector` 是 v2.1 §3.2 防御静默消失的实例；R52 立法后, `build.zig` 必须显式 `-fstack-protector-strong`, cflags 链中不得出现 `-fno-stack-protector`。
+**禁止形态**: `-fno-stack-protector` 严禁出现于 `docs/` (R52 D161 forbidden-word, 见 `check-docs.sh` 末段)。Windows MVP 早先用 `-fno-stack-protector` 是 v2.1 §3.2 防御静默消失的实例；R52 立法后, `build.zig` 必须显式 `-fstack-protector-strong`, cflags 链中不得出现 `-fno-stack-protector`。 <!-- gate-exempt: D161 -->
 
 **传染面**:
 - `08-risc-v-hal.md` § panic 多通道 (D139 + `__stack_chk_fail` D161 → `sbi_cold_reboot` D163)
 - `15-phase0-mvp.md` T1.11 cflag 闸 (D161/D162 进 verify-elf)
-- `check-docs.sh` 新增禁词 `-fno-stack-protector` (R52 D161 收口)
+- `check-docs.sh` 新增禁词 `-fno-stack-protector` (R52 D161 收口) <!-- gate-exempt: D161 -->
 
 ## D93 + D111: Profile switch + Work-Stealing compile-time guard
 
@@ -356,7 +356,7 @@ echo "✓ D126 stride gate passed ($PROFILE/$LAYOUT, measured $ACTUAL_PHYSICAL_K
 - `02-memory-topology.md` § D45/D102 双 Profile 表同步
 - `check_elf_sizes.sh` 升级点 (D113 → D126)
 - `15-phase0-mvp.md` T1.11 (D113 → D126)
-- `20-documentation-gate.md` 新增禁词: `stride 期望值未感知 profile` (已入册, R37)
+- `20-documentation-gate.md` 新增禁词: `stride 期望值未感知 profile` (已入册, R37) <!-- gate-exempt: D126 -->
 - `16-profile-matrix.md` (R50 D160 索引) — stride 列 (embedded/qemu_virt/server_compact 各池) 由本 D# 派生, 完整对照表见矩阵 doc
 
 **Cost / Benefit**:

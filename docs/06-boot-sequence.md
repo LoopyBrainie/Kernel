@@ -52,7 +52,7 @@ NEURA BOOT OK
 - 大小写敏感: `NEURA` 全大写, `BOOT`/`OK` 全大写
 - 字节序列: `4E 45 55 52 41 20 42 4F 4F 54 20 4F 4B 0A`
 
-**反例 (R63 D175 入册禁词 `COSMO BOOT OK`)**: R50 时代 brand marker `COSMO BOOT OK` 不得再出现于任何代码 / spec / harness / qemu log. 旧文本若需保留历史叙述, 必须按 D172 围栏外豁免规则处理 (30-open-questions.md 等审计档案豁免; 代码/spec 一律强制迁移).
+**反例 (R63 D175 入册禁词 `COSMO BOOT OK`)**: R50 时代 brand marker `COSMO BOOT OK` 不得再出现于任何代码 / spec / harness / qemu log. 旧文本若需保留历史叙述, 必须按 D172 围栏外豁免规则处理 (30-open-questions.md 等审计档案豁免; 代码/spec 一律强制迁移). <!-- gate-exempt: D175 -->
 
 **回链**: `15-phase0-mvp.md` § R49-C7 证据补丁段 (1 处 marker 引用) + `tools/spec_lab/` Phase 0 冒烟断言 (实现期落地).
 
@@ -119,7 +119,7 @@ _start:
     # ==== D92 + D107: Hart-Local stack offset (use hartid, NOT time CSR) ====
     # D107 R31 fix: csrr t0, time was wrong — time changes per cycle, would give
     # random stack base. Use hartid (a0/tp) instead, restoring 644KB topology.
-    # P3-1 (R47 勘误): +1 修正 off-by-one — `hartid<<SHIFT` 是区域底 (=上一 hart 的栈顶),
+    # P3-1 (R47 勘误): +1 修正 off-by-one — `hartid<<SHIFT` 是区域底 (=上一 hart 的栈顶), <!-- gate-exempt: D107 -->
     # hart 0 直接越出栈池。改 `base + ((hartid+1)<<SHIFT)`,hart 0 落在 [base, base+SHIFT_SIZE),
     # hart 1 落在 [base+SHIFT_SIZE, base+2*SHIFT_SIZE),依此类推 (栈向低地址增长, 起始 sp = 栈顶)。
     mv      t0, tp                 # t0 = hartid (stable, from D99)
@@ -660,7 +660,7 @@ done
 # 期望 2/2 PASS
 ```
 
-**传染面**: `08-risc-v-hal.md` Hart ID 章节加 D141 SBI HSM 实现; `15-phase0-mvp.md` T1.5 升级为 D141 + 新增 T1.27 (bios=none 测试); `20-documentation-gate.md` 新增禁词 "Hart ID 假定 a0"。
+**传染面**: `08-risc-v-hal.md` Hart ID 章节加 D141 SBI HSM 实现; `15-phase0-mvp.md` T1.5 升级为 D141 + 新增 T1.27 (bios=none 测试); `20-documentation-gate.md` 新增禁词 "Hart ID 假定 a0"。 <!-- gate-exempt: D141 -->
 
 ---
 
@@ -699,7 +699,7 @@ void basal_park_until_hart0_done(uint32_t my_hart_id) {
 }
 ```
 
-**R46 新增禁词**: "SBI HSM hart_get_id" / "Hart ID 探测 SBI 兜底" / "Hart ID a0 不可信时探测 SBI"
+**R46 新增禁词**: "SBI HSM hart_get_id" / "Hart ID 探测 SBI 兜底" / "Hart ID a0 不可信时探测 SBI" <!-- gate-exempt: D141 -->
 
 **传染面**: `08-risc-v-hal.md` § D141 加 platform boot protocol 表占位 (BROM 直启逐平台登记); `15-phase0-mvp.md` T1.5 升级 + 新增 T1.27 (Hart ID DTB 校验测试); `20-documentation-gate.md` 新增上述禁词。
 
