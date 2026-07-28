@@ -289,6 +289,27 @@ $ bash docs/ci/check-d-backlinks.sh
 # (R64 起 D126-D175 = 51: R37-R50 [35] + R52-R62 命名迁移 [14] + R63 扫描面 [1] + R66-3 enacted [1])
 ```
 
+### §2c: canary 自检纪律 (R67-S-1, R67-S-2 派生)
+
+每 canary 必须可独立 V4-实测证明自己 parser path fail-closed 性. 防 V4 缺口同源病复发 — R66-3 follow-up V4 "Part B 静默跳过" 几何根因（格式崩坏时 `grep -E '^docs/03' $TMP` 返回空 → anchor 空 → 走 skip 分支 → 形同 PASS 但实际 fail-closed 失效）.
+
+机制:
+- **V4 注入段**: `R66_3_V4_INJECT=1` 构造对照畸形 fixture, 期望 Part A fixture + Part B parser fail + RC=1（沿用 R66-3 V4 协议 4 项硬性证据门槛）
+- **防御性解析**: 主流程若依赖特定输入格式, 先 regex gate, 异常即 FAIL 而非静默跳过（即用户校正的"Part B 不能裸奔"）
+
+实证 (R67-S-2 拆分后):
+| canary | parser path 守约 | V4 独立证据链 | 防御性解析 |
+|--------|------------------|---------------|-----------|
+| `R66-3-expand-format-canary.sh` (拆分新增) | expand 输出 `:lineno:` 锚定 | 自身 V4 段 → Part B 抓到未锚定行 (RC=1) | — (本 canary 即格式守约者) |
+| `R66-3-prefix-collision-canary.sh` | SELF 锚点行号前缀碰撞防御 | 既有 V4 段 → Part B 子串匹配 fail-closed (RC=1) | Part B 前置 format regex gate（expand-format-canary 缺席也不裸奔碰撞检测） |
+
+**C-5 留痕 (R67-S-2 立)**: 接力文档曾将 `expand_gate_exempt.py:55/60/68` f-string 缺尾冒号列为 C-5. 实测三处当前形貌:
+- `:55` (`exempt.add(f"{file}:{n}:")` FILE 模式展开)
+- `:60` (`exempt.add(f"{file}:{n}:")` SELF 模式展开)
+- `:68` (`exempt.add(f"{file}:{n}:")` PREV 模式特判)
+
+均已合规. C-5 实际问题是"独立守约者缺位" (= Part A 被捆 Part B 内, 无独立 fail-closed 证据), 非"f-string 字面错误". R67-S-2 拆分后该留痕闭环, C-5 不需要单独 commit.
+
 ## Cross-references
 
 - All 19 subsystem docs must pass this gate
