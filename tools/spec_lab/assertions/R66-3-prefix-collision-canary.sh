@@ -38,7 +38,7 @@ if [[ -z "$ANCHOR" ]]; then
   exit 0
 fi
 
-N=$(echo "$ANCHOR" | awk -F: '{print $NF}' | tr -d ':')
+N=$(echo "$ANCHOR" | awk -F: '{print $(NF-1)}' | tr -d ':')
 HITS=0
 for SUFFIX in 0 1 9; do
   NK="${N}${SUFFIX}"
