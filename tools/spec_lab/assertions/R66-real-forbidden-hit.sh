@@ -9,7 +9,6 @@
 set -euo pipefail
 
 WORK="${PWD}"
-POSITIVE="$WORK/tools/spec_lab/assertions/R66-real-forbidden-hit_negative.sh"
 TEST_FILE="docs/01-system-overview.md"  # 用 1X 子系统文档 (无 marker, 真注入必被抓)
 
 # mktemp 副本
