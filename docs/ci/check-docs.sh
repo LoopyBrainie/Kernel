@@ -316,12 +316,13 @@ extract_gate_exempt_markers() {
   #   末单元格 marker (`-->` 后仅余 ` |`); narrative 形式 (反引号/括号/斜杠等非空白非
   #   `|` 字符) 仍被 `$` 锚点排除. 与 §2b check-d-backlinks.sh 同步.
   #
-  # 第二道过滤: 排除 ci/ 脚本自身 (与 main loop 同集), 防止本函数注释块 (299-300) 的多 marker 同行示例
-  # (如 `<!-- gate-exempt: D### -->` / `<!-- gate-exempt: R##-D### -->` / `<!-- gate-exempt: D###,D### -->` 在同一注释行)
-  # 因末段 marker 恰落在 EOL 前被 `$` 锚点错误命中.
+  # 第二道过滤: 排除 ci/ 子目录整体 (含本函数, 防止门禁自身注释块 (299-300) 的多 marker 同行示例
+  # 如 `<!-- gate-exempt: D### -->` / `<!-- gate-exempt: R##-D### -->` / `<!-- gate-exempt: D###,D### -->` 在同一注释行)
+  # 因末段 marker 恰落在 EOL 前被 `$` 锚点错误命中。原硬编码 4 个 --exclude 不防未来新增 ci 脚本
+  # (C-8 盲区), --exclude-dir=ci 一次排除整个目录, 与 R66-3 立法链目标一致 (ci 脚本内
+  # 标记是元规则示意, 不是真豁免 marker; 已验证 docs/ci/ 下无真实生效 marker)。
   if grep -rnE '<!-- gate-exempt(-file)?:.*-->[[:space:]]*\|?[[:space:]]*$' \
-       --exclude=check-docs.sh --exclude=check-d-backlinks.sh \
-       --exclude=check_goal_manifest.sh --exclude=check-toolchain.sh \
+       --exclude-dir=ci \
        docs/ SPEC.md > "$sidecar" 2>/dev/null; then
     : # 命中, 已写入 sidecar
   else
