@@ -285,8 +285,8 @@ D176 §1.4 行内豁免标记机制配套反伪: `docs/**/*.md` + `SPEC.md` 中�
 
 ```bash
 $ bash docs/ci/check-d-backlinks.sh
-✓ check-d-backlinks passed (50 D126-D175 tags, all back-linked, canary self-test OK)
-# (R64 起 D126-D175 = 50: R37-R50 [35] + R52-R62 命名迁移 [14] + R63 扫描面 [1])
+✓ check-d-backlinks passed (51 D126-D175 tags, all back-linked, canary self-test OK)
+# (R64 起 D126-D175 = 51: R37-R50 [35] + R52-R62 命名迁移 [14] + R63 扫描面 [1] + R66-3 enacted [1])
 ```
 
 ## Cross-references

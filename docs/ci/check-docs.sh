@@ -212,7 +212,7 @@ FORBIDDEN=(
   "cosmo_core_syscall_dispatcher"     # R51 F3 (D-04 / D153: 旧名被 syscall_stubs.rs 替代)
   "≤700KB 物理跨度"                   # R51 F4 (D-10: 700KB 是 ELF 文件大小)
   "rev8.*builtin"                     # R51 F5 (D-13: rv64imac 无 Zbb, 禁 rev8)
-  "SYS_SHUTDOWN"                       # R51 M1 + R66-3 改真 (D-05 / D154: shutdown 走 HAL FFI 路径, 不占 a7; 取代原 `SYS_SHUTDOWN.*typed-syscall` 惰性 27 字符串字面 — 改真后任何 SYS_SHUTDOWN 字面量必抓, 5 行合规共现/纯引用靠 D154 marker 白名单兜底: `03:297` `03:312` `08:616` `14:185` `14:316`)
+  "SYS_SHUTDOWN"                       # R51 M1 + R66-3 改真 (D-05 / D154: shutdown 走 HAL FFI 路径, 不占 a7; 取代原 `SYS_SHUTDOWN.*typed-syscall` 惰性 27 字符串字面 — 改真后任何 SYS_SHUTDOWN 字面量必抓, 6 行合规共现/纯引用靠 D154 marker 白名单兜底: `03:297` `03:312` `03:392` `08:616` `14:185` `14:316`)
   "node=0x%04X\\?"                     # R51 M3 (D-08 / D156: node= 字段收尾问号? 防止缺字段)
   "ShimState.*const"                  # R51 M2 (D-07 / D155: 锚点变量禁 const, 必须 var = .{})
   "ReleaseSmall.*默认.*strip"        # R51 M7 (D-21 / D159: 必须 strip=false)
