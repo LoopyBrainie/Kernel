@@ -2,8 +2,11 @@
 # =============================================================================
 # R66-3-prefix-collision-canary.sh — 行号前缀碰撞潜伏病硬判据 (R66-3 顺手注记)
 # =============================================================================
-# 验证 expand_gate_exempt.py 输出格式契约:
-#   每行必须是 file:N: (尾冒号锚定), 杜绝 `path:20` 子串匹配意外豁免 `path:200-209`
+# 验证 expand_gate_exempt.py 输出在 SELF 锚点行号上的前缀碰撞防御.
+# 格式契约 (:N: 锚定) 由独立 canary R66-3-expand-format-canary.sh 守约 (R67-S-2).
+# Part B 自带行级 format 防御 (S-1 自检纪律: 不裸奔碰撞检测) — 任一 expand 输出行
+# 缺尾冒号锚定即 FAIL, 防止 expand-format-canary 缺席时 Part B 静默跳过.
+#
 # 潜伏病场景 (R66-3 user-observed, 今天无碰撞但未来某行号成前缀即静默豁免):
 #   expand 输出 `docs/03-design-decisions.md:168:` (marker on line 168)
 #   真命中  `docs/03-design-decisions.md:1680:cosmo_open` (line 1680, 168 的前缀碰撞)
@@ -63,12 +66,14 @@ trap 'rm -f "$TMP"' EXIT
 cd "$WORK"
 bash "$EXPAND" > "$TMP" 2>/dev/null
 
+# Part B 前置: 防御性行级 format 解析 (R67-S-1 自检纪律 / R67-S-2 拆分)
+# 任何 expand 输出行必须符合 :lineno: 结构; 否则 Part B 不进入碰撞检测,
+# 直接 FAIL. 这是冗余守约 — 主力格式守约者是 R66-3-expand-format-canary.sh,
+# 本段是 "该 canary 缺席时也不裸奔" 的兜底.
 TOTAL=$(wc -l < "$TMP")
-
-# Part A: 全集行号锚定守约 (任何展开输出必须以 冒号+数字+冒号 收尾)
 NOT_ANCHORED=$(grep -cvE ':[0-9]+:$' "$TMP" || true)
 if [[ "$NOT_ANCHORED" -ne 0 ]]; then
-  echo "FAIL: R66-3 prefix-collision-canary (Part A: ${NOT_ANCHORED}/${TOTAL} 行缺尾冒号锚定)" >&2
+  echo "FAIL: R66-3 prefix-collision-canary (Part B 防御性解析: ${NOT_ANCHORED}/${TOTAL} 行无 :lineno: 结构, 不裸奔碰撞检测)" >&2
   grep -vE ':[0-9]+:$' "$TMP" | head -3 >&2
   exit 1
 fi
@@ -76,8 +81,8 @@ fi
 # Part B: 真实碰撞模拟 — 取首个 SELF 锚,构造 1680/1681/1689 三个前缀碰撞候选
 ANCHOR=$(grep -E '^docs/03-design-decisions.md:[0-9]+:$' "$TMP" | head -1 || true)
 if [[ -z "$ANCHOR" ]]; then
-  echo "NOTE: R66-3 prefix-collision-canary Part B (跳过 — 03 无 SELF 锚行, Part A 已守约)"
-  echo "PASS: R66-3 prefix-collision-canary (Part A: ${TOTAL} 行 100% 尾冒号锚定, 潜伏病根治)"
+  echo "NOTE: R66-3 prefix-collision-canary Part B (跳过 — 03 无 SELF 锚行, Part B 防御性解析已守约 ${TOTAL} 行格式)"
+  echo "PASS: R66-3 prefix-collision-canary (Part B 防御性解析: ${TOTAL} 行 100% 锚定, 潜伏病根治)"
   exit 0
 fi
 
@@ -98,5 +103,5 @@ if [[ "$HITS" -ne 3 ]]; then
   exit 1
 fi
 
-echo "PASS: R66-3 prefix-collision-canary (Part A ${TOTAL} 行 100% 锚定 + Part B anchor=${ANCHOR} 三前缀碰撞候选 3/3 未被 false豁免, 潜伏病根治)"
+echo "PASS: R66-3 prefix-collision-canary (Part B 防御性解析 ${TOTAL} 行 100% 锚定 + 碰撞 anchor=${ANCHOR} 三前缀碰撞候选 3/3 未被 false豁免, 潜伏病根治)"
 exit 0
